@@ -1,0 +1,34 @@
+# Mekanism 10.7.19.85 config: ATM10 (github AllTheMods/ATM-10 main, fetched 2026-09-25) vs ATM10: Aeronautics 0.6.1 (live server)
+
+== gear.toml: 0 changed, keys atm10=81 aero=81
+== general.toml: 1 changed, keys atm10=69 aero=68
+  cardboard_box.modBlacklist: ATM10=["waystones","hyperbox"] | Aero=["waystones", "hyperbox"]
+== generator-storage.toml: 0 changed, keys atm10=5 aero=5
+== generators-gear.toml: 0 changed, keys atm10=2 aero=2
+== generators.toml: 13 changed, keys atm10=46 aero=44
+  solar_generator.solarGeneration: ATM10=150 | Aero=50
+  solar_generator.advancedSolarGeneration: ATM10=1200 | Aero=400
+  bio_generator.bioGeneration: ATM10=350 | Aero=180
+  heat_generator.heatGeneration: ATM10=800 | Aero=200
+  heat_generator.heatGenerationNether: ATM10=100 | Aero=200
+  gas_generator.tankCapacity: ATM10=18000 | Aero=10000
+  wind_generator.generationMin: ATM10=150 | Aero=40
+  wind_generator.generationMax: ATM10=900 | Aero=300
+  wind_generator.minY: ATM10=24 | Aero=30
+  fission_reactor.energyPerFissionFuel: ATM10=250000 | Aero=8000
+  fission_reactor.defaultBurnRate: ATM10=0.1 | Aero=0.15
+  fusion_reactor.fuelEnergy: ATM10=10000000 | Aero=100000
+  fusion_reactor.thermocoupleEfficiency: ATM10=0.04 | Aero=0.02
+== machine-storage.toml: 0 changed, keys atm10=36 aero=36
+== machine-usage.toml: 4 changed, keys atm10=34 aero=35
+  digitalMiner: ATM10=1000 | Aero=500
+  electricPump: ATM10=100 | Aero=50
+  laser: ATM10=50000 | Aero=10000
+  antiprotonicNucleosynthesizer: ATM10=100000 | Aero=20000
+== startup.toml: 0 changed, keys atm10=12 aero=12
+== tiers.toml: 0 changed, keys atm10=83 aero=83
+== tools.toml: 0 changed, keys atm10=63 aero=63
+== world.toml: 0 changed, keys atm10=112 aero=133
+
+Keys only in ATM10: general energy_conversion.hydrogenEnergyDensity; generators gas_generator.etheneBurnTicks, gas_generator.etheneDensityMultiplier
+Keys only in Aero: machine-usage randomizedConsumption; world silver.* ore generation
