@@ -602,51 +602,102 @@ view.addEventListener("pointermove",e=>{ if(!orbit.drag) return; orbit.theta-=(e
 view.addEventListener("pointerup",()=>orbit.drag=null); view.addEventListener("pointercancel",()=>orbit.drag=null);
 view.addEventListener("wheel",e=>{ e.preventDefault(); orbit.radius=Math.min(160,Math.max(6,orbit.radius*(1+Math.sign(e.deltaY)*0.08))); },{passive:false});
 let buildTop=0, buildBottom=0, lastT=performance.now(), casingOn=true, modsOn=true;
+const anims=[];   // per-block swaps: {mesh, kind:"in"|"out", t0, dur, y}
 function frame(t){
   const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
   if(!orbit.drag){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
   camera.position.set(Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, Math.cos(orbit.phi)*orbit.radius, Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(0,0,0);
   const p=reduce?1:Math.min(1,(t-buildStart)/1100), e=1-Math.pow(1-p,3);
-  clip.constant=buildBottom+(buildTop-buildBottom)*e;   // plane rises: blocks appear layer by layer
+  clip.constant=buildBottom+(buildTop-buildBottom)*e;   // full builds only: plane rises layer by layer
+  for(let i=anims.length-1;i>=0;i--){
+    const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=a.show();
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); }
+    else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"){ a.mesh.parent&&a.mesh.parent.remove(a.mesh); } anims.splice(i,1); }
+  }
   renderer.render(scene,camera); requestAnimationFrame(frame);
 }
-let lastShape="";
-function rebuild3D(){
-  if(!renderer) return;
-  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
-  groups={};
-  const {X,Y,Z}=state, ix=X-2, iz=Z-2, H=Y-2, ox=-(X-1)/2, oy=-(Y-1)/2, oz=-(Z-1)/2;
-  const buckets={}; const put=(key,x,y,z)=>{ (buckets[key]=buckets[key]||[]).push(x+ox,y+oy,z+oz); };
+
+/* Every block of the structure, keyed by position. Diffing two of these tells us exactly which blocks changed. */
+const SHELL_KINDS=new Set(["casing","glass","controller","power","portIn","portOut","access"]);
+const groupOf=k=>SHELL_KINDS.has(k)?"shell":k.startsWith("m:")?"mods":"core";
+function blockMap(){
+  const {X,Y,Z}=state, ix=X-2, iz=Z-2, H=Y-2, map=new Map();
+  const active=state.mode==="active"&&state.variant==="reinforced";
   for(let y=0;y<Y;y++)for(let x=0;x<X;x++)for(let z=0;z<Z;z++){
     const bx=x===0||x===X-1, by=y===0||y===Y-1, bz=z===0||z===Z-1, n=bx+by+bz; if(!n) continue;
     let k=n>=2?"casing":"glass";
     if(y===Y-1&&!bx&&!bz&&state.cells[(x-1)*iz+(z-1)]==="rod") k="ctrl";
     else if(x===Math.floor(X/2)&&z===Z-1&&y===Math.floor(Y/2)) k="controller";
-    else if(x===X-1&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)) k=state.mode==="active"&&state.variant==="reinforced"?"portIn":"power";
-    else if(x===0&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)&&state.mode==="active"&&state.variant==="reinforced") k="portOut";
+    else if(x===X-1&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)) k=active?"portIn":"power";
+    else if(x===0&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)&&active) k="portOut";
     else if(x===Math.floor(X/2)&&z===0&&y===1) k="access";
-    put(k,x,y,z);
+    map.set(x+","+y+","+z,k);
   }
-  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue; for(let y=1;y<=H;y++) put(id==="rod"?"rod":"m:"+id,x+1,y,z+1); }
-  const cube=new THREE.BoxGeometry(1,1,1), m4=new THREE.Matrix4();
-  const matFor=k=>{
-    if(k==="casing") return mat(k,casingTex()); if(k==="glass") return mat(k,glassTex(),{transparent:true,opacity:0.5,depthWrite:false});
-    if(k==="ctrl") return mat(k,ctrlTex()); if(k==="controller") return mat(k,portTex(k,"#E2D03A")); if(k==="power") return mat(k,portTex(k,"#D23A3A"));
-    if(k==="portIn") return mat(k,portTex(k,"#3A7BD5")); if(k==="portOut") return mat(k,portTex(k,"#E9EEF2")); if(k==="access") return mat(k,portTex(k,"#7A5A2A"));
-    if(k==="rod") return mat("rod:"+state.fuel,rodTex(),{transparent:true,opacity:0.95});
-    const m=MOD[k.slice(2)]; return mat(k,blockTex(m),m.kind==="fluid"?{transparent:true,opacity:0.55,depthWrite:false}:{});
-  };
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue;
+    const k=id==="rod"?"rod:"+state.fuel:"m:"+id; for(let y=1;y<=H;y++) map.set((x+1)+","+y+","+(z+1),k); }
+  return map;
+}
+function matFor(k){
+  if(k==="casing") return mat(k,casingTex()); if(k==="glass") return mat(k,glassTex(),{transparent:true,opacity:0.5,depthWrite:false});
+  if(k==="ctrl") return mat(k,ctrlTex()); if(k==="controller") return mat(k,portTex(k,"#E2D03A")); if(k==="power") return mat(k,portTex(k,"#D23A3A"));
+  if(k==="portIn") return mat(k,portTex(k,"#3A7BD5")); if(k==="portOut") return mat(k,portTex(k,"#E9EEF2")); if(k==="access") return mat(k,portTex(k,"#7A5A2A"));
+  if(k.startsWith("rod:")) return mat(k,rodTex(),{transparent:true,opacity:0.95});
+  const m=MOD[k.slice(2)]; return mat(k,blockTex(m),m.kind==="fluid"?{transparent:true,opacity:0.55,depthWrite:false}:{});
+}
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+let off={x:0,y:0,z:0};
+const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+off.x,y+off.y,z+off.z]; };
+const visibleFor=g=>()=>g==="shell"?casingOn:g==="mods"?modsOn:true;
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), sc=new THREE.Vector3(0.97,1,0.97);
   for(const k in buckets){
-    const arr=buckets[k], mesh=new THREE.InstancedMesh(cube,matFor(k),arr.length/3);
-    for(let i=0;i<arr.length/3;i++){ m4.makeTranslation(arr[i*3],arr[i*3+1],arr[i*3+2]); if(k.startsWith("m:")) m4.scale(new THREE.Vector3(0.97,1,0.97)); mesh.setMatrixAt(i,m4); }
-    const grp=k==="casing"||k==="glass"||["controller","power","portIn","portOut","access"].includes(k)?"shell":k.startsWith("m:")?"mods":"core";
+    const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),matFor(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); if(k.startsWith("m:")) m4.scale(sc); mesh.setMatrixAt(i,m4); });
     if(k==="glass") mesh.renderOrder=2;
-    (groups[grp]=groups[grp]||new THREE.Group()).add(mesh);
+    const g=groupOf(k); (groups[g]=groups[g]||new THREE.Group()).add(mesh);
   }
   for(const k in groups) root.add(groups[k]);
   if(groups.shell) groups.shell.visible=casingOn; if(groups.mods) groups.mods.visible=modsOn;
-  buildBottom=-(Y/2)-0.5; buildTop=Y/2+0.6; buildStart=performance.now();
-  const shape=`${X}|${Y}|${Z}`; if(shape!==lastShape){ orbit.radius=Math.max(X,Z,Y)*1.9+4; lastShape=shape; }
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0;
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(force){
+  if(!renderer) return;
+  const {X,Y,Z}=state, shape=`${X}|${Y}|${Z}`, map=blockMap();
+  off={x:-(X-1)/2, y:-(Y-1)/2, z:-(Z-1)/2};
+  clearSwaps();
+  // New size (or first build): build everything with the rising layer-by-layer animation.
+  if(force||!shownMap||shape!==shownShape){
+    buildInstanced(map);
+    buildBottom=-(Y/2)-0.5; buildTop=Y/2+0.6; buildStart=performance.now();
+    if(shape!==shownShape) orbit.radius=Math.max(X,Z,Y)*1.9+4;
+    shownMap=map; shownShape=shape; return;
+  }
+  // Same size: only the blocks that changed are torn out and replaced.
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map;
+  if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>3000){ buildInstanced(map); return; }   // huge repaint: just swap instantly
+  const addedKeys=new Set(added.map(a=>a[0]));
+  buildInstanced(map,addedKeys);
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now(), sc=0.97;
+  for(const [key,k] of removed){ const m=new THREE.Mesh(CUBE(),matFor(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); if(k.startsWith("m:")) m.scale.set(sc,1,sc);
+    swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y,show:visibleFor(groupOf(k))}); }
+  const ys=added.map(([key])=>+key.split(",")[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45);
+  let end=now;
+  for(const [key,k] of added){ const m=new THREE.Mesh(CUBE(),matFor(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); m.visible=false;
+    const t0=now+160+(y1>y0?((+key.split(",")[1]-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y,show:visibleFor(groupOf(k))}); }
+  // Once every new block has landed, fold them back into the instanced meshes.
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
 }
 
 /* ================= UI ================= */
@@ -666,9 +717,10 @@ function saveCfg(){ try{ localStorage.setItem("er-reactor-cfg",JSON.stringify({p
 function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
 
 function clampSize(){
-  const L=limits(), oix=state.X-2, oiz=state.Z-2;
+  const L=limits();
   state.X=Math.min(L.maxXZ,Math.max(3,state.X)); state.Z=Math.min(L.maxXZ,Math.max(3,state.Z)); state.Y=Math.min(L.maxY,Math.max(3,state.Y));
-  if(state.X-2!==oix||state.Z-2!==oiz) state.cells=resizeCells(state.X-2,state.Z-2,state.cells,oix,oiz);
+  const ix=state.X-2, iz=state.Z-2;   // the grid remembers its own size, so it's resized from what it really is
+  if(ix!==state.cix||iz!==state.ciz){ state.cells=resizeCells(ix,iz,state.cells,state.cix,state.ciz); state.cix=ix; state.ciz=iz; }
 }
 function syncInputs(){
   const L=limits(), V=VARIANTS[state.variant];
@@ -747,11 +799,11 @@ $("search").oninput=renderSlots;
 document.querySelectorAll("[data-pattern]").forEach(b=>b.onclick=()=>{ applyPattern(b.dataset.pattern); drawCore(); renderLegend(); schedule(); });
 $("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
 $("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",modsOn); if(groups.mods) groups.mods.visible=modsOn; };
-$("tRebuild").onclick=()=>{ buildStart=performance.now(); };
+$("tRebuild").onclick=()=>rebuild3D(true);
 addEventListener("resize",()=>{ if(result) drawChart(result); });
 
 // sensible starting design: 7x7x7, rods every other block, graphite between
-state.cells=resizeCells(state.X-2,state.Z-2); state.tool="graphite"; applyPattern("grid"); applyPattern("fill"); state.tool="rod";
+state.cells=resizeCells(state.X-2,state.Z-2); state.cix=state.X-2; state.ciz=state.Z-2; state.tool="graphite"; applyPattern("grid"); applyPattern("fill"); state.tool="rod";
 initGL(); update();
 })();
 </script>
