@@ -36,10 +36,13 @@ powershell -NoProfile -File scripts\wrangler.ps1 pages deploy site --project-nam
 
 The token is stored DPAPI-encrypted in `%APPDATA%\moddecoded\`, never in this repo.
 
-## Adding a custom domain
+## Live
 
-Pages project → Custom domains → Set up a domain. If the domain is registered with
-Cloudflare Registrar, DNS is configured automatically.
+- Production: https://moddecoded.com (and www), Pages project `moddecoded`, branch `main`.
+- Project was created on classic Pages with `--force` once (wrangler 4.139 otherwise delegates
+  Pages commands to Workers). Later deploys need no `--force`.
+- Custom domains were attached via the API (`scripts/cf-api.ps1`). Pages did **not** create the DNS
+  records itself, so proxied CNAMEs `moddecoded.com` and `www` -> `moddecoded.pages.dev` were added by hand.
 
 ## Adding a tool
 

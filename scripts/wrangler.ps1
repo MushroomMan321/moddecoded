@@ -16,7 +16,7 @@ $bstr = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($secure)
 try {
     $env:CLOUDFLARE_API_TOKEN = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($bstr)
     if (Test-Path $accountFile) { $env:CLOUDFLARE_ACCOUNT_ID = (Get-Content $accountFile -Raw).Trim() }
-    & npx --yes wrangler@4 @args
+    & npx.cmd --yes wrangler@4 @args   # npx.cmd, not npx: the npx.ps1 shim mangles forwarded args on PS 5.1
     $code = $LASTEXITCODE
 }
 finally {
