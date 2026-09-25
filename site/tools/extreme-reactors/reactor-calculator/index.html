@@ -223,6 +223,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
             <button class="btn" type="button" data-pattern="checker">Checkerboard</button>
             <button class="btn" type="button" data-pattern="center">One center rod</button>
             <button class="btn" type="button" data-pattern="fill">Fill non-rods with selected</button>
+            <button class="btn" type="button" data-pattern="reach">Fill only rod range with selected</button>
             <button class="btn" type="button" data-pattern="clear">Clear</button>
           </div>
           <p class="hint">Top-down view of the inside. Fuel rods and coolant blocks run the full height. Control rods sit on the top casing above each rod column.</p>
@@ -394,13 +395,19 @@ try{ const s=JSON.parse(localStorage.getItem("er-reactor-cfg")||"null"); if(s&&m
 const state={variant:"reinforced", mode:"active", fuel:"yellorium", insertion:0, X:7, Z:7, Y:7, cells:null, tool:"rod"};
 function limits(){ const V=VARIANTS[state.variant]; return {maxXZ:Math.min(V.max,cfg.maxSize), maxY:Math.min(V.max,cfg.maxHeight)}; }
 function resizeCells(ix,iz,old,oix,oiz){ const c=new Array(ix*iz).fill("air"); if(old){ for(let x=0;x<Math.min(ix,oix);x++)for(let z=0;z<Math.min(iz,oiz);z++) c[x*iz+z]=old[x*oiz+z]; } return c; }
+// Columns within 4 blocks of a rod in a straight line (the ray range). Only these touch the sim; the rest can be anything.
+function rodReach(cells,ix,iz){ const reached=new Set();
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ if(cells[x*iz+z]!=="rod") continue;
+    for(const [dx,dz] of DIRS) for(let k=1;k<=4;k++){ const X=x+dx*k, Z=z+dz*k; if(X<0||Z<0||X>=ix||Z>=iz) break; reached.add(X*iz+Z); } }
+  return reached; }
 function applyPattern(p){
-  const ix=state.X-2, iz=state.Z-2, fill=state.tool==="rod"?"graphite":state.tool;
+  const ix=state.X-2, iz=state.Z-2, fill=state.tool==="rod"?"graphite":state.tool, reached=p==="reach"?rodReach(state.cells,ix,iz):null;
   for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const i=x*iz+z; const cur=state.cells[i];
     if(p==="grid"){ const rx=ix<3?x===Math.floor((ix-1)/2):x%2===1, rz=iz<3?z===Math.floor((iz-1)/2):z%2===1; state.cells[i]=rx&&rz?"rod":(cur==="rod"?fill:cur); }
     else if(p==="checker") state.cells[i]=((x+z)%2===0)?"rod":(cur==="rod"?fill:cur);
     else if(p==="center") state.cells[i]=(x===Math.floor((ix-1)/2)&&z===Math.floor((iz-1)/2))?"rod":(cur==="rod"?fill:cur);
     else if(p==="fill"){ if(cur!=="rod") state.cells[i]=fill; }
+    else if(p==="reach"){ if(cur!=="rod"&&reached.has(i)) state.cells[i]=fill; }
     else if(p==="clear") state.cells[i]="air";
   }
 }
@@ -770,10 +777,8 @@ function renderResults(R){
   const n=[];
   if(!R.converged) n.push(["warn","This design hadn't settled within the simulation limit. It's still heating up, so the real reactor will end up hotter than shown."]);
   if(R.casingLossFrac>0.25) n.push(["warn",`${fmt(R.casingLossFrac*100,0)}% of the radiation hits the casing and is wasted. Rods next to the wall lose rays: leave a block or two of coolant between the outer rods and the casing.`]);
-  // Only columns within 4 blocks of a rod in a straight line (the ray range) touch the sim; the rest can be anything.
-  const {ix,iz}=R.C, reached=new Set();
-  for(const [x,z] of R.C.cols) for(const [dx,dz] of DIRS) for(let k=1;k<=4;k++){ const X=x+dx*k, Z=z+dz*k; if(X<0||Z<0||X>=ix||Z>=iz) break; reached.add(X*iz+Z); }
-  const airCells=state.cells.filter((c,i)=>c==="air"&&reached.has(i)).length; if(airCells>0) n.push(["warn",`${airCells} interior column${airCells>1?"s are":" is"} air within a rod's radiation range. Air absorbs only 10% and turns a quarter of that into heat, so it barely helps. Fill with a coolant block.`]);
+  const reached=rodReach(state.cells,R.C.ix,R.C.iz);
+  const airCells=state.cells.filter((c,i)=>c==="air"&&reached.has(i)).length; if(airCells>0) n.push(["warn",`${airCells} interior column${airCells>1?"s are":" is"} air within a rod's radiation range. Air absorbs only 10% and turns a quarter of that into heat, so it barely helps. Fill with a coolant block (the "Fill only rod range" button does just these columns).`]);
   const idle=state.cells.filter((c,i)=>c!=="rod"&&!reached.has(i)).length; if(idle>0) n.push(["good",`${idle} column${idle>1?"s are":" is"} more than 4 blocks in a straight line from every rod. Radiation never reaches ${idle>1?"them":"it"}, so ${idle>1?"they":"it"} can be anything, air included.`]);
   if(act&&R.water>=R.fluidCap*0.98) n.push(["bad",R.fluidCap>=VARIANTS[state.variant].maxFluid
     ? `Coolant-limited: ${fmt(R.fluidCap)} mB/t is the most water any Reinforced reactor can boil per tick, so the extra heat just raises the casing temperature. Use fewer rods, push the control rods in, or split this into two reactors.`
