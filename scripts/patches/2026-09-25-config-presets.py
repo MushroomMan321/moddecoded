@@ -1,6 +1,6 @@
 # Adds server-config presets (mod defaults / ATM10 / custom) to the turbine planner.
 # One-off patch script, kept for the record of what changed and why.
-p = r'C:\Users\jorda\modded-mechanics\site\tools\extreme-reactors\turbine-planner\index.html'
+p = r'C:\Users\jorda\modded-mechanics\site\tools\extreme-reactors\turbine-calculator\index.html'
 s = open(p, encoding='utf8').read()
 
 

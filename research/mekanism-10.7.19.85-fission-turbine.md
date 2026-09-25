@@ -2,7 +2,7 @@
 
 Source: github.com/mekanism/Mekanism tag `v1.21.1-10.7.19.85` (commit a00109e4856fd38b9c5b3dd7f22ce4a59cd65a80), MIT.
 Runnable reference model: `mekanism-10.7.19.85-reference-model.js`; worked examples: `...-examples.json`.
-The planner (`site/tools/mekanism/fission-planner/`) reproduces those examples exactly.
+The planner (`site/tools/mekanism/fission-reactor-calculator/`) reproduces those examples exactly.
 
 ## Fission (FissionReactorMultiblockData)
 - 3–18 per side (exterior). Columns: contiguous fuel assemblies + 1 control rod on top.
