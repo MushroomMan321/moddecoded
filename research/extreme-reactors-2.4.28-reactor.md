@@ -2,7 +2,7 @@
 
 Traced from bytecode with `javap -c -p` (no decompiler). Raw dumps from the trace are in
 `%TEMP%\er\reactor-notes\` on the dev PC. The reactor planner
-(`site/tools/extreme-reactors/reactor-planner/`) runs this loop tick by tick.
+(`site/tools/extreme-reactors/reactor-calculator/`) runs this loop tick by tick.
 
 ## Per-tick order (`ReactorLogic.update`)
 

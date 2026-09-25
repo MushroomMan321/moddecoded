@@ -1,0 +1,9 @@
+# Tools were renamed from "planner" to "calculator" on 2026-09-25 (what people search for).
+/tools/extreme-reactors/turbine-planner      /tools/extreme-reactors/turbine-calculator/      301
+/tools/extreme-reactors/turbine-planner/*    /tools/extreme-reactors/turbine-calculator/      301
+/tools/extreme-reactors/reactor-planner      /tools/extreme-reactors/reactor-calculator/      301
+/tools/extreme-reactors/reactor-planner/*    /tools/extreme-reactors/reactor-calculator/      301
+/tools/mekanism/fission-planner              /tools/mekanism/fission-reactor-calculator/      301
+/tools/mekanism/fission-planner/*            /tools/mekanism/fission-reactor-calculator/      301
+/tools/create-aeronautics/airship-planner    /tools/create-aeronautics/airship-calculator/    301
+/tools/create-aeronautics/airship-planner/*  /tools/create-aeronautics/airship-calculator/    301

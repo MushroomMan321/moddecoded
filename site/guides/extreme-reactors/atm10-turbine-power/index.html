@@ -94,10 +94,10 @@ ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;m
   <p class="note">One Reinforced turbine: 2,000 mB/t of steam, 80 blades, 36 enderium coils, 7×7×14. It spins at 1,848 RPM in all three.</p>
 
   <h2>The test</h2>
-  <p>We built a Reinforced turbine on an ATM10: Aeronautics 0.6.1 server: 5×5×16, 43 blades, 24 blocks of platinum, 1,082 mB/t of steam. Then we compared the controller to our turbine planner, which uses formulas read from the mod's code.</p>
+  <p>We built a Reinforced turbine on an ATM10: Aeronautics 0.6.1 server: 5×5×16, 43 blades, 24 blocks of platinum, 1,082 mB/t of steam. Then we compared the controller to our turbine calculator, which uses formulas read from the mod's code.</p>
   <div class="tbl">
     <table>
-      <thead><tr><th></th><th>In-game controller</th><th>Planner (default config)</th><th>Planner (Aeronautics config)</th></tr></thead>
+      <thead><tr><th></th><th>In-game controller</th><th>Calculator (default config)</th><th>Calculator (Aeronautics config)</th></tr></thead>
       <tbody>
         <tr><td>Rotor speed</td><td class="n">1,798.74 RPM</td><td class="n">1,799 RPM</td><td class="n">1,799 RPM</td></tr>
         <tr><td>Energy output</td><td class="n">4.27 kFE/t</td><td class="n">10,686 RF/t</td><td class="n">4,275 RF/t</td></tr>
@@ -147,14 +147,14 @@ RF/t  = drag^bonus × coilEfficiency × rpmFactor
     <li>Multiply <code>powerProductionMultiplier</code> by <code>turbinePowerProductionMultiplier</code>. That's your turbine power factor.</li>
     <li>On a multiplayer server, the <b>server's</b> copy is the one that counts, since the turbine runs server-side. Ask your server admin if the numbers look off.</li>
   </ol>
-  <p>Then enter both values in the planner under <b>Server config → Custom</b>, or pick a preset:</p>
+  <p>Then enter both values in the calculator under <b>Server config → Custom</b>, or pick a preset:</p>
   <div class="cta">
-    <a class="primary" href="/tools/extreme-reactors/turbine-planner/#atm10">Plan a turbine for ATM10</a>
-    <a class="primary" href="/tools/extreme-reactors/turbine-planner/#atm10-aeronautics">Plan a turbine for ATM10: Aeronautics</a>
+    <a class="primary" href="/tools/extreme-reactors/turbine-calculator/#atm10">Plan a turbine for ATM10</a>
+    <a class="primary" href="/tools/extreme-reactors/turbine-calculator/#atm10-aeronautics">Plan a turbine for ATM10: Aeronautics</a>
   </div>
 
   <h2>The same file changes your reactor, too</h2>
-  <p>Both packs also change the reactor settings in that file. The <a href="/tools/extreme-reactors/reactor-planner/">reactor planner</a> has presets for both packs. Here are the values:</p>
+  <p>Both packs also change the reactor settings in that file. The <a href="/tools/extreme-reactors/reactor-calculator/">reactor calculator</a> has presets for both packs. Here are the values:</p>
   <div class="tbl">
     <table>
       <thead><tr><th>Setting</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
