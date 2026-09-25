@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="canonical" href="https://moddecoded.com/tools/create-aeronautics/airship-planner/">
+<title>Create Aeronautics Airship Planner</title>
+<meta name="description" content="Will your Create Aeronautics airship fly? Add up block weight, balloon volume, burners, levitite, propellers and thrusters, and see lift, the altitude it settles at and its top speed, from the Aeronautics 1.3.2 and Sable 2.0.5 code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
+  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
+  --good:#2E7D4F; --warn:#A8591A; --bad:#B03434; --sky:#3A7BD5; --weight:#B03434;
+  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ color-scheme:dark;
+    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+    --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --sky:#7FAEF0; --weight:#EE7B7B; }
+}
+:root[data-theme="dark"]{ color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --sky:#7FAEF0; --weight:#EE7B7B; }
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:12px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:500;font-size:18px;margin:0;letter-spacing:.02em}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.box{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:10px}
+.sky{position:relative;border-radius:6px;overflow:hidden;background:linear-gradient(#0E1A2B,#23405F 55%,#4A6E8F);aspect-ratio:4/3;width:100%}
+.sky canvas{display:block;width:100%;height:100%}
+.verdict{position:absolute;left:12px;top:10px;font-family:var(--font-display);font-size:26px;line-height:1.1;color:#F2E36A;text-shadow:0 1px 0 #000;pointer-events:none}
+.verdict small{display:block;font-family:var(--font-mono);font-size:12px;color:#DDE6E2}
+table.mass{width:100%;border-collapse:collapse;font-size:14px}
+table.mass td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.mass td.kg{font-family:var(--font-mono);color:var(--muted);white-space:nowrap;text-align:right;font-size:12.5px}
+table.mass td.inp{width:92px}
+table.mass tr:last-child td{border-bottom:0}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:4px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,select:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.frow{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:8px;align-items:center}
+.frow label{font-size:14px;color:var(--muted)}
+select{font:600 13px var(--font-body);color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:4px;padding:5px 6px;width:100%}
+.prop{display:grid;grid-template-columns:minmax(0,1.6fr) 70px 80px 70px 30px;gap:6px;align-items:center}
+.prop .hdr{font-size:11.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.ib{width:30px;height:30px;border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:4px;cursor:pointer;font:600 15px var(--font-mono)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer;width:max-content}
+.btn:hover{border-color:var(--accent)}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:600 19px var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font-size:12px;color:var(--muted);font-weight:400}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Create Aeronautics / Airship Planner</nav>
+  <header class="top">
+    <h1>Create Aeronautics <span class="y">Airship Planner</span></h1>
+    <span class="src">Aeronautics 1.3.2 · Simulated 1.3.2 · Sable 2.0.5 · Create Propulsion 1.1.5</span>
+  </header>
+  <p class="lede">Count the blocks on your ship, size the balloon, add propellers or thrusters, and see whether it flies, the altitude it settles at and how fast it goes. Weight, lift and thrust come from the mods' own code: <b>ServerBalloon</b>, <b>BlockEntityPropeller</b> and Sable's block mass tables.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="Flight summary">
+      <div class="sky">
+        <canvas id="sky" aria-label="Altitude chart: balloon lift against ship weight, with the altitude the ship settles at"></canvas>
+        <div class="verdict" id="verdict"></div>
+      </div>
+      <div class="results" id="results"></div>
+      <ul class="notes" id="notes"></ul>
+    </section>
+
+    <section class="panel" aria-label="Ship inputs">
+      <div class="sect">
+        <h2>Ship weight</h2>
+        <div class="box">
+          <table class="mass" id="massTable"></table>
+          <p class="hint">Masses come from Sable's block tags: every block counts as 1 unless a tag says otherwise. Items inside chests don't count. Rope and pulley magnets weigh nothing.</p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Lift</h2>
+        <div class="box">
+          <div class="frow"><label for="vol">Balloon space enclosed (blocks of air)</label><input class="num" id="vol" type="number" min="0"></div>
+          <div class="frow"><label for="burners">Hot air burners</label><input class="num" id="burners" type="number" min="0"></div>
+          <div class="frow"><label for="burnOut">Burner setting (5 – 500)</label><input class="num" id="burnOut" type="number" min="5" max="500"></div>
+          <div class="frow"><label for="vents">Steam vents (full boiler)</label><input class="num" id="vents" type="number" min="0"></div>
+          <div class="frow"><label for="lev">Levitite blocks</label><input class="num" id="lev" type="number" min="0"></div>
+          <div class="frow"><label for="endst">End stone blocks</label><input class="num" id="endst" type="number" min="0"></div>
+          <p class="hint">A balloon holds at most its enclosed volume in hot air; each burner adds up to 500 at full redstone, each steam vent up to 5,000. Envelope and wool blocks you count in the weight table also add air drag.</p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Thrust</h2>
+        <div class="box">
+          <div class="prop"><span class="hdr">Type</span><span class="hdr">Count</span><span class="hdr">RPM / fuel</span><span class="hdr">Sails</span><span></span></div>
+          <div id="props"></div>
+          <button class="btn" type="button" id="addProp">Add propeller or thruster</button>
+          <div class="frow"><label for="alt">Cruise altitude (Y)</label><input class="num" id="alt" type="number" min="-64" max="319"></div>
+          <p class="hint">Leave cruise altitude blank to use the height the ship settles at. Thrusters use full redstone and a clear 10 blocks behind them.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Gravity is 11, and lift numbers read as "kg held up"</h3>
+        <p>Sable's gravity is 11 m/s², not 9.8. Every lift and thrust value is already scaled to it, so a balloon's "1.5 per block" means it holds up 1.5 units of block mass at sea level.</p>
+<pre>weight = Σ block mass × 11
+balloon lift = 1.5 × filled volume × 11 × p(y)</pre>
+        <span class="ref">DimensionPhysics.DEFAULT_GRAVITY · ServerBalloon</span>
+      </div>
+      <div class="fact">
+        <h3>Thin air, not a height limit</h3>
+        <p>Air pressure is 1.0 at sea level (Y 63), about 0.46 at Y 256 and 0 at Y 320. Balloons, propellers, fans and sails all scale with it, so a ship rises until lift × pressure equals its weight.</p>
+<pre>p(63)=1.00  p(150)=0.71  p(263)=0.45  p(320)=0</pre>
+        <span class="ref">DimensionPhysics.createDefault</span>
+      </div>
+      <div class="fact">
+        <h3>Levitite can hold a ship, never lift it</h3>
+        <p>Each levitite block cancels up to 10 units of weight, but the code caps its lift at the ship's own weight, so it can hover a ship but never make it climb. It ignores air pressure.</p>
+<pre>levitite lift = min(10 × blocks, ship mass) × 11</pre>
+        <span class="ref">FloatingBlockController.applyLift</span>
+      </div>
+      <div class="fact">
+        <h3>Propellers stop pushing at their airflow speed</h3>
+        <p>A propeller's push falls linearly to zero as the ship's forward speed reaches its airflow speed. That's a hard top speed no drag reduction can beat.</p>
+<pre>thrust = RPM × (1 − speed / (0.1 × RPM)) × p(y)</pre>
+        <span class="ref">BlockEntityPropeller.getAirflowScaling</span>
+      </div>
+      <div class="fact">
+        <h3>Propeller bearings love more sails</h3>
+        <p>A propeller bearing's thrust grows with sails^1.5, but its airflow only with √sails. Doubling sails gives 2.8× the push, but only 1.4× the top-speed ceiling.</p>
+<pre>thrust  = 0.2 × sails^1.5 × RPM
+airflow = 0.05 × √sails × RPM</pre>
+        <span class="ref">BlockEntityPropeller (bearing)</span>
+      </div>
+      <div class="fact">
+        <h3>Envelopes are the drag</h3>
+        <p>Every envelope or wool block adds 0.33 × pressure of drag per m/s. On a balloon ship that's usually most of the drag, which is why big balloons are slow.</p>
+<pre>envelope drag = 0.33 × blocks × p(y) × speed</pre>
+        <span class="ref">floating_materials · FloatingBlockController.applyFriction</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const G=11;                                             // DimensionPhysics.DEFAULT_GRAVITY (0,-11,0)
+const UNIVERSAL_DRAG=0.09;                              // Rapier3D.initialize universalDrag; assumed F = -0.09·m·v (native, unverified)
+
+/* ---- air pressure: cubic Hermite through the overworld control points (BezierResourceFunction) ---- */
+const PTS=[[-38.366,1.5,-0.006],[63,1.0,-0.004],[263,0.44933,-0.001797],[280,0.41979,-0.001679],[320,0,-0.02099]];
+function pressure(y){ let i=-1; for(const q of PTS){ if(y<q[0]) break; i++; }
+  if(i<0) return PTS[0][1]; if(i>=PTS.length-1) return 0;
+  const [y0,v0,s0]=PTS[i],[y1,v1,s1]=PTS[i+1], h=y1-y0, dv=v1-v0, t=(y-y0)/h;
+  const A=(s0+s1)*h-2*dv, B=3*dv-(2*s0+s1)*h, C=h*s0;
+  return Math.max(((A*t+B)*t+C)*t+v0,0); }
+
+/* ---- block masses (Sable physics_block_properties tags) ---- */
+const MASS=[
+  ["envelope","Envelopes / wool",0.25,"airtight"],
+  ["woodlight","Wooden slabs & stairs, fences, trapdoors, doors, glass panes, ladders, chains, lanterns",0.25],
+  ["sails","Sails & sail frames, Propulsion wings",0.25],
+  ["planks","Planks & logs",0.5],
+  ["mech","Shafts, cogwheels, belts, chests, barrels, seats, steering wheel",0.5],
+  ["normal","Everything else: glass, burners, propellers, bearings, levitite, machines",1.0],
+  ["stoneslab","Stone & cobblestone slabs / stairs",1.0],
+  ["stone","Stone, cobblestone, deepslate, basalt, obsidian; Propulsion thrusters",2.0],
+  ["metal","Storage blocks (iron, gold…), anvils, flywheels",4.0],
+];
+/* ---- thrust sources ---- */
+const KINDS={
+  prop:{name:"Wooden / andesite propeller", thrust:r=>1.0*r, airflow:r=>0.1*r, input:"RPM"},
+  smart:{name:"Smart propeller (vertical)", thrust:r=>1.0*r, airflow:r=>0.1*r, input:"RPM", vertical:true},
+  bearing:{name:"Propeller bearing + sails", thrust:(r,p)=>0.2*Math.pow(p,1.5)*r, airflow:(r,p)=>0.05*Math.sqrt(p)*r, input:"RPM", sails:true},
+  fan:{name:"Encased fan", thrust:r=>0.27*r, airflow:r=>0.09*r, input:"RPM"},
+  thruster:{name:"Propulsion thruster (liquid)", base:533.33, input:"fuel"},
+  lvector:{name:"Propulsion liquid vector thruster", base:733.33, input:"fuel"},
+  ion:{name:"Propulsion ion thruster (FE)", base:800, input:"none"},
+  solid:{name:"Propulsion solid fuel thruster", base:200, input:"solid"},
+};
+const FUELS={turpentine:["Turpentine",1.0],lava:["Lava",0.75],diesel:["Diesel (Create Diesel Generators)",1.1],kerosene:["Kerosene (TFMG)",2.415],hydrogen:["Hydrogen (Mekanism)",2.76]};
+const SOLIDS={coal:["Coal",1.0],coalblock:["Coal block",1.15],blaze:["Blaze cake",1.5],planks:["Planks",0.3]};
+
+/* ---- state: the traced worked example (193 envelopes, 150 m³, 1 burner, 2 wooden props) ---- */
+const state={counts:{envelope:193,woodlight:30,sails:0,planks:77,mech:9,normal:5,stoneslab:0,stone:0,metal:0},
+  vol:150,burners:1,burnOut:500,vents:0,lev:0,endst:0,alt:"",props:[{kind:"prop",count:2,rpm:128,sails:8,fuel:"turpentine"}]};
+try{ const s=JSON.parse(localStorage.getItem("aero-planner")||"null"); if(s&&s.counts) Object.assign(state,s); }catch(e){}
+
+function model(){
+  const mass=MASS.reduce((a,[k,,m])=>a+m*(+state.counts[k]||0),0);
+  const envelopes=+state.counts.envelope||0;
+  const gasTarget=(+state.burners||0)*Math.min(500,Math.max(5,+state.burnOut||0))+(+state.vents||0)*5000;
+  const gas=Math.min(gasTarget,+state.vol||0);                       // ServerBalloon: equilibrium = min(outputs, capacity)
+  const balloonKg=1.5*gas;                                            // hotAirStrength 1.5
+  const levKg=10*(+state.lev||0)+2*(+state.endst||0);                 // levitite 10, end stone 2; capped at ship mass
+  // vertical smart propellers add lift too (thrust in pN → /11 kpg), scaled by pressure
+  const smartKg=state.props.filter(p=>p.kind==="smart").reduce((a,p)=>a+(+p.count||0)*KINDS.smart.thrust(+p.rpm||0)/G,0);
+  const liftAt=y=>balloonKg*pressure(y)+smartKg*pressure(y)+Math.min(levKg,mass);
+  // settle altitude: highest y with lift >= weight (lift falls with height)
+  let settle=null;
+  if(liftAt(63)>=mass&&mass>0){ let lo=63,hi=319.9; if(liftAt(hi)>=mass) settle=hi; else { for(let i=0;i<60;i++){ const m=(lo+hi)/2; liftAt(m)>=mass?lo=m:hi=m; } settle=lo; } }
+  else if(mass>0){ let lo=-64,hi=63; if(liftAt(lo)>=mass){ for(let i=0;i<60;i++){ const m=(lo+hi)/2; liftAt(m)>=mass?lo=m:hi=m; } settle=lo; } }
+  const cruise=state.alt!==""&&Number.isFinite(+state.alt)?Math.min(319,Math.max(-64,+state.alt)):(settle??63);
+  const p=pressure(cruise);
+  // horizontal: sum thrust sources (propellers fall off to 0 at their airflow speed; thrusters don't)
+  const src=[];
+  for(const pr of state.props){ const K=KINDS[pr.kind], n=+pr.count||0; if(!n||K.vertical) continue;
+    if(K.base){ const mult=pr.kind==="solid"?SOLIDS[pr.fuel]?.[1]??1:pr.kind==="ion"?1:FUELS[pr.fuel]?.[1]??1; src.push({T:n*K.base*mult,A:Infinity}); }
+    else { const r=+pr.rpm||0, sp=+pr.sails||0; src.push({T:n*K.thrust(r,sp)*p,A:K.airflow(r,sp)}); } }
+  const levN=+state.lev||0;
+  const drag=v=>{ const lin=0.33*envelopes*p*v+UNIVERSAL_DRAG*mass*v; const e=Math.exp(-1.5*v*v/9); return lin+G*levN*(0.05+1.5*e)*v; };
+  const thrust=v=>src.reduce((a,s)=>a+s.T*Math.max(0,Math.min(1,s.A===Infinity?1:(s.A-v)/s.A)),0);
+  let vTop=0; const T0=thrust(0);
+  if(T0>0){ let lo=0,hi=Math.max(1,...src.map(s=>s.A===Infinity?0:s.A)); if(hi<1) hi=1; while(thrust(hi)>drag(hi)&&hi<1e4) hi*=2; for(let i=0;i<80;i++){ const m=(lo+hi)/2; thrust(m)>drag(m)?lo=m:hi=m; } vTop=lo; }
+  return {mass,weight:mass*G,gasTarget,gas,balloonKg,levKg,smartKg,liftAt,settle,cruise,p,T0,vTop,envelopes,
+    sea:liftAt(63), airflowCap:Math.max(0,...src.filter(s=>s.A!==Infinity).map(s=>s.A)), hasThruster:src.some(s=>s.A===Infinity)};
+}
+
+/* ---- UI ---- */
+function buildMassTable(){
+  $("massTable").innerHTML=MASS.map(([k,label,m])=>`<tr><td>${label}</td><td class="kg">${m} each</td><td class="inp"><input class="num" type="number" min="0" id="m-${k}" aria-label="${label} count"></td></tr>`).join("")+
+    `<tr><td><b>Total</b></td><td class="kg" id="massTotal" colspan="2"></td></tr>`;
+  for(const [k] of MASS) $("m-"+k).onchange=e=>{ state.counts[k]=Math.max(0,Math.floor(+e.target.value||0)); update(); };
+}
+function renderProps(){
+  const box=$("props"); box.textContent="";
+  state.props.forEach((pr,i)=>{
+    const row=document.createElement("div"); row.className="prop";
+    const sel=document.createElement("select"); sel.setAttribute("aria-label","Thrust source type");
+    for(const [k,K] of Object.entries(KINDS)){ const o=document.createElement("option"); o.value=k; o.textContent=K.name; sel.appendChild(o); } sel.value=pr.kind;
+    sel.onchange=()=>{ pr.kind=sel.value; if(KINDS[pr.kind].input==="solid") pr.fuel="coal"; else if(KINDS[pr.kind].input==="fuel"&&!FUELS[pr.fuel]) pr.fuel="turpentine"; update(); };
+    const cnt=document.createElement("input"); cnt.className="num"; cnt.type="number"; cnt.min=0; cnt.value=pr.count; cnt.setAttribute("aria-label","How many");
+    cnt.onchange=()=>{ pr.count=Math.max(0,Math.floor(+cnt.value||0)); update(); };
+    const K=KINDS[pr.kind]; let mid;
+    if(K.input==="RPM"){ mid=document.createElement("input"); mid.className="num"; mid.type="number"; mid.min=0; mid.max=256; mid.value=pr.rpm; mid.setAttribute("aria-label","RPM"); mid.onchange=()=>{ pr.rpm=Math.max(0,Math.min(256,+mid.value||0)); update(); }; }
+    else if(K.input==="fuel"||K.input==="solid"){ mid=document.createElement("select"); mid.setAttribute("aria-label","Fuel"); const list=K.input==="solid"?SOLIDS:FUELS;
+      for(const [k,[n]] of Object.entries(list)){ const o=document.createElement("option"); o.value=k; o.textContent=n; mid.appendChild(o); } mid.value=pr.fuel; mid.onchange=()=>{ pr.fuel=mid.value; update(); }; }
+    else { mid=document.createElement("span"); mid.className="hint"; mid.textContent="40 FE/t"; }
+    let sails; if(K.sails){ sails=document.createElement("input"); sails.className="num"; sails.type="number"; sails.min=1; sails.value=pr.sails; sails.setAttribute("aria-label","Sails on the bearing"); sails.onchange=()=>{ pr.sails=Math.max(1,Math.floor(+sails.value||1)); update(); }; }
+    else { sails=document.createElement("span"); }
+    const del=document.createElement("button"); del.className="ib"; del.type="button"; del.textContent="×"; del.setAttribute("aria-label","Remove"); del.onclick=()=>{ state.props.splice(i,1); update(); };
+    row.append(sel,cnt,mid,sails,del); box.appendChild(row);
+  });
+}
+function syncInputs(){
+  for(const [k] of MASS) $("m-"+k).value=state.counts[k]||0;
+  for(const k of ["vol","burners","burnOut","vents","lev","endst","alt"]) $(k).value=state[k];
+}
+let M=null;
+function render(){
+  $("massTotal").textContent=`${fmt(M.mass,2)} total → weighs ${fmt(M.weight)}`;
+  const flies=M.settle!==null&&M.sea>=M.mass, low=M.settle!==null&&M.sea<M.mass, hover=M.levKg>0&&M.balloonKg+M.smartKg===0&&M.levKg>=M.mass;
+  $("verdict").innerHTML= !M.mass?"Add some blocks":
+    hover?`Hovers, can't climb<small>levitite cancels weight but never lifts past it</small>`:
+    flies?`Flies · settles near Y ${fmt(M.settle)}<small>lift at sea level is ${fmt(M.sea/M.mass,2)}× its weight</small>`:
+    low?`Only floats below Y ${fmt(M.settle)}<small>denser air down there; needs ${fmt(M.mass-M.sea,1)} more lift to fly at sea level</small>`:
+    `Too heavy<small>needs ${fmt(M.mass-M.sea,1)} more lift at sea level</small>`;
+  const cells=[
+    ["Ship mass",`${fmt(M.mass,2)}`],
+    ["Lift at sea level",`${fmt(M.sea,1)} <small>(${fmt(M.sea/Math.max(M.mass,1e-9)*100,0)}% of weight)</small>`],
+    ["Hot air in balloon",`${fmt(M.gas)} <small>of ${fmt(+state.vol||0)} m³</small>`],
+    ["Settles at",M.settle===null?"—":`Y ${fmt(M.settle)} <small>pressure ${fmt(pressure(M.settle),2)}</small>`],
+    ["Push at cruise",`${fmt(M.T0)} <small>at Y ${fmt(M.cruise)}</small>`],
+    ["Top speed",M.T0>0?`${fmt(M.vTop,1)} <small>m/s (${fmt(M.vTop*3.6,1)} km/h)</small>`:"—"],
+  ];
+  $("results").innerHTML=cells.map(([k,v])=>`<div class="cell"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(M.gasTarget>+state.vol&&(+state.vol)>0) n.push(["warn",`Your burners could fill ${fmt(M.gasTarget)} m³ but the balloon only encloses ${fmt(+state.vol)}. The extra burner output is wasted: make the balloon bigger instead.`]);
+  if(M.gasTarget<(+state.vol||0)&&M.gasTarget>0) n.push(["warn",`Burners only fill ${fmt(M.gasTarget)} of ${fmt(+state.vol)} m³. Add a burner or turn its setting up to use the whole balloon.`]);
+  if(M.levKg>M.mass&&M.mass>0) n.push(["good","Levitite alone holds the whole ship's weight. Extra levitite does nothing: it's capped at the ship's weight."]);
+  if(M.settle!==null&&M.settle>=319) n.push(["warn","Lift beats weight all the way to build height; the ship will keep rising to Y 320, where the air runs out."]);
+  if(M.T0>0&&M.airflowCap>0&&!M.hasThruster&&M.vTop>M.airflowCap*0.9) n.push(["warn",`Close to the propellers' airflow speed (${fmt(M.airflowCap,1)} m/s), where their push drops to zero. Spin them faster or add sails to go faster.`]);
+  if(M.envelopes>0&&M.T0>0) n.push(["good",`Envelope drag at cruise: ${fmt(0.33*M.envelopes*M.p,1)} per m/s, vs ${fmt(UNIVERSAL_DRAG*M.mass,1)} from general air resistance. Fewer envelopes means a faster ship.`]);
+  n.push(["warn","Top speed uses an assumed general air resistance (0.09 × mass × speed). That part runs in Sable's native physics code and couldn't be read, so treat speeds as estimates."]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  drawSky();
+}
+function drawSky(){
+  const c=$("sky"), dpr=Math.min(2,devicePixelRatio||1), w=c.clientWidth, h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const pad={l:52,r:16,t:58,b:26}, yMin=-64, yMax=320;
+  const maxKg=Math.max(M.mass*1.3,M.liftAt(-64)*1.02,1);
+  const X=kg=>pad.l+kg/maxKg*(w-pad.l-pad.r), Y=y=>pad.t+(1-(y-yMin)/(yMax-yMin))*(h-pad.t-pad.b);
+  g.font="11px JetBrains Mono, monospace"; g.fillStyle="rgba(221,230,226,.8)"; g.strokeStyle="rgba(255,255,255,.12)";
+  for(const y of [-64,0,63,128,192,256,320]){ g.beginPath(); g.moveTo(pad.l,Y(y)+.5); g.lineTo(w-pad.r,Y(y)+.5); g.stroke(); g.fillText("Y "+y,6,Y(y)+4); }
+  g.fillText("sea level",pad.l+4,Y(63)-4);
+  // lift curve
+  g.beginPath(); for(let i=0;i<=200;i++){ const y=yMin+(yMax-yMin)*i/200, x=X(M.liftAt(y)); i?g.lineTo(x,Y(y)):g.moveTo(x,Y(y)); }
+  g.strokeStyle="#7FD6F0"; g.lineWidth=2.5; g.stroke();
+  // weight line
+  g.strokeStyle="#F08A8A"; g.setLineDash([5,4]); g.lineWidth=2; g.beginPath(); g.moveTo(X(M.mass),Y(yMin)); g.lineTo(X(M.mass),Y(yMax)); g.stroke(); g.setLineDash([]);
+  g.fillStyle="#7FD6F0"; g.font="600 11px JetBrains Mono, monospace"; g.fillText("lift",X(M.liftAt(10))+6,Y(10));
+  g.fillStyle="#F08A8A"; g.fillText("weight",Math.min(w-pad.r-50,X(M.mass)+6),Y(300));
+  // ship marker
+  if(M.settle!==null&&M.mass>0){ const sx=X(M.mass), sy=Y(M.settle);
+    g.fillStyle="#F2E36A"; g.beginPath(); g.ellipse(sx,sy-9,16,8,0,0,7); g.fill(); g.fillStyle="#C9A24A"; g.fillRect(sx-8,sy-1,16,5);
+    g.fillStyle="#F2E36A"; g.fillText(`Y ${fmt(M.settle)}`,Math.min(w-pad.r-50,sx+20),sy); }
+  g.fillStyle="rgba(221,230,226,.8)"; g.font="11px JetBrains Mono, monospace";
+  g.fillText("0",pad.l-3,h-8); const lbl=fmt(maxKg,0); g.fillText(lbl,w-pad.r-g.measureText(lbl).width,h-8);
+}
+function update(){ try{ localStorage.setItem("aero-planner",JSON.stringify(state)); }catch(e){} M=model(); syncInputs(); renderProps(); render(); }
+
+buildMassTable();
+for(const k of ["vol","burners","burnOut","vents","lev","endst"]) $(k).onchange=e=>{ state[k]=Math.max(0,+e.target.value||0); update(); };
+$("alt").onchange=e=>{ state.alt=e.target.value===""?"":Math.min(319,Math.max(-64,+e.target.value)); update(); };
+$("addProp").onclick=()=>{ state.props.push({kind:"prop",count:1,rpm:128,sails:8,fuel:"turpentine"}); update(); };
+addEventListener("resize",drawSky);
+update();
+})();
+</script>
+</body>
+</html>
