@@ -629,10 +629,11 @@ function blockMap(){
     const bx=x===0||x===X-1, by=y===0||y===Y-1, bz=z===0||z===Z-1, n=bx+by+bz; if(!n) continue;
     let k=n>=2?"casing":"glass";
     if(y===Y-1&&!bx&&!bz&&state.cells[(x-1)*iz+(z-1)]==="rod") k="ctrl";
-    else if(x===Math.floor(X/2)&&z===Z-1&&y===Math.floor(Y/2)) k="controller";
-    else if(x===X-1&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)) k=active?"portIn":"power";
-    else if(x===0&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)&&active) k="portOut";
-    else if(x===Math.floor(X/2)&&z===0&&y===1) k="access";
+    // every port sits on the bottom wall layer, on the two faces the default camera (+X,+Z) shows
+    else if(y===1&&z===Z-1&&x===Math.max(1,Math.floor(X/2)-1)) k="controller";
+    else if(y===1&&z===Z-1&&x===Math.min(X-2,Math.floor(X/2)+1)) k="access";
+    else if(y===1&&x===X-1&&z===Math.min(Z-2,Math.floor(Z/2)+1)) k=active?"portIn":"power";
+    else if(y===1&&x===X-1&&z===Math.max(1,Math.floor(Z/2)-1)&&active) k="portOut";
     map.set(x+","+y+","+z,k);
   }
   for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue;
