@@ -394,7 +394,7 @@ const COILS = [
 const COIL = Object.fromEntries(COILS.map(c=>[c.id,c]));
 
 /* ---------- state ---------- */
-const state = {variant:"reinforced", flow:2000, extX:7, extZ:7, extY:14, bladeLen:2, blades:80, coils:[{id:"enderium", n:24}]};
+const state = {variant:"reinforced", flow:1300, extX:7, extZ:7, extY:10, bladeLen:2, blades:52, coils:[{id:"enderium", n:24}]};
 
 /* ---------- the model ---------- */
 function layout(s){
@@ -548,10 +548,11 @@ function blocksFor(s){
     const n=bx+by+bz; if(!n) continue;
     let type=n>=2?"casing":"glass";
     if(y===-1&&x===0&&z===0) type="bearing";
-    else if(x===0&&z===z1&&y===Math.floor(H/2)) type="controller";
-    else if(x===x1&&z===0&&y===Math.floor(H/2)) type="power";
-    else if(x===x0&&z===0&&y===0) type="steam";
-    else if(x===0&&z===z0&&y===0) type="water";
+    // every port sits on the bottom wall layer, on the two faces the default camera (+X,+Z) shows
+    else if(y===0&&z===z1&&x===Math.max(x0+1,-2)) type="controller";
+    else if(y===0&&z===z1&&x===Math.min(x1-1,2)) type="power";
+    else if(y===0&&x===x1&&z===Math.min(z1-1,2)) type="steam";
+    else if(y===0&&x===x1&&z===Math.max(z0+1,-2)) type="water";
     out.push({type,x,y,z,y0,grp:"shell"});
   }
   // shaft + blades
@@ -811,7 +812,7 @@ $("tSpin").setAttribute("aria-pressed",spinOn);
 addEventListener("resize",()=>drawChart(simulate(state)));
 
 initGL();
-tune("cheap"); // open on a sensible, on-peak enderium design
+update(); // open on 24 enderium coils at 1300 mB/t: on the ~1,800 RPM peak, and a tidier-looking build than a tuned 2000 mB/t one
 })();
 </script>
 </body>
