@@ -87,7 +87,7 @@ h1 .y{color:var(--accent-ink)}
 .row input[type=range]{width:100%;accent-color:var(--accent)}
 .num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
 .num:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
 .seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
@@ -198,12 +198,14 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
         <h2>Server config</h2>
         <div class="seg" role="group" aria-label="Server config preset">
           <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
-          <button type="button" id="pAtm10" aria-pressed="false">All the Mods 10</button>
+          <button type="button" id="pAtm10" aria-pressed="false">ATM10</button>
+          <button type="button" id="pAero" aria-pressed="false">ATM10: Aeronautics</button>
           <button type="button" id="pCustom" aria-pressed="false">Custom</button>
         </div>
         <p class="cfg-hint" id="cfgHint"></p>
         <details class="cfg" id="cfgMore">
           <summary>Edit values from config/extremereactors/common.toml</summary>
+          <p class="hint" style="margin-top:8px">Why this matters: <a href="/guides/extreme-reactors/atm10-turbine-power/">the same turbine makes 12× the power in ATM10 and 0.4× in ATM10: Aeronautics</a>.</p>
           <div class="cfg-grid" id="cfgGrid"></div>
         </details>
       </div>
@@ -301,7 +303,7 @@ spin-up τ = blades × mass / dragCoef  (ticks)</pre>
       </div>
       <div class="fact">
         <h3>Your modpack may scale the power</h3>
-        <p>Packs can change two power multipliers in the server config. They scale RF/t only; drag and RPM stay the same. All the Mods 10 sets them to 0.5 and 0.8, so its turbines make 40% of the default power at exactly the same RPM.</p>
+        <p>Packs can change two power multipliers in the server config. They scale RF/t only; drag and RPM stay the same. ATM10 sets them to 4.0 and 3.0 (12× default power); ATM10: Aeronautics sets 0.5 and 0.8 (0.4×). Same turbine, same RPM, 30× apart.</p>
 <pre>rf/t × powerProductionMultiplier
      × turbinePowerProductionMultiplier</pre>
         <span class="ref">MultiblockTurbine.getAdjustedPowerProductionMultiplier</span>
@@ -331,7 +333,10 @@ const BLADE_DRAG = 2.5e-4, INDUCTOR_BASE = 0.1, MIN_EXT = 5;
 //   fluid -> TurbineData ctor: inputFluidPerBlade = floor(basePerBlade * fluid)
 const PRESETS = {
   default: {name:"Mod defaults",    power:1,   turbinePower:1,   maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  atm10:   {name:"All the Mods 10", power:0.5, turbinePower:0.8, maxSize:16, maxHeight:16, aero:1, coil:1, mass:1, fluid:1},
+  // ATM10 (mainline): github.com/AllTheMods/ATM-10 config/extremereactors/common.toml ("Buffed Power Production", 2025-01-21)
+  atm10:   {name:"ATM10",              power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
+  // ATM10: Aeronautics 0.6.1: read from a live server's config; validated in-game (1798.74 RPM / 4.27 kFE/t)
+  aero:    {name:"ATM10: Aeronautics", power:0.5, turbinePower:0.8, maxSize:16, maxHeight:16, aero:1, coil:1, mass:1, fluid:1},
 };
 const CFG_FIELDS = [
   ["power","general.powerProductionMultiplier",0.005,100],
@@ -344,7 +349,10 @@ const CFG_FIELDS = [
   ["fluid","turbine.turbineFluidPerBladeMultiplier",0.5,10],
 ];
 let cfgPreset="default", cfg={...PRESETS.default};
-try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null"); if(saved&&saved.cfg){ cfgPreset=saved.preset; cfg={...PRESETS.default,...saved.cfg}; } }catch(e){}
+try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null");
+  if(saved&&PRESETS[saved.preset]){ cfgPreset=saved.preset; cfg={...PRESETS[saved.preset]}; } // presets always reload their current values
+  else if(saved&&saved.preset==="custom"&&saved.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...saved.cfg}; } }catch(e){}
+{ const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero"}[location.hash]; if(h){ cfgPreset=h; cfg={...PRESETS[h]}; } } // deep links from articles
 function tier(v){ const V=VARIANTS[v];
   return {...V, maxX:Math.min(V.maxX,cfg.maxSize), maxZ:Math.min(V.maxZ,cfg.maxSize), maxY:Math.min(V.maxY,cfg.maxHeight),
     perBlade:Math.max(1,Math.floor(V.perBlade*cfg.fluid))}; }
@@ -730,9 +738,10 @@ function tune(mode){
   state.extY=0; // tune against the minimum height, not leftover bare shaft
   const last=state.coils[state.coils.length-1], lay=layout(state);
   const others=lay.C-last.n, room=lay.perC*(tier(state.variant).maxY-2-lay.bladeLayers)-others;
-  let best=-1,bestN=last.n; const vals=[];
+  const prevN=last.n; let best=-1,bestN=last.n; const vals=[];
   const cap=tier(state.variant).maxRpm*1.02;
   for(let n=1;n<=Math.max(1,room);n++){ last.n=n; const R=simulate(state); const rf=R.rpm<=cap?R.rf:0; vals.push(rf); if(rf>best){best=rf;bestN=n;} }
+  if(best<=0){ last.n=prevN; update(); return; } // nothing fits under the RPM cap: leave the user's count alone
   if(mode==="cheap"){ const i=vals.findIndex(v=>v>=best*0.98); bestN=i+1; }
   last.n=bestN; update();
 }
@@ -748,7 +757,7 @@ function update(src){
 
 /* server config */
 function renderCfg(){
-  for(const [id,key] of [["pDefault","default"],["pAtm10","atm10"],["pCustom","custom"]]) $(id).setAttribute("aria-pressed",cfgPreset===key);
+  for(const [id,key] of [["pDefault","default"],["pAtm10","atm10"],["pAero","aero"],["pCustom","custom"]]) $(id).setAttribute("aria-pressed",cfgPreset===key);
   const mult=cfg.power*cfg.turbinePower;
   $("cfgHint").innerHTML=`Power <b>×${fmt(mult,2)}</b> (${cfg.power} × ${cfg.turbinePower}) · max casing <b>${cfg.maxSize}×${cfg.maxSize}×${cfg.maxHeight}</b>`+
     (cfg.aero!==1||cfg.coil!==1||cfg.mass!==1||cfg.fluid!==1?` · drag/fluid multipliers changed`:``);
@@ -765,7 +774,7 @@ function renderCfg(){
 }
 function saveCfg(){ try{ localStorage.setItem("er-turbine-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
 function usePreset(key){ cfgPreset=key; if(PRESETS[key]) cfg={...PRESETS[key]}; else $("cfgMore").open=true; saveCfg(); update(); }
-$("pDefault").onclick=()=>usePreset("default"); $("pAtm10").onclick=()=>usePreset("atm10"); $("pCustom").onclick=()=>usePreset("custom");
+$("pDefault").onclick=()=>usePreset("default"); $("pAtm10").onclick=()=>usePreset("atm10"); $("pAero").onclick=()=>usePreset("aero"); $("pCustom").onclick=()=>usePreset("custom");
 
 /* wiring */
 $("vBasic").onclick=()=>{ state.variant="basic"; update(); };

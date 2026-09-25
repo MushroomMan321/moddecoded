@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="canonical" href="https://moddecoded.com/guides/extreme-reactors/atm10-turbine-power/">
+<title>ATM10 Turbine Power: Why It's 12× (or 0.4×) the Guides · Mod Decoded</title>
+<meta name="description" content="The same Extreme Reactors turbine makes 12× default power in ATM10 and 0.4× in ATM10: Aeronautics. Tested in-game, traced to the pack config and the mod's code.">
+<meta property="og:title" content="Same turbine, 30× the power: Extreme Reactors in ATM10 vs ATM10: Aeronautics">
+<meta property="og:description" content="Why your turbine's RF/t doesn't match guides or calculators, and the one config file that explains it.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://moddecoded.com/guides/extreme-reactors/atm10-turbine-power/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
+  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
+  --up:#2E7D4F; --down:#B03434;
+  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ color-scheme:dark;
+    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614; --up:#5CC48A; --down:#EE7B7B; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.65;padding-inline:16px;padding-block:28px 72px}
+article{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
+.kicker{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.kicker b{color:var(--accent-ink);font-weight:600}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(30px,5.4vw,46px);line-height:1.05;margin:0;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:500;font-size:24px;line-height:1.2;margin:18px 0 0;text-wrap:balance}
+p{margin:0;max-width:68ch}
+a{color:var(--accent-ink)}
+code{font-family:var(--font-mono);font-size:.86em;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 14px;font:13.5px/1.55 var(--font-mono)}
+pre code{border:0;padding:0;background:none;font-size:inherit}
+.tldr{background:var(--accent-soft);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.tldr h2{margin:0;font-size:18px}
+.tldr ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+@media (max-width:560px){.big{grid-template-columns:minmax(0,1fr)}}
+.big div{background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:2px}
+.big .k{font-size:12.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.big .v{font:600 26px var(--font-mono);font-variant-numeric:tabular-nums}
+.big .v small{font-size:13px;color:var(--muted);font-weight:400}
+.big .x{font-family:var(--font-mono);font-size:13px}
+.up{color:var(--up)} .down{color:var(--down)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:520px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;font-weight:700;background:var(--surface)}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+ol.steps{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:8px;max-width:68ch}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.cta a{font:600 15px var(--font-body);text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:9px 14px}
+.cta a.primary{background:var(--accent-soft);border-color:var(--accent)}
+.cta a:hover,.cta a:focus-visible{border-color:var(--accent);outline:none}
+.note{font-size:15px;color:var(--muted)}
+.sources{border-top:1px solid var(--line);padding-top:16px;font-size:14px;color:var(--muted)}
+.sources ul{margin:6px 0 0;padding-left:20px}
+</style>
+</head>
+<body>
+<article>
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Extreme Reactors / ATM10 turbine power</nav>
+  <div class="kicker"><span><b>Extreme Reactors 2.4.28</b></span><span>ATM10 · ATM10: Aeronautics</span><span>Tested in-game · Sep 25, 2026</span></div>
+  <h1>Why your ATM10 turbine doesn't make the power the guides say</h1>
+  <p>You build a turbine from a guide or a calculator, spin it up to a perfect 1,800 RPM, and the energy readout is way off. Your build isn't wrong. The pack changed how much power every Extreme Reactors turbine makes, and it's in one config file.</p>
+
+  <section class="tldr" aria-labelledby="tldr">
+    <h2 id="tldr">The short version</h2>
+    <ul>
+      <li><b>ATM10</b> multiplies turbine output by <b>12</b>. <b>ATM10: Aeronautics</b> multiplies it by <b>0.4</b>. That's a 30× gap between two packs with nearly the same name.</li>
+      <li>Only RF/t changes. <b>RPM, blade counts and coil counts are identical</b> in every pack, so the same design rules still apply.</li>
+      <li>ATM10: Aeronautics also caps turbines at <b>16×16×16</b> (default and ATM10: 32).</li>
+    </ul>
+  </section>
+
+  <div class="big" role="group" aria-label="Power from the same 2,000 mB/t turbine">
+    <div><span class="k">Mod default</span><span class="v">23,697 <small>RF/t</small></span><span class="x">×1</span></div>
+    <div><span class="k">ATM10</span><span class="v up">284,360 <small>RF/t</small></span><span class="x up">×12</span></div>
+    <div><span class="k">ATM10: Aeronautics</span><span class="v down">9,479 <small>RF/t</small></span><span class="x down">×0.4</span></div>
+  </div>
+  <p class="note">One Reinforced turbine: 2,000 mB/t of steam, 80 blades, 36 enderium coils, 7×7×14. It spins at 1,848 RPM in all three.</p>
+
+  <h2>The test</h2>
+  <p>We built a Reinforced turbine on an ATM10: Aeronautics 0.6.1 server: 5×5×16, 43 blades, 24 blocks of platinum, 1,082 mB/t of steam. Then we compared the controller to our turbine planner, which uses formulas read from the mod's code.</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th></th><th>In-game controller</th><th>Planner (default config)</th><th>Planner (Aeronautics config)</th></tr></thead>
+      <tbody>
+        <tr><td>Rotor speed</td><td class="n">1,798.74 RPM</td><td class="n">1,799 RPM</td><td class="n">1,799 RPM</td></tr>
+        <tr><td>Energy output</td><td class="n">4.27 kFE/t</td><td class="n">10,686 RF/t</td><td class="n">4,275 RF/t</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The RPM matched almost exactly, but the power was off by a clean factor of 0.4. A wrong formula doesn't produce a round number like that. A multiplier does.</p>
+
+  <h2>Where the multiplier lives</h2>
+  <p>Extreme Reactors reads two power settings from <code>config/extremereactors/common.toml</code>. Here they are in each pack:</p>
+<pre><code># Mod default
+powerProductionMultiplier        = 1.0
+turbinePowerProductionMultiplier = 1.0    # → ×1
+
+# ATM10
+powerProductionMultiplier        = 4.0
+turbinePowerProductionMultiplier = 3.0    # → ×12
+
+# ATM10: Aeronautics 0.6.1
+powerProductionMultiplier        = 0.5
+turbinePowerProductionMultiplier = 0.8    # → ×0.4</code></pre>
+  <p>In the mod's code, the turbine multiplies its energy by both values right before storing it (<code>MultiblockTurbine.getAdjustedPowerProductionMultiplier</code>). That happens after the rotor's drag is worked out, which is why RPM never changes:</p>
+<pre><code>drag  = rpm × 0.1 × Σ coil extraction rates
+RF/t  = drag^bonus × coilEfficiency × rpmFactor
+        × powerProductionMultiplier
+        × turbinePowerProductionMultiplier</code></pre>
+
+  <h2>What this means for your build</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Setting</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
+      <tbody>
+        <tr><td>Turbine power</td><td class="n">×1</td><td class="n">×12</td><td class="n">×0.4</td></tr>
+        <tr><td>Max turbine (exterior)</td><td class="n">32×32×32</td><td class="n">32×32×32</td><td class="n">16×16×16</td></tr>
+        <tr><td>Target RPM</td><td colspan="3">900 or 1,800 in every pack. The cosine efficiency curve isn't configurable.</td></tr>
+        <tr><td>Steam per blade</td><td colspan="3">25 mB/t (Reinforced), 15 mB/t (Basic) in all three.</td></tr>
+        <tr><td>Coil count for a target RPM</td><td colspan="3">Identical. Coils set drag, and drag isn't scaled.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>So any turbine guide still gives you the right <em>shape</em>: blade count, coil count and RPM target. Just multiply its power figure by your pack's number. On Aeronautics, keep designs within 16 blocks tall. A 2,000 mB/t turbine with 80 blades fits in 7×7×14.</p>
+
+  <h2>Check your own pack in a minute</h2>
+  <ol class="steps">
+    <li>Open your instance folder. In the CurseForge app, open the profile's ⋯ menu and choose <b>Open Folder</b>.</li>
+    <li>Open <code>config/extremereactors/common.toml</code> in a text editor.</li>
+    <li>Multiply <code>powerProductionMultiplier</code> by <code>turbinePowerProductionMultiplier</code>. That's your turbine power factor.</li>
+    <li>On a multiplayer server, the <b>server's</b> copy is the one that counts, since the turbine runs server-side. Ask your server admin if the numbers look off.</li>
+  </ol>
+  <p>Then enter both values in the planner under <b>Server config → Custom</b>, or pick a preset:</p>
+  <div class="cta">
+    <a class="primary" href="/tools/extreme-reactors/turbine-planner/#atm10">Plan a turbine for ATM10</a>
+    <a class="primary" href="/tools/extreme-reactors/turbine-planner/#atm10-aeronautics">Plan a turbine for ATM10: Aeronautics</a>
+  </div>
+
+  <h2>The same file changes your reactor, too</h2>
+  <p>Both packs also change the reactor settings in that file. We'll cover exactly what they do in the reactor calculator; for now, here are the values:</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Setting</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
+      <tbody>
+        <tr><td><code>reactorPowerProductionMultiplier</code></td><td class="n">1.0</td><td class="n">3.0</td><td class="n">0.8</td></tr>
+        <tr><td><code>fuelUsageMultiplier</code></td><td class="n">1.0</td><td class="n">0.8</td><td class="n">1.2</td></tr>
+        <tr><td>Max reactor (size × height)</td><td class="n">32 × 48</td><td class="n">32 × 48</td><td class="n">32 × 32</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer class="sources">
+    <b>Sources</b>
+    <ul>
+      <li>Extreme Reactors 1.21.1-2.4.28 bytecode: <code>TurbineLogic.update</code>, <code>MultiblockTurbine.getAdjustedPowerProductionMultiplier</code>, <code>config.General</code>, <code>config.Turbine</code>.</li>
+      <li>ATM10 config: <a href="https://github.com/AllTheMods/ATM-10/blob/main/config/extremereactors/common.toml">AllTheMods/ATM-10 on GitHub</a> (power buff added January 2025).</li>
+      <li>ATM10: Aeronautics 0.6.1: the server pack's <code>config/extremereactors/common.toml</code>, and the in-game test above.</li>
+    </ul>
+  </footer>
+</article>
+</body>
+</html>

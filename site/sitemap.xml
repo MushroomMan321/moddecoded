@@ -2,10 +2,14 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>https://moddecoded.com/</loc>
-    <lastmod>2026-09-24</lastmod>
+    <lastmod>2026-09-25</lastmod>
   </url>
   <url>
     <loc>https://moddecoded.com/tools/extreme-reactors/turbine-planner/</loc>
-    <lastmod>2026-09-24</lastmod>
+    <lastmod>2026-09-25</lastmod>
+  </url>
+  <url>
+    <loc>https://moddecoded.com/guides/extreme-reactors/atm10-turbine-power/</loc>
+    <lastmod>2026-09-25</lastmod>
   </url>
 </urlset>
