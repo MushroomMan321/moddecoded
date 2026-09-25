@@ -1,8 +1,7 @@
 # Create Aeronautics 1.3.2 / Simulated 1.3.2 / Sable 2.0.5 / Create Propulsion 1.1.5 — lift, thrust, mass, drag
 
 Traced from bytecode (javap) and data JSON in the jars from the ATM10: Aeronautics 0.6.1 server. Server configs match mod defaults.
-Raw dumps: `%TEMP%ero
-otes\` on the dev PC. Planner: `site/tools/create-aeronautics/airship-planner/`.
+Raw dumps: `%TEMP%\aero\notes\` on the dev PC. Planner: `site/tools/create-aeronautics/airship-planner/`.
 
 - Gravity 11 (DimensionPhysics.DEFAULT_GRAVITY); lift/thrust constants read as "mass held up" at sea level.
 - Air pressure p(y): cubic Hermite through (-38.366,1.5), (63,1.0), (263,0.44933), (280,0.41979), (320,0).
