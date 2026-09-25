@@ -50,10 +50,29 @@ h1 .y{color:var(--accent-ink)}
 h2{font-family:var(--font-display);font-weight:500;font-size:18px;margin:0;letter-spacing:.02em}
 .hint{font-size:13px;color:var(--muted);margin:0}
 .box{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:10px}
-.sky{position:relative;border-radius:6px;overflow:hidden;background:linear-gradient(#0E1A2B,#23405F 55%,#4A6E8F);aspect-ratio:4/3;width:100%}
-.sky canvas{display:block;width:100%;height:100%}
-.verdict{position:absolute;left:12px;top:10px;font-family:var(--font-display);font-size:26px;line-height:1.1;color:#F2E36A;text-shadow:0 1px 0 #000;pointer-events:none}
+.view{position:relative;border-radius:6px;overflow:hidden;background:linear-gradient(#0B1830,#2B4A70);aspect-ratio:4/3;max-height:62vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.tl{position:absolute;left:12px;top:10px;right:120px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
+.verdict{font-family:var(--font-display);font-size:26px;line-height:1.1;color:#F2E36A;text-shadow:0 1px 0 #000}
 .verdict small{display:block;font-family:var(--font-mono);font-size:12px;color:#DDE6E2}
+.hud{font-family:var(--font-mono);font-size:11.5px;color:#DDE6E2;text-shadow:0 1px 0 #000;opacity:.9}
+.viewbar{position:absolute;left:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.alti{position:absolute;right:14px;top:44px;bottom:44px;width:14px;pointer-events:none;font:11px var(--font-mono);color:#DDE6E2;text-shadow:0 1px 0 #000}
+.alti .track{position:absolute;left:5px;top:0;bottom:0;width:4px;border-radius:2px;background:linear-gradient(#0B1224,#7FAEF0 70%,#2F5FA8)}
+.alti .tick{position:absolute;right:0;width:14px;height:1px;background:rgba(255,255,255,.55)}
+.alti .tick span{position:absolute;right:18px;top:-7px;white-space:nowrap;opacity:.75}
+.alti .mark{position:absolute;right:-3px;width:20px;height:3px;margin-top:-1px;background:#F2E36A;border-radius:2px}
+.alti .mark span{position:absolute;right:24px;top:-9px;white-space:nowrap;color:#F2E36A;font-weight:600;background:rgba(10,14,16,.7);padding:1px 5px;border-radius:3px}
+.alti .mark.ghost{background:transparent;border-top:2px dashed #F2E36A;height:0}
+.alti .mark.ghost span{color:#DDE6E2;font-weight:400;top:-10px}
+@media (max-width:560px){ .view{aspect-ratio:1/1} .verdict{font-size:19px} .hud{display:none} .alti .tick span{display:none} .tl{right:140px} }
+.sky{position:relative;border-radius:6px;overflow:hidden;background:linear-gradient(#0E1A2B,#23405F 55%,#4A6E8F);aspect-ratio:16/9;width:100%}
+.sky canvas{display:block;width:100%;height:100%}
+.chart-h{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin:0}
 table.mass{width:100%;border-collapse:collapse;font-size:14px}
 table.mass td{padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:middle}
 table.mass td.kg{font-family:var(--font-mono);color:var(--muted);white-space:nowrap;text-align:right;font-size:12.5px}
@@ -95,15 +114,25 @@ select{font:600 13px var(--font-body);color:var(--ink);background:var(--bg);bord
     <h1>Create Aeronautics <span class="y">Airship Planner</span></h1>
     <span class="src">Aeronautics 1.3.2 · Simulated 1.3.2 · Sable 2.0.5 · Create Propulsion 1.1.5</span>
   </header>
-  <p class="lede">Count the blocks on your ship, size the balloon, add propellers or thrusters, and see whether it flies, the altitude it settles at and how fast it goes. Weight, lift and thrust come from the mods' own code: <b>ServerBalloon</b>, <b>BlockEntityPropeller</b> and Sable's block mass tables.</p>
+  <p class="lede">Count the blocks on your ship, size the balloon, add propellers or thrusters, and see whether it flies, the altitude it settles at and how fast it goes. The 3D model is one plausible ship built from your counts, flying at that altitude, with the clouds at Y 192 going past at its top speed. Weight, lift and thrust come from the mods' own code: <b>ServerBalloon</b>, <b>BlockEntityPropeller</b> and Sable's block mass tables.</p>
 
   <div class="grid">
     <section class="stage" aria-label="Flight summary">
-      <div class="sky">
-        <canvas id="sky" aria-label="Altitude chart: balloon lift against ship weight, with the altitude the ship settles at"></canvas>
-        <div class="verdict" id="verdict"></div>
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the airship, drawn at the altitude it flies at. Drag to turn, scroll to zoom."></canvas>
+        <div class="tl"><div class="verdict" id="verdict"></div><div class="hud" id="hud"></div></div>
+        <div class="alti" id="alti" aria-hidden="true"></div>
+        <div class="viewbar" id="viewbar">
+          <button type="button" id="bInside" aria-pressed="false">See inside</button>
+          <button type="button" id="bForces" aria-pressed="true">Forces</button>
+          <button type="button" id="bMotion" aria-pressed="true">Motion</button>
+        </div>
       </div>
       <div class="results" id="results"></div>
+      <p class="chart-h">Lift vs weight by altitude</p>
+      <div class="sky">
+        <canvas id="sky" aria-label="Altitude chart: balloon lift against ship weight, with the altitude the ship settles at"></canvas>
+      </div>
       <ul class="notes" id="notes"></ul>
     </section>
 
@@ -187,6 +216,7 @@ airflow = 0.05 × √sails × RPM</pre>
   </section>
 </div>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
 (() => {
 "use strict";
@@ -260,7 +290,7 @@ function model(){
   const thrust=v=>src.reduce((a,s)=>a+s.T*Math.max(0,Math.min(1,s.A===Infinity?1:(s.A-v)/s.A)),0);
   let vTop=0; const T0=thrust(0);
   if(T0>0){ let lo=0,hi=Math.max(1,...src.map(s=>s.A===Infinity?0:s.A)); if(hi<1) hi=1; while(thrust(hi)>drag(hi)&&hi<1e4) hi*=2; for(let i=0;i<80;i++){ const m=(lo+hi)/2; thrust(m)>drag(m)?lo=m:hi=m; } vTop=lo; }
-  return {mass,weight:mass*G,gasTarget,gas,balloonKg,levKg,smartKg,liftAt,settle,cruise,p,T0,vTop,envelopes,
+  return {mass,weight:mass*G,gasTarget,gas,balloonKg,levKg,smartKg,liftAt,settle,cruise,p,T0,vTop,envelopes,thrust,drag,
     sea:liftAt(63), airflowCap:Math.max(0,...src.filter(s=>s.A!==Infinity).map(s=>s.A)), hasThruster:src.some(s=>s.A===Infinity)};
 }
 
@@ -319,14 +349,17 @@ function render(){
   if(M.settle!==null&&M.settle>=319) n.push(["warn","Lift beats weight all the way to build height; the ship will keep rising to Y 320, where the air runs out."]);
   if(M.T0>0&&M.airflowCap>0&&!M.hasThruster&&M.vTop>M.airflowCap*0.9) n.push(["warn",`Close to the propellers' airflow speed (${fmt(M.airflowCap,1)} m/s), where their push drops to zero. Spin them faster or add sails to go faster.`]);
   if(M.envelopes>0&&M.T0>0) n.push(["good",`Envelope drag at cruise: ${fmt(0.33*M.envelopes*M.p,1)} per m/s, vs ${fmt(UNIVERSAL_DRAG*M.mass,1)} from general air resistance. Fewer envelopes means a faster ship.`]);
+  if(S.functional>(+state.counts.normal||0)) n.push(["warn",`Your burners, vents, propellers, levitite and end stone add up to ${fmt(S.functional)} blocks, but the weight table's "Everything else" row only has ${fmt(+state.counts.normal||0)}. Count them there too so their weight is included.`]);
+  if(S.nThr>(+state.counts.stone||0)) n.push(["warn",`Propulsion thrusters weigh 2 each, like stone. You have ${fmt(S.nThr)} but the stone row only counts ${fmt(+state.counts.stone||0)}.`]);
+  if(S.bal&&M.envelopes>0&&M.envelopes<S.bal.shell*0.5) n.push(["warn",`A rounded balloon enclosing ${fmt(S.bal.n)} blocks of air takes about ${fmt(S.bal.shell)} envelope blocks to close. You counted ${fmt(M.envelopes)}, so check the balloon size or the envelope count.`]);
   n.push(["warn","Top speed uses an assumed general air resistance (0.09 × mass × speed). That part runs in Sable's native physics code and couldn't be read, so treat speeds as estimates."]);
   $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
-  drawSky();
+  drawSky(); update3D(hover?"hover":flies?"fly":"ground");
 }
 function drawSky(){
   const c=$("sky"), dpr=Math.min(2,devicePixelRatio||1), w=c.clientWidth, h=c.clientHeight; if(!w) return;
   c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
-  const pad={l:52,r:16,t:58,b:26}, yMin=-64, yMax=320;
+  const pad={l:52,r:16,t:16,b:26}, yMin=-64, yMax=320;
   const maxKg=Math.max(M.mass*1.3,M.liftAt(-64)*1.02,1);
   const X=kg=>pad.l+kg/maxKg*(w-pad.l-pad.r), Y=y=>pad.t+(1-(y-yMin)/(yMax-yMin))*(h-pad.t-pad.b);
   g.font="11px JetBrains Mono, monospace"; g.fillStyle="rgba(221,230,226,.8)"; g.strokeStyle="rgba(255,255,255,.12)";
@@ -346,8 +379,289 @@ function drawSky(){
   g.fillStyle="rgba(221,230,226,.8)"; g.font="11px JetBrains Mono, monospace";
   g.fillText("0",pad.l-3,h-8); const lbl=fmt(maxKg,0); g.fillText(lbl,w-pad.r-g.measureText(lbl).width,h-8);
 }
-function update(){ try{ localStorage.setItem("aero-planner",JSON.stringify(state)); }catch(e){} M=model(); syncInputs(); renderProps(); render(); }
+/* ================= ship layout: turn the counts into a block model ================= */
+// The planner only knows counts, not your build, so this is one plausible ship with those blocks:
+// heavy blocks low in the hull, railing from light wood, burners under the balloon, thrust at the stern.
+const DRAW_CAP=8000, BALLOON_CAP=40000;
+const cnt=v=>Math.max(0,Math.floor(+v||0));
+function countInterior(a,r){ const A=Math.floor(a),R=Math.floor(r); let n=0;
+  for(let i=-A;i<=A;i++)for(let j=-R;j<=R;j++)for(let k=-R;k<=R;k++) if((i/a)**2+(j/r)**2+(k/r)**2<=1) n++; return n; }
+function balloonShape(V){ const s=1.7, r0=Math.cbrt(3*V/(4*Math.PI*s)); let best=null;
+  for(let r=Math.max(0.5,r0-0.8);r<=r0+0.8;r+=0.05){ const n=countInterior(s*r,r); if(!best||Math.abs(n-V)<Math.abs(best.n-V)) best={a:s*r,r,n}; } return best; }
+let S=null;
+function shipLayout(){
+  const c=state.counts, units=[], smart=[]; let nThr=0, nProp=0, nSmart=0;
+  for(const p of state.props){ const K=KINDS[p.kind], n=cnt(p.count); if(!n) continue;
+    if(K.vertical){ nSmart+=n; for(let i=0;i<n&&smart.length<16;i++) smart.push(p); }
+    else { if(K.base) nThr+=n; else nProp+=n; for(let i=0;i<n&&units.length<24;i++) units.push(p); } }
+  const nBurn=cnt(state.burners), nVent=cnt(state.vents), nLev=cnt(state.lev), nEnd=cnt(state.endst);
+  const functional=nBurn+nVent+nLev+nEnd+nProp+nSmart;
+  const hullMats=[["metal",cnt(c.metal)],["stone",Math.max(0,cnt(c.stone)-nThr)],["stoneslab",cnt(c.stoneslab)],["planks",cnt(c.planks)],["misc",Math.max(0,cnt(c.normal)-functional)]];
+  const nHull=hullMats.reduce((a,m)=>a+m[1],0);
+  const kindAt=i=>{ let s=0; for(const [k,n] of hullMats){ s+=n; if(i<s) return k; } return "planks"; };
+  // hull: a keel layer and a deck layer, sized to the structural blocks you have
+  const hwOf=L=>Math.max(1,Math.min(6,Math.floor((L+2)/5)));
+  const size=L=>{ const hw=hwOf(L); return (L-2)*(2*hw-1)+L*(2*hw+1)-(hw>1?2:0); };
+  let L=3; for(let l=4;l<=90&&size(l)<=nHull;l++) L=l;
+  const hw=hwOf(L), cx=(L-1)/2;
+  const map=new Map(), key=(x,y,z)=>`${x},${y},${z}`; let drawn=0, hidden=0, maxY=2;
+  const put=(x,y,z,k)=>{ if(drawn>=DRAW_CAP){ hidden++; return false; } map.set(key(x,y,z),k); drawn++; if(y>maxY) maxY=y; return true; };
+  const byCenter=(a,b)=>(Math.abs(a[0]-cx)+2*Math.abs(a[2]))-(Math.abs(b[0]-cx)+2*Math.abs(b[2]));
+  const l0=[], l1=[];
+  for(let x=1;x<=L-2;x++) for(let z=-(hw-1);z<=hw-1;z++) l0.push([x,0,z]);
+  for(let x=0;x<L;x++){ const w=x===L-1&&hw>1?hw-1:hw; for(let z=-w;z<=w;z++) l1.push([x,1,z]); }
+  l0.sort(byCenter); l1.sort(byCenter);
+  const hullCells=[...l0,...l1]; let hi=0;
+  for(;hi<Math.min(hullCells.length,nHull);hi++){ const [x,y,z]=hullCells[hi]; put(x,y,z,kindAt(hi)); }
+  const occ=(x,y,z)=>map.has(key(x,y,z));
+  // stack blocks on a footprint, layer by layer (dir +1 up from y0, -1 down)
+  function stack(foot,n,kindFn,y0,dir=1){ const out=[]; let placed=0; if(!foot.length) return out;
+    for(let y=y0;placed<n&&Math.abs(y-y0)<400;y+=dir) for(const [x,z] of foot){ if(placed>=n) break; if(occ(x,y,z)) continue;
+      if(!put(x,y,z,kindFn(placed))){ hidden+=n-placed-1; return out; } out.push([x,y,z]); placed++; }
+    return out; }
+  const interior=[]; for(let x=1;x<=L-2;x++) for(let z=-(hw-1);z<=hw-1;z++) interior.push([x,z]);
+  const inInt=(x,z)=>x>=1&&x<=L-2&&Math.abs(z)<=hw-1;
+  const rail=l1.filter(([x,,z])=>!inInt(x,z)).map(([x,,z])=>[x,z]).sort((a,b)=>Math.atan2(a[1],a[0]-cx)-Math.atan2(b[1],b[0]-cx));
+  const midFoot=[...interior].sort((a,b)=>(Math.abs(a[0]-cx)+3*Math.abs(a[1]))-(Math.abs(b[0]-cx)+3*Math.abs(b[1])));
+  const burners=stack(midFoot,nBurn,()=>"burner",2), vents=stack(midFoot,nVent,()=>"vent",2);
+  const nWood=cnt(c.woodlight), railN=Math.min(nWood,rail.length);
+  for(let i=0;i<railN;i++) put(rail[i][0],2,rail[i][1],"fence");
+  const bowFoot=[...interior].sort((a,b)=>(b[0]-a[0])||(Math.abs(a[1])-Math.abs(b[1])));
+  stack(bowFoot,cnt(c.mech),()=>"mech",2);
+  // leftovers pile up as a cabin at the stern
+  const cabinEnd=Math.max(1,Math.floor(L/3)), cabinFoot=interior.filter(([x])=>x<=cabinEnd).sort((a,b)=>(a[0]-b[0])||(Math.abs(a[1])-Math.abs(b[1])));
+  const hullOver=nHull-hi; stack(cabinFoot,hullOver,i=>kindAt(hi+i),2);
+  stack(cabinFoot,nWood-railN,()=>"slab",2);
+  // levitite and end stone hang under the keel
+  const under=(l0.length?l0:l1).map(([x,,z])=>[x,z]);
+  stack(under,nLev,()=>"lev",-1,-1); stack(under,nEnd,()=>"endst",-1,-1);
+  // balloon: a rounded envelope that encloses the volume you entered, sitting above the deck
+  let bal=null; const V=Math.min(BALLOON_CAP,cnt(state.vol));
+  if(V>0){ const s=balloonShape(V), A=Math.floor(s.a), R=Math.floor(s.r), by=maxY+3+R, bx=Math.round(cx);
+    const inside=new Set(), cells=[];
+    for(let i=-A;i<=A;i++)for(let j=-R;j<=R;j++)for(let k=-R;k<=R;k++) if((i/s.a)**2+(j/s.r)**2+(k/s.r)**2<=1){ inside.add(key(bx+i,by+j,k)); cells.push([bx+i,by+j,k]); }
+    let shell=0;
+    for(const [x,y,z] of cells) for(const [dx,dy,dz] of [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]]){ const k2=key(x+dx,y+dy,z+dz); if(!inside.has(k2)&&!map.has(k2)){ map.set(k2,"envelope"); shell++; } }
+    cells.sort((a,b)=>b[1]-a[1]||Math.abs(a[0]-bx)-Math.abs(b[0]-bx));
+    bal={cells,n:cells.length,shell,cy:by,top:by+R+1,bottom:by-R-1,clipped:cnt(state.vol)>BALLOON_CAP}; }
+  // thrust at the stern, on a grid spaced by the widest rotor
+  const rOf=p=>{ const K=KINDS[p.kind]; if(K.base||p.kind==="fan") return 0.5; if(p.kind==="bearing") return Math.ceil(Math.max(1,cnt(p.sails))/4)+0.5; return 1.5; };
+  const sp=Math.max(1,Math.ceil(2*Math.max(0.5,...units.map(rOf)))), slots=[];
+  for(let m=0;m<12;m++) for(let k=-12;k<=12;k++) slots.push([k*sp,1+m*sp,Math.abs(k)+1.15*m+(k<0?0.01:0)]);
+  slots.sort((a,b)=>a[2]-b[2]);
+  const placed=units.map((p,i)=>{ const [z,y]=slots[i], K=KINDS[p.kind]; map.set(key(-1,y,z),K.base?"thruster":p.kind==="fan"?"fan":"hub"); if(y>maxY) maxY=y; return {p,x:-1,y,z}; });
+  const smartAt=smart.map((p,i)=>{ const side=i%2?1:-1, j=Math.floor(i/2), x=1+3*(j%Math.max(1,Math.ceil(L/3))), z=side*(hw+2+3*Math.floor(j/Math.max(1,Math.ceil(L/3)))); map.set(key(x,1,z),"hub"); return {p,x,y:1,z}; });
+  // bounds
+  let mnX=1e9,mxX=-1e9,mnY=1e9,mxY=-1e9,mxZ=0;
+  for(const k of map.keys()){ const [x,y,z]=k.split(",").map(Number); if(x<mnX)mnX=x; if(x>mxX)mxX=x; if(y<mnY)mnY=y; if(y>mxY)mxY=y; if(Math.abs(z)>mxZ) mxZ=Math.abs(z); }
+  return {map,L,hw,cx,bal,units:placed,smart:smartAt,burners,vents,hidden,moreUnits:Math.max(0,nProp+nThr-placed.length)+Math.max(0,nSmart-smartAt.length),
+    functional,nThr,minX:mnX,maxX:mxX,minY:mnY,maxY:mxY,maxZ:mxZ,shape:`${L}|${hw}|${bal?bal.n+"|"+bal.cy:0}`};
+}
 
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw,px=16){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=px; draw(c.getContext("2d")); return texCache[key]=c; }
+function plate(key,color,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.2); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.65); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b); }); }
+const planks=()=>plate("planks","#A2804A",g=>{ g.fillStyle="rgba(60,40,15,.45)"; for(const y of [3,7,11]) g.fillRect(0,y,16,1); g.fillRect(8,0,1,4); g.fillRect(4,4,1,4); g.fillRect(11,8,1,4); g.fillRect(6,12,1,4); });
+const T={
+  planks, slab:planks,
+  fence:()=>plate("fence","#8A6A3E"),
+  stoneslab:()=>plate("stoneslab","#9A9A9A",g=>{ g.fillStyle="rgba(0,0,0,.25)"; g.fillRect(0,8,16,1); }),
+  stone:()=>plate("stone","#7B7B7B",g=>{ const R=rng("cob"); g.fillStyle="rgba(0,0,0,.3)"; for(let i=0;i<14;i++) g.fillRect(Math.floor(R()*14),Math.floor(R()*14),2+Math.floor(R()*2),1); }),
+  metal:()=>plate("metal","#D6D8DA",g=>{ g.fillStyle="rgba(0,0,0,.14)"; g.fillRect(2,2,12,12); g.fillStyle="#EEF0F2"; g.fillRect(3,3,10,10); }),
+  mech:()=>plate("mech","#8E6232",g=>{ g.fillStyle="#4A4A4A"; g.fillRect(0,4,16,1); g.fillRect(0,11,16,1); g.fillStyle="#6B4622"; g.fillRect(6,6,4,4); }),
+  misc:()=>plate("misc","#8F979C",g=>{ g.fillStyle="#3B4247"; g.fillRect(4,4,8,8); g.fillStyle="#6FA8C8"; g.fillRect(6,6,4,4); }),
+  envelope:()=>plate("envelope","#ECE7DA",g=>{ g.fillStyle="rgba(120,100,70,.3)"; g.fillRect(7,0,1,16); g.fillRect(0,7,16,1); }),
+  burner:()=>plate("burner","#3A3C3F",g=>{ g.fillStyle="#E0842A"; for(let x=3;x<13;x+=3) g.fillRect(x,4,2,8); }),
+  vent:()=>plate("vent","#B87333",g=>{ g.fillStyle="#5A3316"; for(let y=3;y<14;y+=3) g.fillRect(3,y,10,1); }),
+  lev:()=>plate("lev","#8E55D0",g=>{ g.fillStyle="#D9B8FF"; g.fillRect(5,5,6,6); g.fillStyle="#B98AF0"; g.fillRect(2,11,3,3); g.fillRect(11,2,3,3); }),
+  endst:()=>plate("endst","#DADB9C",g=>{ const R=rng("end"); g.fillStyle="rgba(120,120,60,.35)"; for(let i=0;i<10;i++) g.fillRect(Math.floor(R()*15),Math.floor(R()*15),1,1); }),
+  hub:()=>plate("hub","#8A8D84",g=>{ g.fillStyle="#5A5D55"; g.fillRect(0,0,16,2); g.fillRect(0,14,16,2); g.fillStyle="#C9A24A"; g.fillRect(6,6,4,4); }),
+  thruster:()=>plate("thruster","#474B52",g=>{ g.fillStyle="#1B1D20"; g.fillRect(3,3,10,10); g.fillStyle="#C96A2A"; g.fillRect(6,6,4,4); }),
+  fan:()=>plate("fan","#8A8D84",g=>{ g.fillStyle="#2A2C2A"; for(let i=3;i<14;i+=3) g.fillRect(3,i,10,1); }),
+};
+const SCALE={fence:[0.25,1,0.25,0],slab:[1,0.5,1,-0.25],stoneslab:[1,0.5,1,-0.25]};
+
+/* ================= three.js scene ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, groups={}, dyn=null, forces=null, sea, seaTex, clouds, airMesh=null;
+let buildStart=0, buildTop=0, buildBottom=0, baseY=0, travel=0, speed=0, bobbing=false;
+let insideOn=false, forcesOn=true, motionOn=!reduce;
+const matCache={}, anims=[], rotors=[], flames=[], steams=[];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  const o={map:t,clippingPlanes:[clip]}; if(k==="lev") o.emissive=new THREE.Color(0x3C1670);
+  return matCache[k]=new THREE.MeshLambertMaterial(o); }
+function waterCanvas(){ return tex("water",g=>{ const R=rng("water"); for(let y=0;y<32;y+=2)for(let x=0;x<32;x+=2){ g.fillStyle=shade([47,95,168],0.86+R()*0.22); g.fillRect(x,y,2,2); } },32); }
+function makeClouds(){ // vanilla clouds: 12×4×12 cells at Y 192.33, drifting with the wind
+  const R=rng("clouds"), N=32, g=[]; for(let i=0;i<N*N;i++) g.push(R()<0.4);
+  const on=(x,z)=>g[((z+N)%N)*N+((x+N)%N)], cells=[];
+  for(let z=0;z<N;z++)for(let x=0;x<N;x++){ let s=0; for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++) s+=on(x+dx,z+dz); if(s>=5) cells.push([x,z]); }
+  const mesh=new THREE.InstancedMesh(new THREE.BoxGeometry(12,4,12),new THREE.MeshLambertMaterial({color:0xFFFFFF,transparent:true,opacity:0.7,emissive:0x606060,depthWrite:false}),cells.length*9);
+  const m4=new THREE.Matrix4(); let i=0;
+  for(let tx=-1;tx<=1;tx++)for(let tz=-1;tz<=1;tz++) for(const [x,z] of cells){ m4.makeTranslation(x*12+tx*384-186,0,z*12+tz*384-186); mesh.setMatrixAt(i++,m4); }
+  return mesh; }
+function initGL(){
+  if(typeof THREE==="undefined"){ $("viewbar").hidden=true; return; }
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; $("viewbar").hidden=true; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); scene.fog=new THREE.Fog(0xBFD8EE,90,560); camera=new THREE.PerspectiveCamera(40,1,0.1,2500);
+  scene.add(new THREE.HemisphereLight(0xEAF2FF,0x3A4A5A,0.9)); const sun=new THREE.DirectionalLight(0xffffff,0.8); sun.position.set(12,20,8); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  seaTex=new THREE.CanvasTexture(waterCanvas()); seaTex.wrapS=seaTex.wrapT=THREE.RepeatWrapping; seaTex.magFilter=THREE.NearestFilter; seaTex.repeat.set(125,125);
+  sea=new THREE.Mesh(new THREE.PlaneGeometry(4000,4000),new THREE.MeshLambertMaterial({map:seaTex})); sea.rotation.x=-Math.PI/2; scene.add(sea);
+  clouds=makeClouds(); scene.add(clouds);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+const orbit={theta:0.9,phi:1.2,radius:40,drag:null,idle:0};
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; orbit.drag={x:e.clientX,y:e.clientY}; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ if(!orbit.drag) return; orbit.theta-=(e.clientX-orbit.drag.x)*0.008; orbit.phi=Math.min(2.2,Math.max(0.25,orbit.phi-(e.clientY-orbit.drag.y)*0.008)); orbit.drag={x:e.clientX,y:e.clientY}; orbit.idle=0; });
+view.addEventListener("pointerup",()=>orbit.drag=null); view.addEventListener("pointercancel",()=>orbit.drag=null);
+view.addEventListener("wheel",e=>{ e.preventDefault(); orbit.radius=Math.min(400,Math.max(6,orbit.radius*(1+Math.sign(e.deltaY)*0.08))); },{passive:false});
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!orbit.drag){ orbit.idle+=dt; if(orbit.idle>2.5&&motionOn) orbit.theta+=dt*0.08; }
+  camera.position.set(Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, Math.cos(orbit.phi)*orbit.radius, Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(0,0,0);
+  const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=buildBottom+(buildTop-buildBottom)*(1-Math.pow(1-p,3));
+  if(dyn) dyn.visible=p>=1; if(forces) forces.visible=p>=1&&forcesOn;
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=true;
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.set(a.s[0]*(0.4+0.6*k),a.s[1]*(0.4+0.6*k),a.s[2]*(0.4+0.6*k)); }
+    else { const k=Math.max(0.001,1-q); a.mesh.scale.set(a.s[0]*k,a.s[1]*k,a.s[2]*k); }
+    if(q>=1){ if(a.kind==="out"&&a.mesh.parent) a.mesh.parent.remove(a.mesh); anims.splice(i,1); } }
+  if(motionOn){
+    for(const r of rotors) r.obj.rotation[r.axis]+=r.w*dt;
+    for(const f of flames) f.mesh.scale.y=f.len*(0.82+0.18*Math.sin(t*0.025+f.ph));
+    for(const s of steams){ const q=((t/1000)*0.6+s.ph)%1; s.mesh.position.y=s.y0+q*2.4; s.mesh.material.opacity=0.55*(1-q); }
+    travel+=speed*dt; seaTex.offset.x=travel/32; clouds.position.x=-(travel%384);
+    root.position.y=baseY+(bobbing?Math.sin(t/900)*0.18:0);
+  }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+const posOf=key=>key.split(",").map(Number);
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].dispose(); } groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4();
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),keys.length), sc=SCALE[k]||[1,1,1,0];
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeScale(sc[0],sc[1],sc[2]); m4.setPosition(x,y+sc[3],z); mesh.setMatrixAt(i,m4); });
+    if(k==="envelope") mesh.renderOrder=2; groups[k]=mesh; root.add(mesh); }
+}
+function clearSwaps(){ clearTimeout(clearSwaps.t); anims.length=0; if(clearSwaps.g){ root.remove(clearSwaps.g); clearSwaps.g=null; } }
+let shownMap=null, shownShape="";
+function rebuildBlocks(L,force){
+  const map=L.map; clearSwaps();
+  if(force||!shownMap||L.shape!==shownShape){ buildInstanced(map); buildBottom=baseY+L.minY-0.5; buildTop=baseY+L.maxY+0.6; buildStart=performance.now();
+    if(L.shape!==shownShape){ orbit.radius=(Math.max(L.maxX-L.minX,L.maxY-L.minY,2*L.maxZ+1)+12)*1.3; } shownMap=map; shownShape=L.shape; return; }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map; if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>2500){ buildInstanced(map); return; }
+  buildInstanced(map,new Set(added.map(a=>a[0])));
+  const g=clearSwaps.g=new THREE.Group(); root.add(g);
+  const now=performance.now();
+  const mk=(k,key)=>{ const m=new THREE.Mesh(CUBE(),mat(k)), [x,y,z]=posOf(key), sc=SCALE[k]||[1,1,1,0]; m.position.set(x,y+sc[3],z); m.scale.set(sc[0],sc[1],sc[2]); if(k==="envelope") m.renderOrder=2; return [m,sc]; };
+  for(const [key,k] of removed){ const [m,sc]=mk(k,key); g.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y,s:sc}); }
+  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
+  for(const [key,k] of added){ const [m,sc]=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    g.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y,s:sc}); }
+  clearSwaps.t=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+function disposeTree(o){ o.traverse(n=>{ if(n.geometry&&!n.geometry.shared) n.geometry.dispose(); if(n.material&&!n.material.shared){ if(n.material.map) n.material.map.dispose(); n.material.dispose(); } }); }
+const SH={}; // shared geometry/materials for moving parts
+function shared(){ if(SH.ok) return SH;
+  const tag=o=>(o.shared=true,o);
+  Object.assign(SH,{ok:true,
+    blade:tag(new THREE.BoxGeometry(0.12,1.3,0.34)), sail:tag(new THREE.BoxGeometry(0.06,0.96,0.96)), fanBlade:tag(new THREE.BoxGeometry(0.05,0.42,0.16)),
+    hblade:tag(new THREE.BoxGeometry(1.3,0.12,0.34)), cone:tag(new THREE.ConeGeometry(0.34,1,10,1,true)), puff:tag(new THREE.BoxGeometry(0.5,0.5,0.5)),
+    wood:tag(new THREE.MeshLambertMaterial({color:0xA07A48})), cloth:tag(new THREE.MeshLambertMaterial({color:0xEEEDE4})), dark:tag(new THREE.MeshLambertMaterial({color:0x3A3C3A})),
+    fire:tag(new THREE.MeshBasicMaterial({color:0xFF8A2A,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})),
+    ion:tag(new THREE.MeshBasicMaterial({color:0x6FD0FF,transparent:true,opacity:0.85,blending:THREE.AdditiveBlending,depthWrite:false,fog:false})),
+    air:tag(new THREE.MeshBasicMaterial({color:0xFF8A3C,transparent:true,opacity:0.22,depthWrite:false,fog:false})) });
+  return SH; }
+function rotor(parent,x,y,z,axis,rpm){ const g=new THREE.Group(); g.position.set(x,y,z); parent.add(g); rotors.push({obj:g,axis,w:Math.min(256,rpm)*Math.PI/30}); return g; }
+function arm(g,axis,i,n){ const a=new THREE.Group(); a.rotation[axis]=i*2*Math.PI/n; g.add(a); return a; }
+function buildMoving(L){
+  const s=shared();
+  if(dyn){ root.remove(dyn); disposeTree(dyn); } dyn=new THREE.Group(); root.add(dyn); dyn.visible=false;
+  rotors.length=flames.length=steams.length=0;
+  for(const u of L.units){ const K=KINDS[u.p.kind], rpm=+u.p.rpm||0;
+    if(K.base){ const mult=u.p.kind==="solid"?SOLIDS[u.p.fuel]?.[1]??1:u.p.kind==="ion"?1:FUELS[u.p.fuel]?.[1]??1, len=1+3*Math.sqrt(K.base*mult/2024);
+      const f=new THREE.Mesh(s.cone,u.p.kind==="ion"?s.ion:s.fire); f.rotation.z=Math.PI/2; f.position.set(u.x-0.5-len/2,u.y,u.z); f.scale.y=len; dyn.add(f); flames.push({mesh:f,len,ph:Math.random()*6}); }
+    else if(u.p.kind==="fan"){ const g=rotor(dyn,u.x-0.53,u.y,u.z,"x",rpm); for(let i=0;i<4;i++){ const b=new THREE.Mesh(s.fanBlade,s.dark); b.position.y=0.2; arm(g,"x",i,4).add(b); } }
+    else if(u.p.kind==="bearing"){ const g=rotor(dyn,u.x-0.56,u.y,u.z,"x",rpm), n=Math.max(1,cnt(u.p.sails));
+      for(let i=0;i<n;i++){ const b=new THREE.Mesh(s.sail,s.cloth); b.position.y=1+Math.floor(i/4); arm(g,"x",i%4,4).add(b); } }
+    else { const g=rotor(dyn,u.x-0.62,u.y,u.z,"x",rpm); for(let i=0;i<4;i++){ const b=new THREE.Mesh(s.blade,s.wood); b.position.y=0.8; b.rotation.y=0.35; arm(g,"x",i,4).add(b); } }
+  }
+  for(const u of L.smart){ const g=rotor(dyn,u.x,u.y+0.62,u.z,"y",+u.p.rpm||0); for(let i=0;i<4;i++){ const b=new THREE.Mesh(s.hblade,s.wood); b.position.x=0.8; b.rotation.x=0.35; arm(g,"y",i,4).add(b); } }
+  const burnLen=0.25+0.9*Math.min(500,Math.max(5,+state.burnOut||0))/500;
+  for(const [x,y,z] of L.burners){ const f=new THREE.Mesh(s.cone,s.fire); f.position.set(x,y+0.5+burnLen/2,z); f.scale.set(0.8,burnLen,0.8); dyn.add(f); flames.push({mesh:f,len:burnLen,ph:Math.random()*6}); }
+  for(const [x,y,z] of L.vents) for(let i=0;i<3;i++){ const m=new THREE.Mesh(s.puff,new THREE.MeshBasicMaterial({color:0xFFFFFF,transparent:true,opacity:0.5,depthWrite:false})); m.position.set(x,y+0.6,z); dyn.add(m); steams.push({mesh:m,y0:y+0.6,ph:i/3}); }
+  // ropes from the deck corners up to the balloon
+  if(L.bal){ const x0=0.5, x1=L.L-1.5, zs=L.hw-0.5, top=L.bal.bottom+0.5;
+    for(const [x,z] of [[x0,-zs],[x0,zs],[x1,-zs],[x1,zs]]){ const h=top-1.5, r=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,h,5),s.dark); r.position.set(x,1.5+h/2,z); dyn.add(r); } }
+  // hot air fills the balloon from the top down (hot air rises)
+  airMesh=null;
+  if(L.bal&&M.gas>0){ const n=Math.round(L.bal.n*Math.min(1,M.gas/Math.max(1,+state.vol||0))), m4=new THREE.Matrix4();
+    airMesh=new THREE.InstancedMesh(CUBE(),s.air,n); for(let i=0;i<n;i++){ const [x,y,z]=L.bal.cells[i]; m4.makeTranslation(x,y,z); airMesh.setMatrixAt(i,m4); }
+    airMesh.visible=insideOn; airMesh.renderOrder=1; dyn.add(airMesh); }
+}
+function label(text,color){ const c=document.createElement("canvas"), g=c.getContext("2d"), f="600 30px JetBrains Mono, monospace"; g.font=f;
+  const w=Math.ceil(g.measureText(text).width)+20; c.width=w; c.height=44; g.font=f; g.fillStyle="rgba(10,14,16,.72)"; g.fillRect(0,0,w,44); g.fillStyle=color; g.textBaseline="middle"; g.fillText(text,10,23);
+  const t=new THREE.CanvasTexture(c), sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,fog:false})); sp.scale.set(w/44*1.1,1.1,1); sp.renderOrder=11; return sp; }
+function arrow(parent,o,d,len,color,text){ if(!(len>0.05)) return; const m=new THREE.MeshBasicMaterial({color,depthTest:false,transparent:true,opacity:0.95,fog:false});
+  const head=Math.min(1.1,len*0.4), shaftL=len-head, g=new THREE.Group();
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,shaftL,8),m); sh.position.y=shaftL/2;
+  const cn=new THREE.Mesh(new THREE.ConeGeometry(0.4,head,12),m); cn.position.y=shaftL+head/2; sh.renderOrder=cn.renderOrder=10; g.add(sh,cn);
+  g.position.copy(o); g.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d); parent.add(g);
+  const lb=label(text,"#"+new THREE.Color(color).getHexString()); lb.position.copy(o).addScaledVector(d,len+0.9); parent.add(lb); }
+function buildForces(L,y,mode){
+  if(forces){ root.remove(forces); disposeTree(forces); } forces=new THREE.Group(); root.add(forces); forces.visible=false;
+  if(!M.mass) return;
+  const midX=(L.minX+L.maxX)/2, lift=M.liftAt(y), wt=M.mass, mx=Math.max(lift,wt,1e-9), V=THREE.Vector3;
+  arrow(forces,new V(midX,L.maxY+0.7,0),new V(0,1,0),1.5+4.5*lift/mx,0x7FD6F0,`Lift ${fmt(lift,1)}`);
+  arrow(forces,new V(midX,L.minY-0.7,0),new V(0,-1,0),1.5+4.5*wt/mx,0xF08A8A,`Weight ${fmt(wt,1)}`);
+  if(M.T0>0&&mode==="fly"){ const v=M.vTop, th=M.thrust(v), hy=L.bal?L.bal.cy:1;
+    arrow(forces,new V(L.maxX+0.7,1,0),new V(1,0,0),4,0xF2E36A,`Thrust ${fmt(th)}`);
+    arrow(forces,new V(L.minX-0.7,hy,0),new V(-1,0,0),4,0xE3A060,`Drag ${fmt(M.drag(v))} at ${fmt(v,1)} m/s`); }
+}
+const mixHex=(a,b,t)=>{ const A=hexRgb(a),B=hexRgb(b); return "#"+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,"0")).join(""); };
+function update3D(mode){
+  const y=mode==="fly"?M.cruise:63-Math.min(0,S.minY)+(mode==="hover"?2:0);
+  // sky darkens as the air thins
+  const t=Math.min(1,pressure(y)), top=mixHex("#050B1A","#4F8BD6",t), bot=mixHex("#1D3556","#C4DDF2",t);
+  view.style.background=`linear-gradient(${top},${bot})`;
+  const pct=v=>((320-v)/384*100).toFixed(2)+"%";
+  $("alti").innerHTML=`<div class="track"></div>`+[[320,"320 no air"],[256,"256"],[192,"clouds"],[128,"128"],[63,"sea 63"],[0,"0"],[-64,"-64"]].map(([v,l])=>`<div class="tick" style="top:${pct(v)}"><span>${l}</span></div>`).join("")+
+    (mode==="fly"&&M.settle!==null&&Math.abs(M.settle-y)>2?`<div class="mark ghost" style="top:${pct(M.settle)}"><span>settles ${fmt(M.settle)}</span></div>`:"")+
+    `<div class="mark" style="top:${pct(y)}"><span>Y ${fmt(y)} · air ${fmt(pressure(y),2)}</span></div>`;
+  const h=[]; if(S.bal) h.push(`Balloon drawn: ${fmt(S.bal.n)} air inside ${fmt(S.bal.shell)} envelopes${S.bal.clipped?" (capped)":""}`);
+  if(mode==="fly"&&M.T0>0) h.push(`Clouds and sea pass at the top speed, ${fmt(M.vTop,1)} m/s`);
+  if(S.hidden||S.moreUnits) h.push(`Not drawn: ${[S.hidden?fmt(S.hidden)+" blocks":"",S.moreUnits?fmt(S.moreUnits)+" propellers/thrusters":""].filter(Boolean).join(", ")}`);
+  $("hud").innerHTML=h.join("<br>");
+  if(!renderer) return;
+  scene.fog.color.set(bot);
+  baseY=-(S.minY+S.maxY)/2; root.position.set(-(S.minX+S.maxX)/2,baseY,0);
+  sea.position.y=baseY+(63-y); clouds.position.y=baseY+(194.33-y);
+  speed=mode==="fly"?M.vTop:0; bobbing=mode!=="ground";
+  rebuildBlocks(S); buildMoving(S); buildForces(S,y,mode);
+}
+function toggle(id,on){ $(id).setAttribute("aria-pressed",on); }
+$("bInside").onclick=()=>{ insideOn=!insideOn; toggle("bInside",insideOn); if(!renderer) return; const m=mat("envelope"); m.transparent=insideOn; m.opacity=insideOn?0.16:1; m.depthWrite=!insideOn; m.needsUpdate=true; if(airMesh) airMesh.visible=insideOn; };
+$("bForces").onclick=()=>{ forcesOn=!forcesOn; toggle("bForces",forcesOn); };
+$("bMotion").onclick=()=>{ motionOn=!motionOn; toggle("bMotion",motionOn); };
+toggle("bMotion",motionOn);
+
+function update(){ try{ localStorage.setItem("aero-planner",JSON.stringify(state)); }catch(e){} M=model(); S=shipLayout(); syncInputs(); renderProps(); render(); }
+
+initGL();
 buildMassTable();
 for(const k of ["vol","burners","burnOut","vents","lev","endst"]) $(k).onchange=e=>{ state[k]=Math.max(0,+e.target.value||0); update(); };
 $("alt").onchange=e=>{ state.alt=e.target.value===""?"":Math.min(319,Math.max(-64,+e.target.value)); update(); };
