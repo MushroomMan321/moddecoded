@@ -114,6 +114,14 @@ h1 .y{color:var(--accent-ink)}
 .tip{position:fixed;z-index:20;pointer-events:none;background:rgba(16,0,16,.94);border:2px solid;border-image:linear-gradient(#5000FF,#28007F) 1;padding:6px 8px;font:500 14px/1.35 var(--font-display);color:#fff;max-width:260px}
 .tip .t{color:#fff}.tip .m{color:#5555FF;font-style:italic;font-size:13px}.tip .g{color:#AAAAAA;font-size:13px}.tip .s{color:#55FF55}
 
+/* server config */
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content}
+details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+
 /* loadout */
 .load{display:flex;flex-direction:column;gap:6px}
 .lrow{display:grid;grid-template-columns:32px minmax(0,1fr) 30px 70px 30px 30px;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:5px 6px}
@@ -159,7 +167,7 @@ h1 .y{color:var(--accent-ink)}
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Extreme Reactors / Turbine Planner</nav>
   <header class="top">
     <h1>Extreme Reactors <span class="y">Turbine Planner</span></h1>
-    <span class="src">Values read from the Extreme Reactors 1.21.1-2.4.28 jar · default config</span>
+    <span class="src">Values read from the Extreme Reactors 1.21.1-2.4.28 jar</span>
   </header>
   <p class="lede">Pick coils from the item list, set the steam flow, and watch the turbine build. Every number comes from the mod's own <b>TurbineLogic</b> and <b>TurbineData</b> code, not from creative-mode testing.</p>
 
@@ -186,6 +194,20 @@ h1 .y{color:var(--accent-ink)}
     </section>
 
     <section class="panel" aria-label="Turbine inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm10" aria-pressed="false">All the Mods 10</button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/extremereactors/common.toml</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
       <div class="sect">
         <h2>Turbine</h2>
         <div class="seg" role="group" aria-label="Turbine tier">
@@ -277,6 +299,13 @@ extraRF × (1 − (needed − blades) / needed)</pre>
 spin-up τ = blades × mass / dragCoef  (ticks)</pre>
         <span class="ref">TurbineData.update · TurbineVariant</span>
       </div>
+      <div class="fact">
+        <h3>Your modpack may scale the power</h3>
+        <p>Packs can change two power multipliers in the server config. They scale RF/t only; drag and RPM stay the same. All the Mods 10 sets them to 0.5 and 0.8, so its turbines make 40% of the default power at exactly the same RPM.</p>
+<pre>rf/t × powerProductionMultiplier
+     × turbinePowerProductionMultiplier</pre>
+        <span class="ref">MultiblockTurbine.getAdjustedPowerProductionMultiplier</span>
+      </div>
     </div>
   </section>
 </div>
@@ -291,11 +320,34 @@ spin-up τ = blades × mass / dragCoef  (ticks)</pre>
 const STEAM_RF = 10; // FluidsRegistry.registerVapor("steam", 10.0f, ...)
 const VARIANTS = {
   basic:      {name:"Basic",      maxX:5,  maxY:10, maxZ:5,  maxFlow:1000, perBlade:15, rotorDrag:0.01, maxRpm:1000, bladeMass:8,  shaftMass:8},
-  reinforced: {name:"Reinforced", maxX:32, maxY:32, maxZ:32, maxFlow:2000, perBlade:25, rotorDrag:0.01, maxRpm:2000, bladeMass:10, shaftMass:10},
+  reinforced: {name:"Reinforced", maxX:1000, maxY:1000, maxZ:1000, maxFlow:2000, perBlade:25, rotorDrag:0.01, maxRpm:2000, bladeMass:10, shaftMass:10},
 };
 const BLADE_DRAG = 2.5e-4, INDUCTOR_BASE = 0.1, MIN_EXT = 5;
 // Exterior limits = min(config maxTurbineSize/maxTurbineHeight [default 32], variant _maxX/_maxY/_maxZ)
-// TurbineVariant: Basic = Builder.create(5, 10) -> 5 x 10 x 5; Reinforced = create(1000) -> config-bound 32 x 32 x 32
+// TurbineVariant: Basic = Builder.create(5, 10) -> 5 x 10 x 5; Reinforced = create(1000) -> bound by config
+// Server config (config/extremereactors/common.toml). Where each one applies, per the bytecode:
+//   power, turbinePower -> MultiblockTurbine.getAdjustedPowerProductionMultiplier (energy only, not drag/RPM)
+//   aero  -> TurbineData.update bladeDrag;  coil -> INDUCTOR_BASE_DRAG_COEFFICIENT;  mass -> frictionalDrag
+//   fluid -> TurbineData ctor: inputFluidPerBlade = floor(basePerBlade * fluid)
+const PRESETS = {
+  default: {name:"Mod defaults",    power:1,   turbinePower:1,   maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
+  atm10:   {name:"All the Mods 10", power:0.5, turbinePower:0.8, maxSize:16, maxHeight:16, aero:1, coil:1, mass:1, fluid:1},
+};
+const CFG_FIELDS = [
+  ["power","general.powerProductionMultiplier",0.005,100],
+  ["turbinePower","turbine.turbinePowerProductionMultiplier",0.005,100],
+  ["maxSize","turbine.maxTurbineSize",5,256],
+  ["maxHeight","turbine.maxTurbineHeight",5,256],
+  ["aero","turbine.turbineAeroDragMultiplier",0.5,10],
+  ["coil","turbine.turbineCoilDragMultiplier",0.5,10],
+  ["mass","turbine.turbineMassDragMultiplier",0.5,10],
+  ["fluid","turbine.turbineFluidPerBladeMultiplier",0.5,10],
+];
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null"); if(saved&&saved.cfg){ cfgPreset=saved.preset; cfg={...PRESETS.default,...saved.cfg}; } }catch(e){}
+function tier(v){ const V=VARIANTS[v];
+  return {...V, maxX:Math.min(V.maxX,cfg.maxSize), maxZ:Math.min(V.maxZ,cfg.maxSize), maxY:Math.min(V.maxY,cfg.maxHeight),
+    perBlade:Math.max(1,Math.floor(V.perBlade*cfg.fluid))}; }
 // [id, display name, source, colour, efficiency, bonus, extractionRate]  — TurbineGameData.registerCoils
 const COILS = [
  ["iron","Block of Iron","Minecraft","#D6D6D6",1,1,1],
@@ -351,7 +403,7 @@ function layout(s){
 }
 function rpmFactor(rpm){ let f=0.25*Math.cos(rpm/142.94246573833559)+0.75; if(rpm<500) f=Math.min(0.5,f); return f; }
 function simulate(s){
-  const V=VARIANTS[s.variant], lay=layout(s), B=s.blades, C=lay.C;
+  const V=tier(s.variant), lay=layout(s), B=s.blades, C=lay.C;
   const flow=Math.min(s.flow,V.maxFlow), p=V.perBlade;
   const mass=B*V.bladeMass + lay.H*V.shaftMass;
   // TurbineLogic.update — rotor energy from steam
@@ -362,11 +414,11 @@ function simulate(s){
     rotorEff=ein/(flow*STEAM_RF);
   }
   let sE=0,sB=0,sX=0; for(const r of s.coils){ const c=COIL[r.id]; sE+=c.eff*r.n; sB+=c.bonus*r.n; sX+=c.extr*r.n; }
-  const indEff=C>0?sE*0.33/C:0, expo=C>0?Math.max(1,sB/C):1, indCoef=C>0?INDUCTOR_BASE*sX:0;
-  const bladeCoef=BLADE_DRAG*B, friction=mass*V.rotorDrag, k=indCoef+bladeCoef;
+  const indEff=C>0?sE*0.33/C:0, expo=C>0?Math.max(1,sB/C):1, indCoef=C>0?INDUCTOR_BASE*cfg.coil*sX:0;
+  const bladeCoef=BLADE_DRAG*cfg.aero*B, friction=mass*V.rotorDrag*cfg.mass, k=indCoef+bladeCoef;
   const rpm=(B>0&&ein>friction&&k>0)?(ein-friction)/k:0;
   const drag=rpm*indCoef, raw=drag>0?Math.pow(drag,expo)*indEff:0;
-  const fr=raw>0?rpmFactor(rpm):0, rf=raw*fr;
+  const fr=raw>0?rpmFactor(rpm):0, rf=raw*fr*cfg.power*cfg.turbinePower;
   const inertia=B*mass;
   const spin=(rpm>0&&k<inertia)?Math.log(0.01)/Math.log(1-k/inertia):0;
   return {V,lay,flow,mass,ein,rotorEff,indEff,expo,indCoef,bladeCoef,friction,rpm,drag,fr,rf,spin,sE,sB,sX};
@@ -546,7 +598,7 @@ const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractio
 const pct=v=>fmt(v*100,1)+"%";
 
 function syncInputs(){
-  const V=VARIANTS[state.variant];
+  const V=tier(state.variant);
   $("vBasic").setAttribute("aria-pressed",state.variant==="basic"); $("vReinf").setAttribute("aria-pressed",state.variant==="reinforced");
   $("flow").max=V.maxFlow; $("flowN").max=V.maxFlow; state.flow=Math.min(state.flow,V.maxFlow);
   $("flow").value=state.flow; $("flowN").value=state.flow;
@@ -645,9 +697,9 @@ function renderResults(R){
   const used=lay.bladeLayers+lay.coilLayers, hb=$("hBar"); hb.classList.toggle("over",Hx>V.maxY);
   hb.firstElementChild.style.width=Math.min(100,used/Math.max(1,lay.H)*100)+"%";
   $("hVal").textContent=`${used} / ${lay.H}`;
-  if(lay.H>lay.minH) n.push(["warn",`The top ${lay.H-lay.minH} interior layer${lay.H-lay.minH>1?"s are":" is"} bare shaft. That adds ${fmt((lay.H-lay.minH)*V.shaftMass)} rotor mass and ${fmt((lay.H-lay.minH)*V.shaftMass*V.rotorDrag,2)} RF/t of friction with no benefit.`]);
+  if(lay.H>lay.minH) n.push(["warn",`The top ${lay.H-lay.minH} interior layer${lay.H-lay.minH>1?"s are":" is"} bare shaft. That adds ${fmt((lay.H-lay.minH)*V.shaftMass)} rotor mass and ${fmt((lay.H-lay.minH)*V.shaftMass*V.rotorDrag*cfg.mass,2)} RF/t of friction with no benefit.`]);
   $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
-  $("casingHint").textContent=`${V.name} casings go up to ${V.maxX} wide × ${V.maxZ} deep × ${V.maxY} tall (exterior). Height is set by how many blade and coil layers the rotor needs.`+(state.variant==="basic"?" Basic width is fixed at 5.":" The 32 limit comes from the maxTurbineSize and maxTurbineHeight config values.");
+  $("casingHint").textContent=`${V.name} casings go up to ${V.maxX} wide × ${V.maxZ} deep × ${V.maxY} tall (exterior). Height is set by how many blade and coil layers the rotor needs.`+(state.variant==="basic"?` Basic turbines are capped at 5 × 10 × 5 by the mod itself${cfg.maxSize<5||cfg.maxHeight<10?", and lower here by the server config":""}.`:` These limits come from maxTurbineSize (${cfg.maxSize}) and maxTurbineHeight (${cfg.maxHeight}) in the server config.`);
   $("dims").innerHTML=`<span>Exterior <b>${X}×${Z}×${Hx}</b></span><span>Interior <b>${lay.ix}×${lay.iz}×${lay.H}</b></span><span>Rotor mass <b>${fmt(R.mass)}</b></span><span>Drag to coils <b>${pct(R.indCoef/(R.indCoef+R.bladeCoef||1))}</b></span>`;
   // bill of materials
   const shellCount=X*Z*Hx-lay.ix*lay.iz*lay.H, frame=4*(X-2)+4*(Z-2)+4*(Hx-2)+8;
@@ -677,9 +729,9 @@ function tune(mode){
   if(!state.coils.length) state.coils.push({id:"enderium",n:0});
   state.extY=0; // tune against the minimum height, not leftover bare shaft
   const last=state.coils[state.coils.length-1], lay=layout(state);
-  const others=lay.C-last.n, room=lay.perC*(VARIANTS[state.variant].maxY-2-lay.bladeLayers)-others;
+  const others=lay.C-last.n, room=lay.perC*(tier(state.variant).maxY-2-lay.bladeLayers)-others;
   let best=-1,bestN=last.n; const vals=[];
-  const cap=VARIANTS[state.variant].maxRpm*1.02;
+  const cap=tier(state.variant).maxRpm*1.02;
   for(let n=1;n<=Math.max(1,room);n++){ last.n=n; const R=simulate(state); const rf=R.rpm<=cap?R.rf:0; vals.push(rf); if(rf>best){best=rf;bestN=n;} }
   if(mode==="cheap"){ const i=vals.findIndex(v=>v>=best*0.98); bestN=i+1; }
   last.n=bestN; update();
@@ -689,10 +741,31 @@ let rebuildTimer=0;
 function update(src){
   if(src!=="height") state.extY=layout({...state,extY:0}).minH+2;
   state.coils=state.coils.filter(r=>r.n>0||state.coils.length===1);
-  syncInputs(); renderSlots(); renderLoad();
+  renderCfg(); syncInputs(); renderSlots(); renderLoad();
   const R=simulate(state); renderResults(R);
   clearTimeout(rebuildTimer); rebuildTimer=setTimeout(()=>rebuild(state),90);
 }
+
+/* server config */
+function renderCfg(){
+  for(const [id,key] of [["pDefault","default"],["pAtm10","atm10"],["pCustom","custom"]]) $(id).setAttribute("aria-pressed",cfgPreset===key);
+  const mult=cfg.power*cfg.turbinePower;
+  $("cfgHint").innerHTML=`Power <b>×${fmt(mult,2)}</b> (${cfg.power} × ${cfg.turbinePower}) · max casing <b>${cfg.maxSize}×${cfg.maxSize}×${cfg.maxHeight}</b>`+
+    (cfg.aero!==1||cfg.coil!==1||cfg.mass!==1||cfg.fluid!==1?` · drag/fluid multipliers changed`:``);
+  const g=$("cfgGrid");
+  if(!g.childElementCount){
+    for(const [k,label,min,max] of CFG_FIELDS){
+      const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+      const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.min=min; i.max=max; i.step="any";
+      i.onchange=()=>{ const v=+i.value; if(!Number.isFinite(v)){ i.value=cfg[k]; return; } cfg[k]=Math.min(max,Math.max(min,k.startsWith("max")?Math.floor(v):v)); cfgPreset="custom"; saveCfg(); update(); };
+      g.append(l,i);
+    }
+  }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("er-turbine-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(key){ cfgPreset=key; if(PRESETS[key]) cfg={...PRESETS[key]}; else $("cfgMore").open=true; saveCfg(); update(); }
+$("pDefault").onclick=()=>usePreset("default"); $("pAtm10").onclick=()=>usePreset("atm10"); $("pCustom").onclick=()=>usePreset("custom");
 
 /* wiring */
 $("vBasic").onclick=()=>{ state.variant="basic"; update(); };
@@ -700,11 +773,11 @@ $("vReinf").onclick=()=>{ state.variant="reinforced"; update(); };
 const pair=(a,b,key,fix=v=>v)=>{ const set=v=>{ state[key]=fix(Math.max(+$(a).min,Math.floor(+v||0))); update(); }; $(a).oninput=e=>set(e.target.value); $(b).onchange=e=>set(e.target.value); };
 pair("flow","flowN","flow"); pair("blades","bladesN","blades"); pair("extX","extXN","extX"); pair("extZ","extZN","extZ");
 for(const k of ["extX","extZ"]){ const f=()=>{ state.base=null; }; $(k).addEventListener("input",f,true); $(k+"N").addEventListener("change",f,true); }
-const setLen=v=>{ const V=VARIANTS[state.variant]; const L=Math.max(1,Math.floor(+v||1)); state.bladeLen=L;
+const setLen=v=>{ const V=tier(state.variant); const L=Math.max(1,Math.floor(+v||1)); state.bladeLen=L;
   const need=2*L+3; // casing wall + L blades + shaft + L blades + casing wall
   state.extX=Math.min(V.maxX,Math.max(state.extX,need)); state.extZ=Math.min(V.maxZ,Math.max(state.extZ,need)); state.base=null; update(); };
 const setHeight=v=>{
-  const V=VARIANTS[state.variant], Y=Math.min(V.maxY,Math.max(3,Math.floor(+v||3))), N=Y-2;
+  const V=tier(state.variant), Y=Math.min(V.maxY,Math.max(3,Math.floor(+v||3))), N=Y-2;
   const armCap=Math.floor((Math.min(V.maxX,V.maxZ)-3)/2);
   if(!state.base) state.base={x:state.extX,z:state.extZ}; // the casing the user chose; height drags grow from it, never below it
   let pick=null;
@@ -718,7 +791,7 @@ const setHeight=v=>{
 };
 $("extY").oninput=e=>setHeight(e.target.value); $("extYN").onchange=e=>setHeight(e.target.value);
 $("width").oninput=e=>setLen(e.target.value); $("widthN").onchange=e=>setLen(e.target.value);
-$("autoBlades").onclick=()=>{ state.blades=Math.ceil(state.flow/VARIANTS[state.variant].perBlade); update(); };
+$("autoBlades").onclick=()=>{ state.blades=Math.ceil(state.flow/tier(state.variant).perBlade); update(); };
 $("search").oninput=renderSlots;
 $("sortBtn").onclick=()=>{ const keys=Object.keys(SORTS); sortMode=keys[(keys.indexOf(sortMode)+1)%keys.length]; $("sortBtn").textContent="Sort: "+SORTS[sortMode][0]; renderSlots(); };
 $("tuneMax").onclick=()=>tune("max"); $("tuneCheap").onclick=()=>tune("cheap");
