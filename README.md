@@ -1,4 +1,4 @@
-# Modded Mechanics
+# Mod Decoded (moddecoded.com)
 
 Static site explaining modded Minecraft mechanics from each mod's own code.
 Hosted on Cloudflare Pages. No build step: everything in `site/` is served as-is.
@@ -27,12 +27,14 @@ npx wrangler pages dev site
 2. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git.
 3. Framework preset: *None*. Build command: *(empty)*. Build output directory: `site`.
 
-**Option B — upload from this machine:**
+**Option B — upload from this machine** with the saved, encrypted API token:
 
-```bash
-npx wrangler login
-npx wrangler pages deploy site --project-name=modded-mechanics
+```powershell
+powershell -NoProfile -File scripts\save-cloudflare-token.ps1   # once
+powershell -NoProfile -File scripts\wrangler.ps1 pages deploy site --project-name=moddecoded
 ```
+
+The token is stored DPAPI-encrypted in `%APPDATA%\moddecoded\`, never in this repo.
 
 ## Adding a custom domain
 
