@@ -1,0 +1,80 @@
+22 gameplay-ish files with changed values
+== crash_assistant/config.toml (17 changed)
+   text.support_name: ATM10="ATM10 Support Channel"  Aero="ATM10-A Support Channel"
+   text.support_place: ATM10="#atm10-techsupport channel"  Aero="#atm10-a-techsupport channel"
+   generated_message.warning_after_upload_all_button_press: ATM10="After pasting the logs in the correct Tech Support channel,  Aero=""
+   modpack_modlist.modpack_creators: ATM10=["whatthedrunk", "Uncandango"]  Aero=["oly2o7"]
+   modpack_modlist.auto_update: ATM10=false  Aero=true
+   gui_customisation.theme_file_name: ATM10="ATM10.theme.json"  Aero="FlatDarkLaf"
+   gui_customisation.upload_all_button_foreground_color: ATM10="76_217_230"  Aero="0_178_0"
+   gui_customisation.request_help_button_foreground_color: ATM10="250_189_47"  Aero="0_0_178"
+   gui_customisation.simple_mode_button_foreground_color: ATM10="142_192_124"  Aero="0_0_178"
+   gui_customisation.auto_fix_button_foreground_color: ATM10="250_189_47"  Aero="0_178_0"
+   gui_customisation.privacy_policy_yes_button_foreground_color: ATM10="142_192_124"  Aero="0_178_0"
+   gui_customisation.privacy_policy_no_button_foreground_color: ATM10="251_73_52"  Aero="255_0_0"
+== Mekanism/generators.toml (13 changed)
+   solar_generator.solarGeneration: ATM10=150  Aero=50
+   solar_generator.advancedSolarGeneration: ATM10=1200  Aero=400
+   bio_generator.bioGeneration: ATM10=350  Aero=180
+   heat_generator.heatGeneration: ATM10=800  Aero=200
+   heat_generator.heatGenerationNether: ATM10=100  Aero=200
+   gas_generator.tankCapacity: ATM10=18000  Aero=10000
+   wind_generator.generationMin: ATM10=150  Aero=40
+   wind_generator.generationMax: ATM10=900  Aero=300
+   wind_generator.minY: ATM10=24  Aero=30
+   fission_reactor.energyPerFissionFuel: ATM10=250000  Aero=8000
+   fission_reactor.defaultBurnRate: ATM10=0.1  Aero=0.15
+   fusion_reactor.fuelEnergy: ATM10=10000000  Aero=100000
+== extremereactors/common.toml (7 changed)
+   common.general.fuelUsageMultiplier: ATM10=0.8  Aero=1.2
+   common.general.powerProductionMultiplier: ATM10=4.0  Aero=0.5
+   common.reactor.maxReactorHeight: ATM10=48  Aero=32
+   common.reactor.reactorPowerProductionMultiplier: ATM10=3.0  Aero=0.8
+   common.turbine.maxTurbineHeight: ATM10=32  Aero=16
+   common.turbine.maxTurbineSize: ATM10=32  Aero=16
+   common.turbine.turbinePowerProductionMultiplier: ATM10=3.0  Aero=0.8
+== Mekanism/machine-usage.toml (4 changed)
+   digitalMiner: ATM10=1000  Aero=500
+   electricPump: ATM10=100  Aero=50
+   laser: ATM10=50000  Aero=10000
+   antiprotonicNucleosynthesizer: ATM10=100000  Aero=20000
+== bcc-common.toml (3 changed)
+   general.modpackProjectID: ATM10=925200  Aero=0
+   general.modpackName: ATM10="All the Mods 10"  Aero="ATM10: Aeronautics"
+   general.modpackVersion: ATM10="8.2"  Aero="0.6.1"
+== sophisticatedstorage-server.toml (2 changed)
+   server.maxUpgradesPerStorage: ATM10=["barrel|jukebox_upgrades|1", "barrel|stack_upgrades|2", "ba  Aero=["barrel|jukebox_upgrades|1", "barrel|furnace_upgrades|1", "
+   server.stackUpgrade.nonStackableItems: ATM10=["immersiveengineering:toolbox", "supplementaries:quiver", "  Aero=["minecraft:bundle", "minecraft:shulker_box", "minecraft:whi
+== waystones-common.toml (2 changed)
+   teleports.warpRequirements: ATM10=["[is_not_interdimensional] scaled_add_xp_cost(distance, 0.0  Aero=["[is_not_interdimensional] scaled_add_xp_cost(distance, 0.0
+   worldGen.wildWaystonesDimensionAllowList: ATM10=["minecraft:the_nether", "minecraft:overworld", "minecraft:t  Aero=["minecraft:overworld", "minecraft:the_end", "minecraft:the_
+== supplementaries-common.toml (1 changed)
+   tweaks.extra_crafting.sus_recipes: ATM10=false  Aero=true
+== mahoutsukai-server.toml (1 changed)
+   projection.strengthening.STRENGTHENING_ITEM_BLACKLIST: ATM10=[  Aero=["modularbees:electrode_copper", "modularbees:electrode_iron
+== silentgear-common.toml (1 changed)
+   item.material_book.spawn_with_material_book: ATM10=false  Aero=true
+== tombstone-common.toml (1 changed)
+   general.unhandled_beneficial_effects: ATM10=["minecraft:hero_of_the_village", "irons_spellbooks:ascensio  Aero=["minecraft:hero_of_the_village", "relics:immortality"]
+== evilcraft-common.toml (1 changed)
+   machine.purifier.disenchantBlacklist: ATM10=["tetra:.*","ars_nouveau:thread_wixie"]  Aero=["tetra:.*", "ars_nouveau:thread_wixie"]
+== sawmill-common.toml (1 changed)
+   general.recipe_generation_mode: ATM10="CACHED_ZIPPED"  Aero="CACHED"
+== pylons-server.toml (1 changed)
+   infusion_pylon.infusionDeniedEffects: ATM10=["minecraft:absorption", "tombstone:ghostly_shape", "irons_s  Aero=["minecraft:absorption", "tombstone:ghostly_shape", "irons_s
+== sophisticatedbackpacks-server.toml (1 changed)
+   server.stackUpgrade.nonStackableItems: ATM10=["immersiveengineering:toolbox", "supplementaries:quiver", "  Aero=["minecraft:bundle", "minecraft:shulker_box", "minecraft:whi
+== immersiveengineering-startup.toml (1 changed)
+   preferredOres: ATM10=[    "minecraft"  Aero=["minecraft", "alltheores", "allthemodium", "kubejs", "mekan
+== sophisticatedcore-common.toml (1 changed)
+   common.enabledItems: ATM10=["sophisticatedstorage:stack_upgrade_tier_1|true", "sophisti  Aero=["sophisticatedstorage:stack_upgrade_tier_1|true", "sophisti
+== apotheosis/enchantments.cfg (1 changed)
+   deeperdarker: ATM10=sculk_smite" {  Aero=volume" {
+== crash_assistant/modlist.json (1 changed)
+   jarName: ATM10="sawmill.zip (datapack)"  Aero="SmoothFont_1.21.zip (resourcepack)"
+== Mekanism/general.toml (1 changed)
+   cardboard_box.modBlacklist: ATM10=["waystones","hyperbox"]  Aero=["waystones", "hyperbox"]
+== almostunified/unification/materials.json (1 changed)
+   create: ATM10=crushing/deepslate_coal_ore"  Aero=crushing/compat/silentgems/end_ruby_ore"
+== iceandfire/iaf-common.json (1 changed)
+   stealItems: ATM10=false  Aero=true
