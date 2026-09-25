@@ -207,10 +207,10 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
         <h2>Server config</h2>
         <div class="seg" role="group" aria-label="Server config preset">
           <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
-          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">ATM</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
           <button type="button" id="pCustom" aria-pressed="false">Custom</button>
         </div>
-        <div class="atm-list" id="atmList" role="group" aria-label="All the Mods pack" hidden></div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
         <p class="cfg-hint" id="cfgHint"></p>
         <details class="cfg" id="cfgMore">
           <summary>Edit values from config/extremereactors/common.toml</summary>
@@ -324,6 +324,7 @@ spin-up τ = blades × mass / dragCoef  (ticks)</pre>
 <div class="tip" id="tip" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
 <script>
 (() => {
 "use strict";
@@ -344,24 +345,8 @@ const BLADE_DRAG = 2.5e-4, INDUCTOR_BASE = 0.1, MIN_EXT = 5;
 //   ATM-10 e5e3d1d, ATM-10-a (ATM10: Aeronautics) d876358, All-the-mods-10-Sky 53b95da, All-the-Mons 56b5a4a, ATM-9 255ca23.
 //   ATM-11 (MC 26.1) does not ship Extreme Reactors yet. Mod defaults = the file's "# Default:" comments.
 // ATM10: Aeronautics was also validated in-game (1798.74 RPM / 4.27 kFE/t).
-const PRESETS = {
-  default: {name:"Mod defaults",       power:1,   turbinePower:1,   maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  atm10:   {name:"ATM10",              power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  aero:    {name:"ATM10: Aeronautics", power:0.5, turbinePower:0.8, maxSize:16, maxHeight:16, aero:1, coil:1, mass:1, fluid:1},
-  atm10sky:{name:"ATM10 To The Sky",   power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  atmons:  {name:"All the Mons",       power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  atm9:    {name:"ATM9",               power:1.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-};
+const DEFAULTS = {power:1,   turbinePower:1,   maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1};
 
-// [preset key, label, note, disabled]
-const ATM_PACKS=[
-  ["atm10","ATM10","1.21.1"],
-  ["aero","ATM10: Aeronautics","1.21.1"],
-  ["atm10sky","ATM10 To The Sky","1.21.1"],
-  ["atmons","All the Mons","1.21.1"],
-  ["atm9","ATM9","1.20.1 · older ER version"],
-  ["atm11","ATM11","26.1 · no Extreme Reactors yet",true],
-];
 const CFG_FIELDS = [
   ["power","general.powerProductionMultiplier",0.005,100],
   ["turbinePower","turbine.turbinePowerProductionMultiplier",0.005,100],
@@ -372,11 +357,13 @@ const CFG_FIELDS = [
   ["mass","turbine.turbineMassDragMultiplier",0.5,10],
   ["fluid","turbine.turbineFluidPerBladeMultiplier",0.5,10],
 ];
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("extremereactors", DEFAULTS, CFG_FIELDS);
 let cfgPreset="default", cfg={...PRESETS.default};
-try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null");
+try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null"); if(saved&&mdPackPresets.legacy[saved.preset]) saved.preset=mdPackPresets.legacy[saved.preset];
   if(saved&&PRESETS[saved.preset]){ cfgPreset=saved.preset; cfg={...PRESETS[saved.preset]}; } // presets always reload their current values
   else if(saved&&saved.preset==="custom"&&saved.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...saved.cfg}; } }catch(e){}
-{ const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero","#atm10-sky":"atm10sky","#all-the-mons":"atmons","#atm10-lite":"atm10lite","#atm9":"atm9","#atm9-sky":"atm9sky","#atm8":"atm8"}[location.hash]; if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } } // deep links from articles
+{ const h=decodeURIComponent(location.hash.slice(1)); if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } } // deep links from articles
 function tier(v){ const V=VARIANTS[v];
   return {...V, maxX:Math.min(V.maxX,cfg.maxSize), maxZ:Math.min(V.maxZ,cfg.maxSize), maxY:Math.min(V.maxY,cfg.maxHeight),
     perBlade:Math.max(1,Math.floor(V.perBlade*cfg.fluid))}; }
@@ -803,7 +790,7 @@ function usePreset(key){ cfgPreset=key; if(PRESETS[key]) cfg={...PRESETS[key]}; 
 function renderPresetButtons(){
   const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
   $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
-  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"ATM";
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
   for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
 }
 function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }

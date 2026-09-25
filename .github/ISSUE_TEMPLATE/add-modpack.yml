@@ -1,0 +1,50 @@
+name: Add a modpack
+description: Add a pack's server config so the calculators can match it.
+title: "[Pack] "
+labels: ["modpack"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Packs often change mod power settings, so the calculators need the pack's own values.
+        Want to add it yourself? Edit `site/data/packs.js` and open a pull request (see CONTRIBUTING.md).
+  - type: input
+    id: pack
+    attributes:
+      label: Pack name and version
+      placeholder: "ATM10 5.2, All the Mons 0.9, ..."
+    validations:
+      required: true
+  - type: input
+    id: mc
+    attributes:
+      label: Minecraft version
+      placeholder: "1.21.1"
+    validations:
+      required: true
+  - type: checkboxes
+    id: mods
+    attributes:
+      label: Which calculators is this for?
+      options:
+        - label: Extreme Reactors (turbine or reactor)
+        - label: Mekanism (fission reactor and turbine)
+  - type: input
+    id: source
+    attributes:
+      label: Link to the pack's config files
+      description: A public repo, the CurseForge/Modrinth page, or wherever the pack is published.
+  - type: textarea
+    id: config
+    attributes:
+      label: Config files
+      description: |
+        Paste or attach them from the pack's `config/` folder:
+        `extremereactors/common.toml`, `Mekanism/generators.toml`, `Mekanism/general.toml`.
+        If the world folder has a `serverconfig/` folder, check it too. Files there override the ones in `config/`.
+      render: toml
+  - type: textarea
+    id: checked
+    attributes:
+      label: Checked in-game? (optional)
+      description: If you built something in this pack, what did it show, and what did the calculator say?

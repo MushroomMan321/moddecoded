@@ -1,0 +1,53 @@
+name: Calculator doesn't match in-game
+description: The calculator says one thing and your build does another.
+title: "[Mismatch] "
+labels: ["mismatch"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        These reports are the most useful thing you can send. Every calculator is built from the mod's code,
+        so a mismatch usually means a pack config, a mod version difference, or a bug worth fixing.
+  - type: dropdown
+    id: calculator
+    attributes:
+      label: Calculator
+      options:
+        - Extreme Reactors turbine
+        - Extreme Reactors reactor
+        - Mekanism fission reactor / turbine
+        - Create Aeronautics airship
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Calculator link with your setup
+      description: Paste the page URL. Include the #pack part if you picked a modpack.
+  - type: input
+    id: versions
+    attributes:
+      label: Pack and mod versions
+      placeholder: "ATM10: Aeronautics 0.6.1, Extreme Reactors 2.4.28"
+    validations:
+      required: true
+  - type: textarea
+    id: build
+    attributes:
+      label: Your build
+      description: Size, blade/coil/rod counts, steam or fuel input, anything you set in the calculator.
+    validations:
+      required: true
+  - type: textarea
+    id: numbers
+    attributes:
+      label: Expected vs. in-game
+      placeholder: |
+        Calculator: 1,801 RPM, 4.27 kFE/t
+        In-game:    1,650 RPM, 3.9 kFE/t
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Screenshots or config files (optional)
