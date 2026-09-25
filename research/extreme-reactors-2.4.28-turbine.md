@@ -55,8 +55,26 @@ steady rpm  = (steamRF − friction) / (indCoef + bladeDrag)
 
 `energyGenerationEfficiency` (0.8 Basic / 1.0 Reinforced) is not referenced by TurbineLogic or TurbineData.
 
+## In-game validation
+
+**2026-09-25, All the Mods 10 (ER 2.4.28), Reinforced turbine** — 5×5×16 exterior, blade length 1,
+43 blades, 24 platinum coils, 1082 mB/t steam:
+
+| | In-game controller | Planner |
+|---|---|---|
+| Rotor speed | 1798.74 RPM | 1,799 RPM |
+| Output | 4.27 kFE/t | 4,275 RF/t (ATM10 preset) |
+
+The first comparison showed the planner at 10,686 RF/t, exactly 2.5× too high. The cause was ATM10's
+`config/extremereactors/common.toml`, not the formulas: `powerProductionMultiplier = 0.5` and
+`turbinePowerProductionMultiplier = 0.8` (0.5 × 0.8 = 0.4). ATM10 also sets
+`maxTurbineSize = 16` and `maxTurbineHeight = 16`. These multipliers scale energy only; RPM is untouched,
+which is why the RPM matched on the first try.
+
+ATM10's KubeJS does not change coil stats (only ER recipes).
+
 ## Not yet verified
 
-- In-game check of any predicted RPM / RF/t.
+- A second in-game data point with a coil whose bonus is > 1 (tests the exponent term).
 - Where blades and coils may sit along the shaft (planner assumes blades at the bearing end, coils above).
 - Minimum multiblock size (lives in ZeroCore, not in this jar).
