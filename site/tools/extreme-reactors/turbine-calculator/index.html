@@ -91,6 +91,15 @@ h1 .y{color:var(--accent-ink)}
 .seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
 .seg button+button{border-left:1px solid var(--line)}
 .seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .hint{font-size:13px;color:var(--muted);margin:0}
 .btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
 .btn:hover{border-color:var(--accent)}
@@ -198,10 +207,10 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
         <h2>Server config</h2>
         <div class="seg" role="group" aria-label="Server config preset">
           <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
-          <button type="button" id="pAtm10" aria-pressed="false">ATM10</button>
-          <button type="button" id="pAero" aria-pressed="false">ATM10: Aeronautics</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">ATM</span><span class="caret" aria-hidden="true">▾</span></button>
           <button type="button" id="pCustom" aria-pressed="false">Custom</button>
         </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="All the Mods pack" hidden></div>
         <p class="cfg-hint" id="cfgHint"></p>
         <details class="cfg" id="cfgMore">
           <summary>Edit values from config/extremereactors/common.toml</summary>
@@ -331,13 +340,28 @@ const BLADE_DRAG = 2.5e-4, INDUCTOR_BASE = 0.1, MIN_EXT = 5;
 //   power, turbinePower -> MultiblockTurbine.getAdjustedPowerProductionMultiplier (energy only, not drag/RPM)
 //   aero  -> TurbineData.update bladeDrag;  coil -> INDUCTOR_BASE_DRAG_COEFFICIENT;  mass -> frictionalDrag
 //   fluid -> TurbineData ctor: inputFluidPerBlade = floor(basePerBlade * fluid)
+// ATM packs: config/extremereactors/common.toml in each github.com/AllTheMods repo (main, checked 2026-09-25):
+//   ATM-10 e5e3d1d, ATM-10-a (ATM10: Aeronautics) d876358, All-the-mods-10-Sky 53b95da, All-the-Mons 56b5a4a, ATM-9 255ca23.
+//   ATM-11 (MC 26.1) does not ship Extreme Reactors yet. Mod defaults = the file's "# Default:" comments.
+// ATM10: Aeronautics was also validated in-game (1798.74 RPM / 4.27 kFE/t).
 const PRESETS = {
-  default: {name:"Mod defaults",    power:1,   turbinePower:1,   maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  // ATM10 (mainline): github.com/AllTheMods/ATM-10 config/extremereactors/common.toml ("Buffed Power Production", 2025-01-21)
+  default: {name:"Mod defaults",       power:1,   turbinePower:1,   maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
   atm10:   {name:"ATM10",              power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
-  // ATM10: Aeronautics 0.6.1: read from a live server's config; validated in-game (1798.74 RPM / 4.27 kFE/t)
   aero:    {name:"ATM10: Aeronautics", power:0.5, turbinePower:0.8, maxSize:16, maxHeight:16, aero:1, coil:1, mass:1, fluid:1},
+  atm10sky:{name:"ATM10 To The Sky",   power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
+  atmons:  {name:"All the Mons",       power:4.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
+  atm9:    {name:"ATM9",               power:1.0, turbinePower:3.0, maxSize:32, maxHeight:32, aero:1, coil:1, mass:1, fluid:1},
 };
+
+// [preset key, label, note, disabled]
+const ATM_PACKS=[
+  ["atm10","ATM10","1.21.1"],
+  ["aero","ATM10: Aeronautics","1.21.1"],
+  ["atm10sky","ATM10 To The Sky","1.21.1"],
+  ["atmons","All the Mons","1.21.1"],
+  ["atm9","ATM9","1.20.1 · older ER version"],
+  ["atm11","ATM11","26.1 · no Extreme Reactors yet",true],
+];
 const CFG_FIELDS = [
   ["power","general.powerProductionMultiplier",0.005,100],
   ["turbinePower","turbine.turbinePowerProductionMultiplier",0.005,100],
@@ -352,7 +376,7 @@ let cfgPreset="default", cfg={...PRESETS.default};
 try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null");
   if(saved&&PRESETS[saved.preset]){ cfgPreset=saved.preset; cfg={...PRESETS[saved.preset]}; } // presets always reload their current values
   else if(saved&&saved.preset==="custom"&&saved.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...saved.cfg}; } }catch(e){}
-{ const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero"}[location.hash]; if(h){ cfgPreset=h; cfg={...PRESETS[h]}; } } // deep links from articles
+{ const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero","#atm10-sky":"atm10sky","#all-the-mons":"atmons","#atm10-lite":"atm10lite","#atm9":"atm9","#atm9-sky":"atm9sky","#atm8":"atm8"}[location.hash]; if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } } // deep links from articles
 function tier(v){ const V=VARIANTS[v];
   return {...V, maxX:Math.min(V.maxX,cfg.maxSize), maxZ:Math.min(V.maxZ,cfg.maxSize), maxY:Math.min(V.maxY,cfg.maxHeight),
     perBlade:Math.max(1,Math.floor(V.perBlade*cfg.fluid))}; }
@@ -758,7 +782,7 @@ function update(src){
 
 /* server config */
 function renderCfg(){
-  for(const [id,key] of [["pDefault","default"],["pAtm10","atm10"],["pAero","aero"],["pCustom","custom"]]) $(id).setAttribute("aria-pressed",cfgPreset===key);
+  renderPresetButtons();
   const mult=cfg.power*cfg.turbinePower;
   $("cfgHint").innerHTML=`Power <b>×${fmt(mult,2)}</b> (${cfg.power} × ${cfg.turbinePower}) · max casing <b>${cfg.maxSize}×${cfg.maxSize}×${cfg.maxHeight}</b>`+
     (cfg.aero!==1||cfg.coil!==1||cfg.mass!==1||cfg.fluid!==1?` · drag/fluid multipliers changed`:``);
@@ -775,7 +799,24 @@ function renderCfg(){
 }
 function saveCfg(){ try{ localStorage.setItem("er-turbine-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
 function usePreset(key){ cfgPreset=key; if(PRESETS[key]) cfg={...PRESETS[key]}; else $("cfgMore").open=true; saveCfg(); update(); }
-$("pDefault").onclick=()=>usePreset("default"); $("pAtm10").onclick=()=>usePreset("atm10"); $("pAero").onclick=()=>usePreset("aero"); $("pCustom").onclick=()=>usePreset("custom");
+// Preset row: Mod defaults · ATM ▾ · Custom. "ATM" opens the pack list; picking a pack closes it and relabels the button.
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"ATM";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
 
 /* wiring */
 $("vBasic").onclick=()=>{ state.variant="basic"; update(); };
