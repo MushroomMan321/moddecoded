@@ -177,10 +177,10 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Server config</h2>
         <div class="seg" role="group" aria-label="Server config preset">
           <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
-          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">ATM</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
           <button type="button" id="pCustom" aria-pressed="false">Custom</button>
         </div>
-        <div class="atm-list" id="atmList" role="group" aria-label="All the Mods pack" hidden></div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
         <p class="cfg-hint" id="cfgHint"></p>
         <details class="cfg" id="cfgMore">
           <summary>Edit values from config/extremereactors/common.toml</summary>
@@ -292,6 +292,7 @@ hardness /= moderation</pre>
 <div class="tip" id="tip" hidden></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
 <script>
 (() => {
 "use strict";
@@ -378,30 +379,16 @@ const ROD = {id:"rod",name:"Fuel rod",mod:"Extreme Reactors",color:"#D7E03A",kin
 // ATM packs: config/extremereactors/common.toml in each github.com/AllTheMods repo (main, checked 2026-09-25):
 //   ATM-10 e5e3d1d, ATM-10-a (ATM10: Aeronautics) d876358, All-the-mods-10-Sky 53b95da, All-the-Mons 56b5a4a, ATM-9 255ca23.
 //   ATM-11 (MC 26.1) does not ship Extreme Reactors yet. Mod defaults = the file's "# Default:" comments.
-const PRESETS = {
-  default: {name:"Mod defaults",       power:1,   reactorPower:1,   fuelUsage:1,   maxSize:32, maxHeight:48},
-  atm10:   {name:"ATM10",              power:4.0, reactorPower:3.0, fuelUsage:0.8, maxSize:32, maxHeight:48},
-  aero:    {name:"ATM10: Aeronautics", power:0.5, reactorPower:0.8, fuelUsage:1.2, maxSize:32, maxHeight:32},
-  atm10sky:{name:"ATM10 To The Sky",   power:4.0, reactorPower:3.0, fuelUsage:0.8, maxSize:32, maxHeight:48},
-  atmons:  {name:"All the Mons",       power:4.0, reactorPower:3.0, fuelUsage:0.8, maxSize:32, maxHeight:48},
-  atm9:    {name:"ATM9",               power:1.0, reactorPower:3.0, fuelUsage:1.0, maxSize:32, maxHeight:48},
-};
+const DEFAULTS = {power:1,   reactorPower:1,   fuelUsage:1,   maxSize:32, maxHeight:48};
 
-// [preset key, label, note, disabled]
-const ATM_PACKS=[
-  ["atm10","ATM10","1.21.1"],
-  ["aero","ATM10: Aeronautics","1.21.1"],
-  ["atm10sky","ATM10 To The Sky","1.21.1"],
-  ["atmons","All the Mons","1.21.1"],
-  ["atm9","ATM9","1.20.1 · older ER version"],
-  ["atm11","ATM11","26.1 · no Extreme Reactors yet",true],
-];
 const CFG_FIELDS=[["power","general.powerProductionMultiplier",0.005,100],["reactorPower","reactor.reactorPowerProductionMultiplier",0.005,100],
   ["fuelUsage","general.fuelUsageMultiplier",0.5,100],["maxSize","reactor.maxReactorSize",3,256],["maxHeight","reactor.maxReactorHeight",3,256]];
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("extremereactors", DEFAULTS, CFG_FIELDS);
 let cfgPreset="default", cfg={...PRESETS.default};
-try{ const s=JSON.parse(localStorage.getItem("er-reactor-cfg")||"null");
+try{ const s=JSON.parse(localStorage.getItem("er-reactor-cfg")||"null"); if(s&&mdPackPresets.legacy[s.preset]) s.preset=mdPackPresets.legacy[s.preset];
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
-{ const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero","#atm10-sky":"atm10sky","#all-the-mons":"atmons","#atm10-lite":"atm10lite","#atm9":"atm9","#atm9-sky":"atm9sky","#atm8":"atm8"}[location.hash]; if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } }
+{ const h=decodeURIComponent(location.hash.slice(1)); if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } }
 
 /* ================= state ================= */
 const state={variant:"reinforced", mode:"active", fuel:"yellorium", insertion:0, X:7, Z:7, Y:7, cells:null, tool:"rod"};
@@ -819,7 +806,7 @@ function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); drawCo
 function renderPresetButtons(){
   const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
   $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
-  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"ATM";
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
   for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
 }
 function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }

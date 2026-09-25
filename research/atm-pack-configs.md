@@ -1,5 +1,7 @@
 # All the Mods pack configs (checked 2026-09-25)
 
+> The calculators read these values from `site/data/packs.js`. Update that file, not this note, when a pack changes.
+
 Source: each pack's public repo under github.com/AllTheMods, default branch `main`, at the commit listed.
 These are repo HEADs, not release tags, so a pack's current release can differ.
 

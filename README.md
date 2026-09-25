@@ -1,50 +1,45 @@
-# Mod Decoded (moddecoded.com)
+# Mod Decoded
 
-Static site explaining modded Minecraft mechanics from each mod's own code.
-Hosted on Cloudflare Pages. No build step: everything in `site/` is served as-is.
+**[moddecoded.com](https://moddecoded.com)**: modded Minecraft calculators built from the mods' own code.
+
+Most modded-MC numbers come from creative-mode trial and error. Here, each calculator reimplements the
+mod's actual logic, pins it to a mod version, and loads each modpack's own config so the numbers match
+your server.
+
+| Calculator | Mod version |
+|---|---|
+| [Extreme Reactors turbine](https://moddecoded.com/tools/extreme-reactors/turbine-calculator/) | 2.4.28 (MC 1.21.1) |
+| [Extreme Reactors reactor](https://moddecoded.com/tools/extreme-reactors/reactor-calculator/) | 2.4.28 (MC 1.21.1) |
+| [Mekanism fission reactor + turbine](https://moddecoded.com/tools/mekanism/fission-reactor-calculator/) | 10.7.19 (MC 1.21.1) |
+| [Create Aeronautics airship](https://moddecoded.com/tools/create-aeronautics/airship-calculator/) | 1.3.2 |
+
+## Contributing
+
+- **Your pack isn't listed?** Add it in [`site/data/packs.js`](site/data/packs.js), or open an
+  [Add a modpack](../../issues/new?template=add-modpack.yml) issue with its config files.
+- **Numbers don't match your build?** Open a
+  [Calculator doesn't match in-game](../../issues/new?template=wrong-result.yml) issue. These are the most useful reports.
+- **Want another mod decoded?** [Request it](../../issues/new?template=request.yml), or 👍 an existing request.
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the config keys each calculator reads.
+
+## Layout
 
 ```
-site/                      what gets deployed
-  index.html               home page
-  404.html                 served automatically by Pages for missing paths
-  _headers                 security headers (Pages reads this file)
-  robots.txt
-  tools/<mod>/<tool>/index.html
-research/                  source notes behind each tool (not deployed)
-wrangler.toml              Pages project config for CLI deploys
+site/                          everything that gets deployed (static, no build step)
+  data/packs.js                modpack config presets used by the calculators
+  tools/<mod>/<tool>/index.html  one self-contained page per calculator
+  guides/                      articles
+research/                      source notes: which class/method each formula comes from
+scripts/                       maintainer deploy helpers (Cloudflare Pages)
 ```
 
-## Preview locally
+Preview locally with `python -m http.server 8000 -d site`, then open http://localhost:8000.
 
-```bash
-npx wrangler pages dev site
-```
+Pushes to `main` are deployed to Cloudflare Pages by the maintainer.
 
-## Deploy
+## License
 
-**Option A — connect GitHub (auto-deploys on every push):**
-1. Push this repo to GitHub.
-2. Cloudflare dashboard → Workers & Pages → Create → Pages → Connect to Git.
-3. Framework preset: *None*. Build command: *(empty)*. Build output directory: `site`.
-
-**Option B — upload from this machine** with the saved, encrypted API token:
-
-```powershell
-powershell -NoProfile -File scripts\save-cloudflare-token.ps1   # once
-powershell -NoProfile -File scripts\wrangler.ps1 pages deploy site --project-name=moddecoded
-```
-
-The token is stored DPAPI-encrypted in `%APPDATA%\moddecoded\`, never in this repo.
-
-## Live
-
-- Production: https://moddecoded.com (and www), Pages project `moddecoded`, branch `main`.
-- Project was created on classic Pages with `--force` once (wrangler 4.139 otherwise delegates
-  Pages commands to Workers). Later deploys need no `--force`.
-- Custom domains were attached via the API (`scripts/cf-api.ps1`). Pages did **not** create the DNS
-  records itself, so proxied CNAMEs `moddecoded.com` and `www` -> `moddecoded.pages.dev` were added by hand.
-
-## Adding a tool
-
-Create `site/tools/<mod>/<tool>/index.html`, add a card for it in `site/index.html`, and
-put the source notes (class/method references, version) in `research/`.
+Code is [MIT](LICENSE). Pack data (`site/data/packs.js`) and research notes (`research/`) are
+[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Mod names belong to their authors.
+This project isn't affiliated with any mod or modpack.

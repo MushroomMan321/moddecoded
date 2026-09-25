@@ -1,0 +1,29 @@
+name: Request a mod, calculator or guide
+description: Something you'd like decoded.
+title: "[Request] "
+labels: ["request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Requests are triaged, not promised. Upvote existing requests with 👍 instead of adding a new one;
+        that's how the next tool gets picked.
+  - type: input
+    id: mod
+    attributes:
+      label: Mod and version
+      placeholder: "Bigger Reactors 0.7, NuclearCraft Neoteric, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: question
+    attributes:
+      label: What do you want answered?
+      description: The mechanic, the question players keep getting wrong, or the calculator you want.
+    validations:
+      required: true
+  - type: textarea
+    id: links
+    attributes:
+      label: Where people ask about it (optional)
+      description: Reddit threads, GitHub issues, wiki pages that are wrong or out of date.
