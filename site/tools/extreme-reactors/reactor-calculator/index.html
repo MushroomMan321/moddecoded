@@ -400,12 +400,13 @@ function rodReach(cells,ix,iz){ const reached=new Set();
   for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ if(cells[x*iz+z]!=="rod") continue;
     for(const [dx,dz] of DIRS) for(let k=1;k<=4;k++){ const X=x+dx*k, Z=z+dz*k; if(X<0||Z<0||X>=ix||Z>=iz) break; reached.add(X*iz+Z); } }
   return reached; }
+// Rod layouts replace the old rods with air; only the fill buttons paint with the selected block.
 function applyPattern(p){
   const ix=state.X-2, iz=state.Z-2, fill=state.tool==="rod"?"graphite":state.tool, reached=p==="reach"?rodReach(state.cells,ix,iz):null;
   for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const i=x*iz+z; const cur=state.cells[i];
-    if(p==="grid"){ const rx=ix<3?x===Math.floor((ix-1)/2):x%2===1, rz=iz<3?z===Math.floor((iz-1)/2):z%2===1; state.cells[i]=rx&&rz?"rod":(cur==="rod"?fill:cur); }
-    else if(p==="checker") state.cells[i]=((x+z)%2===0)?"rod":(cur==="rod"?fill:cur);
-    else if(p==="center") state.cells[i]=(x===Math.floor((ix-1)/2)&&z===Math.floor((iz-1)/2))?"rod":(cur==="rod"?fill:cur);
+    if(p==="grid"){ const rx=ix<3?x===Math.floor((ix-1)/2):x%2===1, rz=iz<3?z===Math.floor((iz-1)/2):z%2===1; state.cells[i]=rx&&rz?"rod":(cur==="rod"?"air":cur); }
+    else if(p==="checker") state.cells[i]=((x+z)%2===0)?"rod":(cur==="rod"?"air":cur);
+    else if(p==="center") state.cells[i]=(x===Math.floor((ix-1)/2)&&z===Math.floor((iz-1)/2))?"rod":(cur==="rod"?"air":cur);
     else if(p==="fill"){ if(cur!=="rod") state.cells[i]=fill; }
     else if(p==="reach"){ if(cur!=="rod"&&reached.has(i)) state.cells[i]=fill; }
     else if(p==="clear") state.cells[i]="air";
