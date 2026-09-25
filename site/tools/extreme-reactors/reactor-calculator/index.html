@@ -196,8 +196,8 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
           <button type="button" id="vReinf" aria-pressed="true">Reinforced</button>
         </div>
         <div class="seg" role="group" aria-label="Cooling mode">
-          <button type="button" id="mPassive" aria-pressed="true">Passive (RF)</button>
-          <button type="button" id="mActive" aria-pressed="false">Active (steam)</button>
+          <button type="button" id="mPassive" aria-pressed="false">Passive (RF)</button>
+          <button type="button" id="mActive" aria-pressed="true">Active (steam)</button>
         </div>
         <div class="seg" role="group" aria-label="Fuel">
           <button type="button" id="fYel" aria-pressed="true">Yellorium / Uranium</button>
@@ -404,7 +404,7 @@ try{ const s=JSON.parse(localStorage.getItem("er-reactor-cfg")||"null");
 { const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero","#atm10-sky":"atm10sky","#all-the-mons":"atmons","#atm10-lite":"atm10lite","#atm9":"atm9","#atm9-sky":"atm9sky","#atm8":"atm8"}[location.hash]; if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } }
 
 /* ================= state ================= */
-const state={variant:"reinforced", mode:"passive", fuel:"yellorium", insertion:0, X:7, Z:7, Y:7, cells:null, tool:"rod"};
+const state={variant:"reinforced", mode:"active", fuel:"yellorium", insertion:0, X:7, Z:7, Y:7, cells:null, tool:"rod"};
 function limits(){ const V=VARIANTS[state.variant]; return {maxXZ:Math.min(V.max,cfg.maxSize), maxY:Math.min(V.max,cfg.maxHeight)}; }
 function resizeCells(ix,iz,old,oix,oiz){ const c=new Array(ix*iz).fill("air"); if(old){ for(let x=0;x<Math.min(ix,oix);x++)for(let z=0;z<Math.min(iz,oiz);z++) c[x*iz+z]=old[x*oiz+z]; } return c; }
 function applyPattern(p){
@@ -845,8 +845,8 @@ $("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",mod
 $("tRebuild").onclick=()=>rebuild3D(true);
 addEventListener("resize",()=>{ if(result) drawChart(result); });
 
-// sensible starting design: 7x7x7, rods every other block, graphite between
-state.cells=resizeCells(state.X-2,state.Z-2); state.cix=state.X-2; state.ciz=state.Z-2; state.tool="graphite"; applyPattern("grid"); applyPattern("fill"); state.tool="rod";
+// starting design: 7x7x7 active (steam) reactor, rods every other block, air between
+state.cells=resizeCells(state.X-2,state.Z-2); state.cix=state.X-2; state.ciz=state.Z-2; state.tool="air"; applyPattern("grid"); applyPattern("fill"); state.tool="rod";
 initGL(); update();
 })();
 </script>
