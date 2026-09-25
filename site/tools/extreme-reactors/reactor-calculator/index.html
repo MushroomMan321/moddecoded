@@ -770,7 +770,11 @@ function renderResults(R){
   const n=[];
   if(!R.converged) n.push(["warn","This design hadn't settled within the simulation limit. It's still heating up, so the real reactor will end up hotter than shown."]);
   if(R.casingLossFrac>0.25) n.push(["warn",`${fmt(R.casingLossFrac*100,0)}% of the radiation hits the casing and is wasted. Rods next to the wall lose rays: leave a block or two of coolant between the outer rods and the casing.`]);
-  const airCells=state.cells.filter(c=>c==="air").length; if(airCells>0) n.push(["warn",`${airCells} interior column${airCells>1?"s are":" is"} air. Air absorbs only 10% and turns a quarter of that into heat, so it barely helps. Fill with a coolant block.`]);
+  // Only columns within 4 blocks of a rod in a straight line (the ray range) touch the sim; the rest can be anything.
+  const {ix,iz}=R.C, reached=new Set();
+  for(const [x,z] of R.C.cols) for(const [dx,dz] of DIRS) for(let k=1;k<=4;k++){ const X=x+dx*k, Z=z+dz*k; if(X<0||Z<0||X>=ix||Z>=iz) break; reached.add(X*iz+Z); }
+  const airCells=state.cells.filter((c,i)=>c==="air"&&reached.has(i)).length; if(airCells>0) n.push(["warn",`${airCells} interior column${airCells>1?"s are":" is"} air within a rod's radiation range. Air absorbs only 10% and turns a quarter of that into heat, so it barely helps. Fill with a coolant block.`]);
+  const idle=state.cells.filter((c,i)=>c!=="rod"&&!reached.has(i)).length; if(idle>0) n.push(["good",`${idle} column${idle>1?"s are":" is"} more than 4 blocks in a straight line from every rod. Radiation never reaches ${idle>1?"them":"it"}, so ${idle>1?"they":"it"} can be anything, air included.`]);
   if(act&&R.water>=R.fluidCap*0.98) n.push(["bad",R.fluidCap>=VARIANTS[state.variant].maxFluid
     ? `Coolant-limited: ${fmt(R.fluidCap)} mB/t is the most water any Reinforced reactor can boil per tick, so the extra heat just raises the casing temperature. Use fewer rods, push the control rods in, or split this into two reactors.`
     : `Coolant-limited: this casing can only boil ${fmt(R.fluidCap)} mB/t (1,000 per casing block, up to 200,000). A larger casing raises the limit.`]);
