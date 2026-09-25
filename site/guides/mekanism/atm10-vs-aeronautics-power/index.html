@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="canonical" href="https://moddecoded.com/guides/mekanism/atm10-vs-aeronautics-power/">
+<title>Mekanism in ATM10 vs ATM10: Aeronautics · Mod Decoded</title>
+<meta name="description" content="Every Mekanism power setting that differs between ATM10, ATM10: Aeronautics and the mod defaults: fission is 1/4 in ATM10 and 1/125 in Aeronautics, fusion 1/100, solar and wind reshuffled, and small turbines tank-limited in both.">
+<meta property="og:title" content="Mekanism power in ATM10 vs ATM10: Aeronautics, setting by setting">
+<meta property="og:description" content="The same fission reactor makes 2.88M FE/t on default settings, 720k in ATM10 and 23k in ATM10: Aeronautics. Here's every setting behind that.">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://moddecoded.com/guides/mekanism/atm10-vs-aeronautics-power/">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
+  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0; --up:#2E7D4F; --down:#B03434;
+  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root{ color-scheme:dark; --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614; --up:#5CC48A; --down:#EE7B7B; }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:17px;line-height:1.65;padding-inline:16px;padding-block:28px 72px}
+article{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+.kicker{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 12px}
+.kicker b{color:var(--accent-ink);font-weight:600}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(30px,5.2vw,44px);line-height:1.05;margin:0;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:500;font-size:24px;line-height:1.2;margin:18px 0 0;text-wrap:balance}
+p{margin:0;max-width:68ch}
+a{color:var(--accent-ink)}
+code{font-family:var(--font-mono);font-size:.86em;background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.tldr{background:var(--accent-soft);border-radius:6px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.tldr h2{margin:0;font-size:18px}
+.tldr ul{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.big{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+@media (max-width:560px){.big{grid-template-columns:minmax(0,1fr)}}
+.big div{background:var(--surface);padding:14px;display:flex;flex-direction:column;gap:2px}
+.big .k{font-size:12.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.big .v{font:600 26px var(--font-mono);font-variant-numeric:tabular-nums}
+.big .v small{font-size:13px;color:var(--muted);font-weight:400}
+.big .x{font-family:var(--font-mono);font-size:13px}
+.up{color:var(--up)} .down{color:var(--down)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table{border-collapse:collapse;width:100%;font-size:15px;min-width:600px}
+th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12.5px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;font-weight:700;background:var(--surface)}
+td.n{font-family:var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+.cta{display:flex;flex-wrap:wrap;gap:10px}
+.cta a{font:600 15px var(--font-body);text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:9px 14px}
+.cta a.primary{background:var(--accent-soft);border-color:var(--accent)}
+.cta a:hover,.cta a:focus-visible{border-color:var(--accent);outline:none}
+.note{font-size:15px;color:var(--muted)}
+.sources{border-top:1px solid var(--line);padding-top:16px;font-size:14px;color:var(--muted)}
+.sources ul{margin:6px 0 0;padding-left:20px}
+</style>
+</head>
+<body>
+<article>
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Mekanism / ATM10 vs ATM10: Aeronautics</nav>
+  <div class="kicker"><span><b>Mekanism 10.7.19</b></span><span>ATM10 · ATM10: Aeronautics 0.6.1</span><span>Sep 25, 2026</span></div>
+  <h1>Mekanism power in ATM10 vs ATM10: Aeronautics, setting by setting</h1>
+  <p>Two packs with almost the same name tune Mekanism in opposite directions. ATM10 makes passive generators stronger and fission weaker. ATM10: Aeronautics makes fission and fusion <em>much</em> weaker and machines cheaper to run. If you follow a guide written for the other pack, or for default Mekanism, your numbers will be off by up to 125×.</p>
+
+  <section class="tldr" aria-labelledby="tldr">
+    <h2 id="tldr">The short version</h2>
+    <ul>
+      <li><b>Fission:</b> each mB of fuel is worth ¼ of the default in ATM10 and <b>1/125</b> in Aeronautics.</li>
+      <li><b>Fusion:</b> fuel energy is default in ATM10 and <b>1/100</b> in Aeronautics, with the thermocouple share cut from 0.05 to 0.04 (ATM10) and 0.02 (Aeronautics).</li>
+      <li><b>Solar, wind, heat:</b> ATM10 boosts them 2–4×. Aeronautics leaves most near default, trims wind and bio, and doubles the Nether bonus for heat generators.</li>
+      <li><b>Turbines:</b> both packs give coils 8 blades each and shrink the steam tank to a tenth, which makes small turbines tank-limited.</li>
+    </ul>
+  </section>
+
+  <div class="big" role="group" aria-label="The same fission reactor in each pack">
+    <div><span class="k">Mod default</span><span class="v">2.88M <small>FE/t</small></span><span class="x">×1</span></div>
+    <div><span class="k">ATM10</span><span class="v down">720k <small>FE/t</small></span><span class="x down">×¼</span></div>
+    <div><span class="k">ATM10: Aeronautics</span><span class="v down">23.0k <small>FE/t</small></span><span class="x down">×1/125</span></div>
+  </div>
+  <p class="note">One reactor: 7×7×7, nine separated 4-high fuel columns (36 assemblies), water-cooled, burning 36 mB/t, feeding a full 17×17×18 turbine. It's safe (below 1,200 K) in all three.</p>
+
+  <h2>Fission: what a mB of fuel is worth</h2>
+  <p>A fission reactor turns every mB of fuel it burns into <code>energyPerFissionFuel</code> of heat. Water carries that heat away as steam at about 50 heat per mB, and a full turbine turns each mB of steam into 10 J (4 FE).</p>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Per 1 mB of fuel</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
+      <tbody>
+        <tr><td><code>energyPerFissionFuel</code></td><td class="n">1,000,000</td><td class="n">250,000</td><td class="n">8,000</td></tr>
+        <tr><td>Steam made</td><td class="n">20,000 mB</td><td class="n">5,000 mB</td><td class="n">160 mB</td></tr>
+        <tr><td>Power through a full turbine</td><td class="n">80,000 FE</td><td class="n">20,000 FE</td><td class="n">640 FE</td></tr>
+        <tr><td>Reactor above at 36 mB/t</td><td class="n">703 K · 2.88M FE/t</td><td class="n">456 K · 720k FE/t</td><td class="n">376 K · 23.0k FE/t</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The low heat per fuel has a side effect: an Aeronautics reactor barely warms up, so heat is almost never what stops you. The limit is how many fuel assemblies you build (each allows 1 mB/t of burn) and how much fuel you can supply. The example reactor would stay below the 1,200 K damage point up to about 11,000 mB/t if it had the assemblies for it. Aeronautics also raises the default burn rate a new reactor starts at from 0.1 to 0.15 mB/t.</p>
+  <p>To put 23,000 FE/t in perspective: in Aeronautics an Advanced Solar Generator peaks at 160 FE/t, so that whole reactor and 17×17×18 turbine equal about 144 advanced solar panels. In ATM10 the same reactor equals about 1,500 of that pack's much stronger panels.</p>
+  <div class="cta">
+    <a class="primary" href="/tools/mekanism/fission-planner/#atm10">Plan a reactor for ATM10</a>
+    <a class="primary" href="/tools/mekanism/fission-planner/#atm10-aeronautics">Plan a reactor for ATM10: Aeronautics</a>
+  </div>
+
+  <h2>Industrial turbines: the same change in both packs</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Setting</th><th>Mod default</th><th>Both ATM10 packs</th><th>What it does</th></tr></thead>
+      <tbody>
+        <tr><td><code>bladesPerCoil</code></td><td class="n">4</td><td class="n">8</td><td>Half as many coils for the same blades.</td></tr>
+        <tr><td><code>ventChemicalFlow</code></td><td class="n">32,000</td><td class="n">43,478</td><td>Each vent passes 36% more steam.</td></tr>
+        <tr><td><code>condenserRate</code></td><td class="n">64,000</td><td class="n">128,000</td><td>Each condenser returns twice the water.</td></tr>
+        <tr><td><code>chemicalPerTank</code></td><td class="n">64,000</td><td class="n">6,400</td><td>Steam storage per block is a tenth.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>That last one matters more than it looks. A turbine can't push more steam per tick than its tank holds, and the tank is <code>rotor height × width × depth × chemicalPerTank</code>. A 7×7×10 turbine with a 6-block rotor shows a max flow of 2.83M mB/t in both packs, but its tank only holds 1.88M, so 1.88M mB/t is its real limit. The in-game "max flow" doesn't show this. Big turbines are fine: a 17×17×18 holds 25.9M against 15M flow.</p>
+
+  <h2>Fusion</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Setting</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
+      <tbody>
+        <tr><td><code>fuelEnergy</code></td><td class="n">10,000,000</td><td class="n">10,000,000</td><td class="n">100,000</td></tr>
+        <tr><td><code>thermocoupleEfficiency</code></td><td class="n">0.05</td><td class="n">0.04</td><td class="n">0.02</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>The config describes <code>fuelEnergy</code> as affecting injection rate, max temperature and ignition temperature, and <code>thermocoupleEfficiency</code> as the fraction of casing heat turned into energy. We haven't traced the fusion reactor's code yet, so we won't put an exact output ratio on it, but in Aeronautics both settings point the same way: a lot less power.</p>
+
+  <h2>Passive generators</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Generator (FE/t)</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
+      <tbody>
+        <tr><td>Solar (peak)</td><td class="n">20</td><td class="n up">60</td><td class="n">20</td></tr>
+        <tr><td>Advanced Solar (peak)</td><td class="n">120</td><td class="n up">480</td><td class="n up">160</td></tr>
+        <tr><td>Wind (min – max)</td><td class="n">24 – 192</td><td class="n up">60 – 360</td><td class="n down">16 – 120</td></tr>
+        <tr><td>Heat generator (base)</td><td class="n">80</td><td class="n up">320</td><td class="n">80</td></tr>
+        <tr><td>Heat generator Nether bonus</td><td class="n">+40</td><td class="n">+40</td><td class="n up">+80</td></tr>
+        <tr><td>Bio generator</td><td class="n">140</td><td class="n">140</td><td class="n down">72</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="note">Config values are in Joules; these are divided by 2.5 (the <code>feConversionRate</code> in all three) to give FE. Aeronautics also starts wind scaling at Y 30 instead of 24, and gives Gas-Burning Generators a 10,000 mB tank instead of 18,000.</p>
+
+  <h2>Machine energy costs</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>Joules per operation</th><th>Mod default</th><th>ATM10</th><th>ATM10: Aeronautics</th></tr></thead>
+      <tbody>
+        <tr><td>Digital Miner</td><td class="n">1,000</td><td class="n">1,000</td><td class="n up">500</td></tr>
+        <tr><td>Electric Pump</td><td class="n">100</td><td class="n">100</td><td class="n up">50</td></tr>
+        <tr><td>Laser</td><td class="n">10,000</td><td class="n down">50,000</td><td class="n">10,000</td></tr>
+        <tr><td>Antiprotonic Nucleosynthesizer</td><td class="n">100,000</td><td class="n">100,000</td><td class="n up">20,000</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>Green means cheaper to run. Aeronautics pairs its weaker power with cheaper machines; ATM10 makes the laser five times as expensive.</p>
+
+  <h2>Check your own pack</h2>
+  <p>These all live in <code>config/Mekanism/generators.toml</code>, <code>general.toml</code> and <code>machine-usage.toml</code> in your instance folder. On a server, the server's copy is what counts. Each setting's mod default is written right above it in a <code>#&nbsp;Default:</code> comment, so you can spot a pack's changes by comparing the two.</p>
+
+  <footer class="sources">
+    <b>Sources</b>
+    <ul>
+      <li>Mekanism 1.21.1-10.7.19.85 source (tag <code>v1.21.1-10.7.19.85</code>): <code>FissionReactorMultiblockData</code>, <code>TurbineMultiblockData</code>, config classes. Reactor figures come from our <a href="/tools/mekanism/fission-planner/">fission planner</a>, which reproduces that code.</li>
+      <li>ATM10: <a href="https://github.com/AllTheMods/ATM-10/tree/main/config/Mekanism">AllTheMods/ATM-10 config/Mekanism</a> (main branch, September 2026). Its files include a few keys current Mekanism no longer reads, so the pack may run a slightly different Mekanism build; every setting on this page still exists in 10.7.19.</li>
+      <li>ATM10: Aeronautics 0.6.1: the server pack's <code>config/Mekanism</code>, read from a live server.</li>
+      <li>Mod defaults: the <code># Default:</code> comments Mekanism writes into those files.</li>
+    </ul>
+  </footer>
+</article>
+</body>
+</html>
