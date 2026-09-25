@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="canonical" href="https://moddecoded.com/tools/extreme-reactors/reactor-planner/">
+<title>Extreme Reactors Reactor Planner</title>
+<meta name="description" content="Plan an Extreme Reactors fission reactor: paint fuel rods and coolant blocks, pick passive or active mode, and see RF/t, steam, temperatures and fuel burn simulated tick by tick with the mod's own code (1.21.1-2.4.28).">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
+  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
+  --good:#2E7D4F; --warn:#A8591A; --bad:#B03434; --heat:#D2552B;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ color-scheme:dark;
+    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+    --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; }
+}
+:root[data-theme="dark"]{ color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; }
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:70ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:1/1;max-height:64vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font-family:var(--font-display);font-size:30px;line-height:1;color:#F2E36A}
+.hud .big small{font-size:14px;color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.dims{font-family:var(--font-mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+.dims b{color:var(--ink);font-weight:600}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:500;font-size:18px;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:120px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:96px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+
+/* JEI palette: fixed Minecraft GUI look in both themes */
+.jei{background:#C6C6C6;border:2px solid;border-color:#FFFFFF #555555 #555555 #FFFFFF;box-shadow:0 0 0 2px #000;border-radius:3px;padding:8px;color:#3F3F3F;font-family:var(--font-display);display:flex;flex-direction:column;gap:8px}
+.jei-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.jei-title{font-size:15px;color:#404040;margin-right:auto}
+.jei-search{width:100%;background:#000;color:#E0E0E0;border:2px solid #A0A0A0;font:500 14px var(--font-display);padding:3px 6px;border-radius:0}
+.jei-search:focus-visible{outline:2px solid #FFFF55}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,40px);justify-content:start;max-height:168px;overflow:auto}
+.slot{width:40px;height:40px;background:#8B8B8B;border:2px solid;border-color:#373737 #FFFFFF #FFFFFF #373737;display:grid;place-items:center;cursor:pointer;padding:0;position:relative}
+.slot:hover,.slot:focus-visible{background:#A9A9A9;outline:none}
+.slot[aria-pressed="true"]{background:#C8C850;box-shadow:inset 0 0 0 2px #FFFF55}
+.slot canvas{width:32px;height:32px;image-rendering:pixelated}
+.jei-foot{font-size:12px;color:#555;font-family:var(--font-mono)}
+.tip{position:fixed;z-index:20;pointer-events:none;background:rgba(16,0,16,.94);border:2px solid;border-image:linear-gradient(#5000FF,#28007F) 1;padding:6px 8px;font:500 14px/1.35 var(--font-display);color:#fff;max-width:280px}
+.tip .g{color:#AAAAAA;font-size:13px}.tip .s{color:#55FF55}.tip .m{color:#5555FF;font-style:italic;font-size:13px}
+
+/* layout editor */
+.editor{display:flex;flex-direction:column;gap:8px}
+.core-wrap{overflow:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;background:var(--viewport-2);padding:8px;width:max-content;max-height:420px}
+#core{display:block;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* results */
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:600 20px var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font-size:12px;color:var(--muted);font-weight:400}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font-family:var(--font-display);font-size:34px;font-weight:700}
+.status{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.chart{width:100%;height:170px;display:block}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Extreme Reactors / Reactor Planner</nav>
+  <header class="top">
+    <h1>Extreme Reactors <span class="y">Reactor Planner</span></h1>
+    <span class="src">Simulated with the tick loop from the Extreme Reactors 1.21.1-2.4.28 jar</span>
+  </header>
+  <p class="lede">Paint fuel rods and coolant blocks, choose passive or active cooling, and the planner runs the mod's own <b>ReactorLogic</b> tick by tick until the reactor settles. You get the same RF/t, steam, temperatures and fuel burn the controller would show.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D reactor preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="Rotating 3D model of the reactor design"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="viewbar">
+          <button id="tCasing" aria-pressed="true" type="button">Casing</button>
+          <button id="tMods" aria-pressed="true" type="button">Coolant blocks</button>
+          <button id="tRebuild" type="button">Rebuild</button>
+        </div>
+      </div>
+      <div class="dims" id="dims"></div>
+      <div class="box">
+        <h2>Casing size</h2>
+        <div class="row"><label for="extX">Width (X)</label><input type="range" id="extX" min="3" max="32"><input class="num" id="extXN" type="number" min="3" max="32" aria-label="Exterior width X in blocks"></div>
+        <div class="row"><label for="extZ">Depth (Z)</label><input type="range" id="extZ" min="3" max="32"><input class="num" id="extZN" type="number" min="3" max="32" aria-label="Exterior depth Z in blocks"></div>
+        <div class="row"><label for="extY">Height (Y)</label><input type="range" id="extY" min="3" max="48"><input class="num" id="extYN" type="number" min="3" max="48" aria-label="Exterior height Y in blocks"></div>
+        <p class="hint" id="casingHint"></p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Reactor inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm10" aria-pressed="false">ATM10</button>
+          <button type="button" id="pAero" aria-pressed="false">ATM10: Aeronautics</button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/extremereactors/common.toml</summary>
+          <p class="hint" style="margin-top:8px">Packs change these a lot: <a href="/guides/extreme-reactors/atm10-turbine-power/">ATM10 and ATM10: Aeronautics are 30× apart on turbines</a>.</p>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Reactor</h2>
+        <div class="seg" role="group" aria-label="Reactor tier">
+          <button type="button" id="vBasic" aria-pressed="false">Basic</button>
+          <button type="button" id="vReinf" aria-pressed="true">Reinforced</button>
+        </div>
+        <div class="seg" role="group" aria-label="Cooling mode">
+          <button type="button" id="mPassive" aria-pressed="true">Passive (RF)</button>
+          <button type="button" id="mActive" aria-pressed="false">Active (steam)</button>
+        </div>
+        <div class="seg" role="group" aria-label="Fuel">
+          <button type="button" id="fYel" aria-pressed="true">Yellorium / Uranium</button>
+          <button type="button" id="fBlu" aria-pressed="false">Blutonium</button>
+          <button type="button" id="fVer" aria-pressed="false">Verderium</button>
+        </div>
+        <div class="row"><label for="rods">Control rods in</label><input type="range" id="rods" min="0" max="100" step="1"><input class="num" id="rodsN" type="number" min="0" max="100" aria-label="Control rod insertion percent"></div>
+      </div>
+
+      <div class="sect">
+        <h2>Core layout</h2>
+        <div class="jei">
+          <div class="jei-head"><span class="jei-title">Paint with</span></div>
+          <input class="jei-search" id="search" type="search" placeholder="Search, or @fluid" aria-label="Filter blocks" autocomplete="off">
+          <div class="slots" id="slots" role="toolbar" aria-label="Blocks to paint"></div>
+          <div class="jei-foot" id="jeiFoot"></div>
+        </div>
+        <div class="editor">
+          <div class="core-wrap"><canvas id="core" aria-label="Top-down core layout. Click or drag to paint the selected block."></canvas></div>
+          <div class="legend" id="legend"></div>
+          <div class="btns">
+            <button class="btn" type="button" data-pattern="grid">Rods every other block</button>
+            <button class="btn" type="button" data-pattern="checker">Checkerboard</button>
+            <button class="btn" type="button" data-pattern="center">One center rod</button>
+            <button class="btn" type="button" data-pattern="fill">Fill non-rods with selected</button>
+            <button class="btn" type="button" data-pattern="clear">Clear</button>
+          </div>
+          <p class="hint">Top-down view of the inside. Fuel rods and coolant blocks run the full height. Control rods sit on the top casing above each rod column.</p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Steady state</h2>
+        <div class="status" id="status"></div>
+        <div class="results" id="results"></div>
+        <canvas class="chart" id="chart" aria-label="Warm-up: casing temperature and output over time"></canvas>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">Assumes the reactor is kept topped up with fresh fuel, and waste is ejected automatically. Active mode assumes unlimited water in and steam pulled out as fast as it's made.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>One rod block fires per tick</h3>
+        <p>Each tick, exactly one fuel-rod block radiates, taking turns through every rod block. Its strength comes from the whole reactor's fuel, not its own share.</p>
+<pre>raw    = totalFuel × fissionEventsPerFuelUnit
+scaled = ((raw^r) / columns)^r × columns</pre>
+        <span class="ref">ReactorLogic.radiate · FuelRodsMap.getNextIrradiationSource</span>
+      </div>
+      <div class="fact">
+        <h3>Radiation only goes sideways, 4 blocks max</h3>
+        <p>Rays leave in the 4 directions perpendicular to the rods and stop after 4 blocks. Casing, glass and ports absorb whatever reaches them and waste it: it heats nothing.</p>
+<pre>for each of 4 sideways directions:
+  step ≤ 4 blocks, stop at casing</pre>
+        <span class="ref">ReactorLogic.radiate · AbstractReactorEntity.moderateRadiation</span>
+      </div>
+      <div class="fact">
+        <h3>Blocks between rods turn radiation into heat</h3>
+        <p>Each block absorbs part of the ray, turns some of that into casing heat and softens the ray, so the next rod catches more of it. Rods catch radiation as fuel heat.</p>
+<pre>absorbed = I × absorption × (1 − hardness)
+heat    += absorbed × heatEfficiency × 10
+hardness /= moderation</pre>
+        <span class="ref">MultiblockReactor.applyModerator</span>
+      </div>
+      <div class="fact">
+        <h3>Passive power is just casing temperature</h3>
+        <p>In passive mode, RF/t depends only on how hot the casing is and how much inside surface the reactor has.</p>
+<pre>RF/t = 0.06 × internalArea × (T − 20)
+       × powerMultipliers × tierEfficiency</pre>
+        <span class="ref">ReactorLogic.transferHeatBetweenReactorAndCoolant</span>
+      </div>
+      <div class="fact">
+        <h3>Heat only flows fuel → casing</h3>
+        <p>Heat moves from the fuel rods to the casing, never back. How fast depends on what touches each rod: casing 0.6, air 0.05, other rods 0.05, and each coolant block its own conductivity.</p>
+<pre>if (fuelT − casingT &gt; 0.01)
+  q = ΔT × Σ neighbour conductivity</pre>
+        <span class="ref">ReactorLogic.transferHeatBetweenFuelAndReactor</span>
+      </div>
+      <div class="fact">
+        <h3>"Fertility" is hidden but cuts fuel burn</h3>
+        <p>Radiation soaked up by rods builds a hidden fertility value. The controller never shows it, but it divides your fuel burn by log₁₀(fertility) + 1.</p>
+<pre>fuel/t = 7e-4 × raw / (log10(fertility) + 1)
+         × fuelUsageMultiplier</pre>
+        <span class="ref">ReactorLogic.radiate · getFertilityModifier</span>
+      </div>
+    </div>
+  </section>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+
+/* ================= data from the jar ================= */
+// FuelProperties(moderationFactor, absorptionCoefficient, hardnessDivisor, fissionEventsPerFuelUnit, fuelUnitsPerFissionEvent)
+// Reaction reactivity from ReactionsRegistry.
+const FUELS = {
+  yellorium:{name:"Yellorium",  mf:1.5,  abs:0.5,    hd:1.0,    fe:0.01,   fu:7.0e-4, reactivity:1.05,   color:"#D7E03A"},
+  blutonium:{name:"Blutonium",  mf:2.23, abs:0.6,    hd:2.0,    fe:0.0137, fu:6.0e-4, reactivity:1.0871, color:"#3F63E0"},
+  verderium:{name:"Verderium",  mf:3.74, abs:0.8741, hd:2.0049, fe:0.0312, fu:0.0081, reactivity:1.0984, color:"#3CC56A"},
+};
+// Variant: create(5) for Basic, create(1000) for Reinforced; builder setters.
+const VARIANTS = {
+  basic:     {name:"Basic",      max:5,    genEff:0.8, partFluid:0,    maxFluid:0,      vaporEff:0},
+  reinforced:{name:"Reinforced", max:1000, genEff:1.0, partFluid:1000, maxFluid:200000, vaporEff:0.85},
+};
+// Moderator(absorption, heatEfficiency, moderation, heatConductivity): ModeratorsRegistry / ReactorGameData.registerModerators
+const MODS = [
+ ["air","Air","Empty","#000000",0.1,0.25,1.1,0.05,"air"],
+ ["water","Water","Minecraft","#2F6BDA",0.33,0.5,1.33,0.1,"fluid"],
+ ["ice","Ice","Minecraft","#A9CBF5",0.33,0.33,1.15,0.1],
+ ["glass","Glass","c:glass/colorless","#D8EEF2",0.2,0.25,1.1,0.3],
+ ["iron","Block of Iron","Minecraft","#D6D6D6",0.5,0.75,1.4,0.6],
+ ["copper","Block of Copper","Minecraft","#D07A48",0.5,0.75,1.4,1.0],
+ ["gold","Block of Gold","Minecraft","#F2CF34",0.52,0.8,1.45,2.0],
+ ["diamond","Block of Diamond","Minecraft","#7FE3DC",0.55,0.85,1.5,3.0],
+ ["emerald","Block of Emerald","Minecraft","#3ED07A",0.55,0.85,1.5,2.5],
+ ["netherite","Block of Netherite","Minecraft","#4B4346",0.55,0.95,1.65,3.0],
+ ["graphite","Graphite Block","Extreme Reactors","#34373A",0.1,0.5,2.0,2.0],
+ ["dry_ice","Dry Ice","Extreme Reactors","#E6F0F5",0.42,0.52,1.32,0.1],
+ ["tin","Block of Tin","Thermal","#C9D4DC",0.5,0.73,1.38,1.5],
+ ["nickel","Block of Nickel","Thermal","#D8D0A0",0.51,0.77,1.4,0.6],
+ ["lead","Block of Lead","Thermal","#6B6F8C",0.75,0.75,1.75,1.5],
+ ["bronze","Block of Bronze","Thermal","#C58440",0.51,0.77,1.41,1.0],
+ ["invar","Block of Invar","Thermal","#BCC5B6",0.5,0.79,1.43,0.6],
+ ["silver","Block of Silver","Thermal","#D6E4EC",0.51,0.79,1.43,1.5],
+ ["electrum","Block of Electrum","Thermal","#E6D25C",0.53,0.82,1.47,2.2],
+ ["signalum","Block of Signalum","Thermal","#F07A28",0.51,0.75,1.42,1.0],
+ ["lumium","Block of Lumium","Thermal","#F4E9A0",0.51,0.79,1.45,1.5],
+ ["enderium","Block of Enderium","Thermal","#1E6C6A",0.6,0.88,1.6,3.0],
+ ["apatite","Block of Apatite","c:storage_block/apatite","#4FA3C9",0.48,0.73,1.3,0.15],
+ ["cinnabar","Block of Cinnabar","c:storage_block/cinnabar","#B23A3A",0.48,0.75,1.32,0.15],
+ ["osmium","Block of Osmium","Mekanism","#A8BCD2",0.51,0.77,1.41,1.0],
+ ["steel","Block of Steel","Mekanism","#7A8087",0.5,0.78,1.42,0.6],
+ ["refined_obsidian","Refined Obsidian","Mekanism","#5C3F7C",0.53,0.79,1.42,1.0],
+ ["refined_glowstone","Refined Glowstone","Mekanism","#F1D46A",0.54,0.79,1.44,2.5],
+ ["zinc","Block of Zinc","Create","#B4C0B6",0.51,0.77,1.41,1.0],
+ ["brass","Block of Brass","Create","#D6AA3E",0.52,0.78,1.42,1.0],
+ ["aluminum","Block of Aluminum","Common tag","#D4D9DE",0.5,0.78,1.42,0.6],
+ ["platinum","Block of Platinum","Common tag","#8ED0E6",0.57,0.86,1.58,2.5],
+ ["manasteel","Manasteel Block","Botania","#4A8EE6",0.6,0.75,1.5,0.6],
+ ["elementium","Elementium Block","Botania","#EE8EC6",0.61,0.77,1.52,2.5],
+ ["terrasteel","Terrasteel Block","Botania","#3FBE4A",0.57,0.87,1.52,3.0],
+ ["draconium","Draconium Block","Draconic Evolution","#6A2FA0",0.59,0.88,1.6,3.3],
+ ["draconium_awakened","Awakened Draconium","Draconic Evolution","#F07A1A",0.76,0.88,1.78,4.8],
+ ["dragonsteel","Dragonsteel Block","c:storage_blocks/dragonsteel","#3A3F5A",0.55,0.81,1.46,1.5],
+ ["twinite","Twinite Block","c:storage_blocks/twinite","#D9A8F0",0.5,0.78,1.42,1.0],
+ ["shellite","Shellite Block","c:storage_blocks/shellite","#E8C9F0",0.52,0.78,1.42,2.0],
+ ["allthemodium","Allthemodium Block","Allthemodium","#F2C230",0.697,0.942,3.84,3.65],
+ ["vibranium","Vibranium Block","Allthemodium","#3FD6A0",0.24,0.81,7.47,4.38],
+ ["unobtainium","Unobtainium Block","Allthemodium","#B04FE0",0.972,0.91,3.074,5.0],
+ ["cryomisi","Cryomisi","Extreme Reactors","#7FE0F0",0.75,0.55,1.6,2.5,"fluid"],
+ ["tangerium","Tangerium","Extreme Reactors","#F0A23A",0.9,0.75,2.0,2.0,"fluid"],
+ ["redfrigium","Redfrigium","Extreme Reactors","#D0303A",0.66,0.95,6.0,3.0,"fluid"],
+ ["liquid_starlight","Liquid Starlight","Astral Sorcery","#E6F0FF",0.92,0.8,2.0,3.0,"fluid"],
+ ["life_essence","Life Essence","Blood Magic","#A01818",0.8,0.55,1.75,2.5,"fluid"],
+ ["hydrofluoric_acid","Hydrofluoric Acid","Mekanism","#C8E6A0",0.68,0.45,1.4,2.5,"fluid"],
+ ["sodium","Sodium","Mekanism","#E6E6F0",0.28,0.6,1.7,1.0,"fluid"],
+ ["hydrogen_chloride","Hydrogen Chloride","Mekanism","#D8E8C0",0.38,0.65,1.7,1.0,"fluid"],
+ ["ethene","Ethylene","Mekanism","#F0F0D0",0.45,0.65,1.9,1.5,"fluid"],
+ ["ender","Resonant Ender","Thermal","#0F5E5A",0.92,0.76,2.02,2.0,"fluid"],
+ ["redstone","Destabilized Redstone","Thermal","#B00000",0.77,0.56,1.61,2.5,"fluid"],
+ ["molten_allthemodium","Molten Allthemodium","Allthemodium","#F2C230",0.697,0.942,3.84,3.65,"fluid"],
+ ["molten_vibranium","Molten Vibranium","Allthemodium","#3FD6A0",0.24,0.81,7.47,4.38,"fluid"],
+ ["molten_unobtainium","Molten Unobtainium","Allthemodium","#B04FE0",0.972,0.91,3.074,5.0,"fluid"],
+].map(([id,name,mod,color,abs,heff,mod2,cond,kind],i)=>({id,name,mod,color,abs,heff,moder:mod2,cond,kind:kind||"block",order:i}));
+const MOD = Object.fromEntries(MODS.map(m=>[m.id,m]));
+const ROD = {id:"rod",name:"Fuel rod",mod:"Extreme Reactors",color:"#D7E03A",kind:"rod"};
+
+// Server config (common.toml). ATM10: github.com/AllTheMods/ATM-10; Aeronautics: 0.6.1 server pack.
+const PRESETS = {
+  default:{name:"Mod defaults",       power:1,   reactorPower:1,   fuelUsage:1,   maxSize:32, maxHeight:48},
+  atm10:  {name:"ATM10",              power:4.0, reactorPower:3.0, fuelUsage:0.8, maxSize:32, maxHeight:48},
+  aero:   {name:"ATM10: Aeronautics", power:0.5, reactorPower:0.8, fuelUsage:1.2, maxSize:32, maxHeight:32},
+};
+const CFG_FIELDS=[["power","general.powerProductionMultiplier",0.005,100],["reactorPower","reactor.reactorPowerProductionMultiplier",0.005,100],
+  ["fuelUsage","general.fuelUsageMultiplier",0.5,100],["maxSize","reactor.maxReactorSize",3,256],["maxHeight","reactor.maxReactorHeight",3,256]];
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("er-reactor-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+{ const h={"#default":"default","#atm10":"atm10","#atm10-aeronautics":"aero"}[location.hash]; if(h){ cfgPreset=h; cfg={...PRESETS[h]}; } }
+
+/* ================= state ================= */
+const state={variant:"reinforced", mode:"passive", fuel:"yellorium", insertion:0, X:7, Z:7, Y:7, cells:null, tool:"rod"};
+function limits(){ const V=VARIANTS[state.variant]; return {maxXZ:Math.min(V.max,cfg.maxSize), maxY:Math.min(V.max,cfg.maxHeight)}; }
+function resizeCells(ix,iz,old,oix,oiz){ const c=new Array(ix*iz).fill("air"); if(old){ for(let x=0;x<Math.min(ix,oix);x++)for(let z=0;z<Math.min(iz,oiz);z++) c[x*iz+z]=old[x*oiz+z]; } return c; }
+function applyPattern(p){
+  const ix=state.X-2, iz=state.Z-2, fill=state.tool==="rod"?"graphite":state.tool;
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const i=x*iz+z; const cur=state.cells[i];
+    if(p==="grid"){ const rx=ix<3?x===Math.floor((ix-1)/2):x%2===1, rz=iz<3?z===Math.floor((iz-1)/2):z%2===1; state.cells[i]=rx&&rz?"rod":(cur==="rod"?fill:cur); }
+    else if(p==="checker") state.cells[i]=((x+z)%2===0)?"rod":(cur==="rod"?fill:cur);
+    else if(p==="center") state.cells[i]=(x===Math.floor((ix-1)/2)&&z===Math.floor((iz-1)/2))?"rod":(cur==="rod"?fill:cur);
+    else if(p==="fill"){ if(cur!=="rod") state.cells[i]=fill; }
+    else if(p==="clear") state.cells[i]="air";
+  }
+}
+
+/* ================= the simulation (ReactorLogic, tick for tick) ================= */
+const DIRS=[[1,0],[-1,0],[0,1],[0,-1]];
+function buildCore(s){
+  const ix=s.X-2, iz=s.Z-2, H=s.Y-2, V=VARIANTS[s.variant];
+  const at=(x,z)=> (x<0||z<0||x>=ix||z>=iz) ? "wall" : s.cells[x*iz+z];
+  const cols=[]; for(let x=0;x<ix;x++)for(let z=0;z<iz;z++) if(at(x,z)==="rod") cols.push([x,z]);
+  let rateSum=0, wallHits=0;
+  const rays=cols.map(([x,z])=>{
+    let rate=0;
+    for(const [dx,dz] of DIRS){ const n=at(x+dx,z+dz); rate += n==="wall"?0.6000000238418579 : n==="rod"||n==="air" ? 0.05000000074505806 : MOD[n].cond; }
+    rateSum+=rate;
+    return DIRS.map(([dx,dz])=>{ const steps=[]; for(let k=1;k<=4;k++){ const n=at(x+dx*k,z+dz*k); steps.push(n); if(n==="wall"){ wallHits++; break; } } return steps; });
+  });
+  const vol=ix*H*iz, internalArea=2*(ix*H+ix*iz+H*iz), externalArea=2*(s.X*s.Y+s.X*s.Z+s.Y*s.Z);
+  const fluidCap=Math.min(Math.max((s.X*s.Y*s.Z-vol)*V.partFluid,0),V.maxFluid);
+  return {ix,iz,H,cols,rays,vol,internalArea,externalArea,fluidCap,rodBlocks:cols.length*H,fuelToReactor:rateSum*H,V};
+}
+function simulate(s,cfg){
+  const C=buildCore(s), F=FUELS[s.fuel], V=C.V;
+  const out={C,ok:C.cols.length>0&&C.vol>0};
+  if(!out.ok) return out;
+  const active=s.mode==="active"&&V.partFluid>0;
+  const fuelTotal=C.rodBlocks*4000;                    // kept topped up; waste auto-ejected
+  const cr=s.insertion/100, crMod=(100-s.insertion)/100;
+  const reactorToCoolant=0.6*C.internalArea, heatLoss=0.001*C.externalArea;
+  const mult=cfg.power*cfg.reactorPower*V.genEff;
+  const Tq=(vol,e)=>e/(vol*10), E=(vol,T)=>T*vol*10;
+  let fuelHeat=0, reactorHeat=0, fertility=1, rr=0, t=0;
+  const MAXT=600000, sample=20; let hist=[];
+  // Average over whole windows (a multiple of the rod count) so the round-robin wobble cancels out.
+  const W=Math.ceil(Math.max(2400,C.cols.length*20)/C.cols.length)*C.cols.length;
+  const blank=()=>({n:0,rf:0,water:0,steam:0,fuel:0,lost:0,emitted:0,fert:0,fT:0,rT:0});
+  let win=blank(), prev=null, last=null, steadyAt=-1, stable=0;
+  while(t<MAXT){
+    // 1. irradiate (ReactorLogic.radiate)
+    const rays=C.rays[rr]; rr=(rr+1)%C.cols.length;
+    const Tf=fuelHeat;
+    const hard=Math.exp(-15*Math.exp(-0.0025*Tf));
+    let raw=fuelTotal*F.fe, scaled=Math.pow(raw,F.reactivity);
+    scaled=Math.pow(scaled/C.cols.length,F.reactivity)*C.cols.length;
+    scaled*=crMod; raw*=crMod;
+    const intensity=scaled*(1+(-0.949999988079071*Math.exp(-10*Math.exp(-0.0012000000569969416*Tf))));
+    const hardness0=0.2+0.8*hard;
+    const fertMod=fertility<=1?1:Math.log10(fertility)+1;
+    const fuelUsage=F.fu*raw/fertMod*cfg.fuelUsage;
+    let fuelEnergy=10*intensity, envEnergy=0, fertAbs=0, lost=0;
+    const perDir=intensity*0.25;
+    const rodBase=(1-0.95*Math.exp(-10*Math.exp(-0.0022*Tf)));
+    for(const steps of rays){
+      let I=perDir, h=hardness0;
+      for(const n of steps){
+        if(!(I>1.0e-4)) break;
+        if(n==="wall"){ lost+=I; I=0; break; }
+        if(n==="rod"){
+          const sAbs=Math.min(1,rodBase*(1-h/F.hd)*F.abs);
+          const radAbs=(sAbs+(1-sAbs)*cr*0.5)*I, fAbs=(sAbs-sAbs*cr*0.5)*I;
+          I=Math.max(0,I-radAbs); h/=(F.mf+F.mf*cr+cr);
+          fuelEnergy+=radAbs*10; fertAbs+=fAbs;
+        } else {
+          const m=MOD[n], a=I*m.abs*(1-h);
+          I=Math.max(0,I-a); h/=m.moder; envEnergy+=m.heff*a*10;
+        }
+      }
+    }
+    fertility+=fertAbs;
+    fuelHeat+=Tq(C.rodBlocks,fuelEnergy); reactorHeat+=Tq(C.vol,envEnergy);
+    // 2. fertility decay (reactor on)
+    fertility=Math.max(0,fertility-Math.max(0.1,fertility/20));
+    // 4. fuel -> reactor (one-way)
+    let dT=fuelHeat-reactorHeat;
+    if(dT>0.01){ const q=dT*C.fuelToReactor; fuelHeat=Tq(C.rodBlocks,E(C.rodBlocks,fuelHeat)-q); reactorHeat=Tq(C.vol,E(C.vol,reactorHeat)+q); }
+    // 5. reactor -> coolant
+    let rf=0, water=0, steam=0;
+    const coolT=active?Math.min(reactorHeat,100):20;
+    dT=reactorHeat-coolT;
+    if(dT>0.009999999776482582){
+      let q=dT*reactorToCoolant; const eR=E(C.vol,reactorHeat);
+      if(!active){ q*=0.2; rf=q*0.5*mult; }
+      else { const liters=Math.min(C.fluidCap,Math.trunc(q/4)); if(liters>=1){ water=liters; steam=Math.trunc(liters*V.vaporEff); q=liters*4; } else q=0; }
+      reactorHeat=Tq(C.vol,eR-q);
+    }
+    // 6. passive heat loss to the world
+    dT=reactorHeat-20;
+    if(dT>9.999999974752427e-7){ const loss=Math.max(1,dT*heatLoss); reactorHeat=Tq(C.vol,Math.max(0,E(C.vol,reactorHeat)-loss)); }
+    if(reactorHeat<0) reactorHeat=0; if(fuelHeat<0) fuelHeat=0;
+    t++;
+    if(t%sample===0) hist.push([t,reactorHeat,active?steam:rf,fuelHeat]);
+    win.n++; win.rf+=rf; win.water+=water; win.steam+=steam; win.fuel+=fuelUsage; win.lost+=lost; win.emitted+=intensity; win.fert+=fertility; win.fT+=fuelHeat; win.rT+=reactorHeat;
+    if(win.n===W){
+      last=win;
+      if(prev){ const a=prev.rT/W, b=win.rT/W; stable = Math.abs(b-a)<=Math.max(0.05,b*1e-4) ? stable+1 : 0; if(stable>=2){ steadyAt=t; break; } }
+      prev=win; win=blank();
+    }
+  }
+  if(!hist.length||hist[hist.length-1][0]!==t) hist.push([t,reactorHeat,active?(last?last.steam/W:0):(last?last.rf/W:0),fuelHeat]);
+  if(hist.length>600){ const k=Math.ceil(hist.length/600); hist=hist.filter((_,i)=>i%k===0||i===hist.length-1); }
+  const L=last||win, n=Math.max(1,L.n);
+  Object.assign(out,{active,converged:steadyAt>=0,steadyAt,ticks:t,hist,
+    rf:L.rf/n, water:L.water/n, steam:L.steam/n, fuel:L.fuel/n, fert:L.fert/n, fuelT:L.fT/n, casingT:L.rT/n,
+    casingLossFrac:L.emitted>0?L.lost/L.emitted:0, fluidCap:C.fluidCap, mult});
+  return out;
+}
+
+/* ================= textures + icons ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function blockTex(m){
+  return tex("m:"+m.id,g=>{ const base=hexRgb(m.color), R=rng(m.id);
+    if(m.kind==="fluid"){ for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(base,0.85+0.15*Math.sin((x+y*1.7+R()*3)/2.5)); g.fillRect(x,y,1,1);} return; }
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(base,0.88+R()*0.2); g.fillRect(x,y,1,1); }
+    g.fillStyle=shade(base,1.22); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16);
+    g.fillStyle=shade(base,0.62); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16);
+    g.fillStyle=shade(base,0.78); g.fillRect(2,2,12,1); g.fillRect(2,2,1,12);
+    g.fillStyle=shade(base,1.12); g.fillRect(2,13,12,1); g.fillRect(13,2,1,12); });
+}
+const rodTex=()=>tex("rod:"+state.fuel,g=>{ g.fillStyle="#2B3136"; g.fillRect(0,0,16,16); g.fillStyle="#9AA3AA"; g.fillRect(0,0,3,16); g.fillRect(13,0,3,16);
+  const f=hexRgb(FUELS[state.fuel].color); for(let y=0;y<16;y++){ g.fillStyle=shade(f,0.8+0.25*Math.sin(y/2)); g.fillRect(4,y,8,1);} g.fillStyle="rgba(255,255,255,.35)"; g.fillRect(5,0,1,16); });
+const casingTex=()=>tex("casing",g=>{ const R=rng("casing"); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade([64,70,76],0.9+R()*0.18); g.fillRect(x,y,1,1); }
+  g.fillStyle="#8E989F"; g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle="#23282C"; g.fillRect(0,15,16,1); g.fillRect(15,0,1,16);
+  g.fillStyle="#B8C0C6"; [[2,2],[13,2],[2,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,1,1)); });
+const glassTex=()=>tex("glass",g=>{ g.clearRect(0,0,16,16); g.fillStyle="rgba(170,205,225,0.9)"; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); g.fillStyle="rgba(220,240,255,0.55)"; g.fillRect(3,3,1,1); g.fillRect(4,4,1,1); g.fillRect(5,5,1,1); });
+function portTex(key,center){ return tex(key,g=>{ g.drawImage(casingTex(),0,0); g.fillStyle="#1A1E21"; g.fillRect(4,4,8,8); g.fillStyle=center; g.fillRect(5,5,6,6); g.fillStyle="rgba(255,255,255,.35)"; g.fillRect(5,5,6,1); }); }
+const ctrlTex=()=>tex("ctrl",g=>{ g.drawImage(casingTex(),0,0); g.fillStyle="#1A1E21"; g.fillRect(3,3,10,10); g.fillStyle="#9AA3AA"; g.fillRect(5,5,6,6); g.fillStyle="#5A6268"; g.fillRect(7,5,2,6); });
+function iconFor(m,size=32){
+  const cv=document.createElement("canvas"); cv.width=cv.height=size; const g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
+  if(m.kind==="air"){ g.strokeStyle="#5A5A5A"; g.setLineDash([3,3]); g.strokeRect(6.5,6.5,19,19); return cv; }
+  const t=m.kind==="rod"?rodTex():blockTex(m), s=size/32;
+  const face=(a,b,c,d,e,f,dark)=>{ g.setTransform(a*s,b*s,c*s,d*s,e*s,f*s); g.drawImage(t,0,0); if(dark){ g.fillStyle=`rgba(0,0,0,${dark})`; g.fillRect(0,0,16,16);} };
+  face(1,0.5,-1,0.5,16,0,0); face(1,0.5,0,1,0,8,0.22); face(1,-0.5,0,1,16,16,0.4);
+  g.setTransform(1,0,0,1,0,0); return cv;
+}
+
+/* ================= palette ================= */
+const tip=$("tip");
+function showTip(m,e){
+  tip.innerHTML = m.kind==="rod" ? `<div>Fuel rod</div><div class="g">Holds 4,000 mB of fuel per block</div><div class="g">Heat to neighbours: casing 0.6, air/rods 0.05</div>`
+    : `<div>${m.name}</div><div class="g">Absorption <span class="s">${m.abs}</span> · Heat eff. <span class="s">${m.heff}</span></div><div class="g">Moderation <span class="s">${m.moder}</span> · Conductivity <span class="s">${m.cond}</span></div><div class="m">${m.mod}${m.kind==="fluid"?" · fluid":""}</div>`;
+  tip.hidden=false; moveTip(e);
+}
+function moveTip(e){ const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY-h-8; if(x+w>innerWidth-8) x=e.clientX-w-14; if(y<8) y=e.clientY+18; tip.style.left=x+"px"; tip.style.top=y+"px"; }
+function renderSlots(){
+  const q=$("search").value.trim().toLowerCase(), box=$("slots"); box.textContent="";
+  const list=[ROD,...MODS].filter(m=>!q||(q==="@fluid"?m.kind==="fluid":q.startsWith("@")?m.mod.toLowerCase().includes(q.slice(1)):m.name.toLowerCase().includes(q)||m.id.includes(q)));
+  for(const m of list){
+    const b=document.createElement("button"); b.type="button"; b.className="slot"; b.setAttribute("aria-pressed",state.tool===m.id); b.setAttribute("aria-label",`Paint with ${m.name}`);
+    b.appendChild(iconFor(m)); b.onclick=()=>{ state.tool=m.id; renderSlots(); renderLegend(); };
+    b.onpointerenter=e=>showTip(m,e); b.onpointermove=moveTip; b.onpointerleave=()=>tip.hidden=true;
+    box.appendChild(b);
+  }
+  const cur=state.tool==="rod"?ROD:MOD[state.tool];
+  $("jeiFoot").textContent=`Painting: ${cur.name} · ${list.length} of ${MODS.length+1}`;
+}
+
+/* ================= core editor ================= */
+const core=$("core"); let painting=false;
+function cellPx(){ const iz=state.Z-2, ix=state.X-2; return Math.max(8,Math.min(26,Math.floor(380/Math.max(ix,iz)))); }
+function drawCore(){
+  const ix=state.X-2, iz=state.Z-2, p=cellPx(), dpr=Math.min(2,devicePixelRatio||1);
+  core.width=(ix*p+2)*dpr; core.height=(iz*p+2)*dpr; core.style.width=(ix*p+2)+"px"; core.style.height=(iz*p+2)+"px";
+  const g=core.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.imageSmoothingEnabled=false;
+  g.fillStyle="#0F1417"; g.fillRect(0,0,ix*p+2,iz*p+2);
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){
+    const id=state.cells[x*iz+z], X=1+x*p, Z=1+z*p;
+    if(id==="air"){ g.fillStyle="#1C2226"; g.fillRect(X,Z,p-1,p-1); continue; }
+    if(id==="rod"){ g.drawImage(rodTex(),X,Z,p-1,p-1); continue; }
+    g.drawImage(blockTex(MOD[id]),X,Z,p-1,p-1);
+  }
+}
+function renderLegend(){
+  const used=[...new Set(state.cells)].filter(i=>i!=="air");
+  $("legend").innerHTML=used.map(id=>{ const m=id==="rod"?ROD:MOD[id]; return `<span><i style="background:${m.color}"></i>${m.name} ×${state.cells.filter(c=>c===id).length}</span>`; }).join("")||`<span>Empty core: pick a block above and paint, or use a pattern.</span>`;
+}
+function paintAt(e){
+  const r=core.getBoundingClientRect(), p=cellPx(), x=Math.floor((e.clientX-r.left-1)/p), z=Math.floor((e.clientY-r.top-1)/p);
+  const ix=state.X-2, iz=state.Z-2; if(x<0||z<0||x>=ix||z>=iz) return;
+  const i=x*iz+z; if(state.cells[i]===state.tool) return;
+  state.cells[i]=state.tool; drawCore(); schedule();
+}
+core.addEventListener("pointerdown",e=>{ painting=true; core.setPointerCapture(e.pointerId); paintAt(e); });
+core.addEventListener("pointermove",e=>{ if(painting) paintAt(e); });
+core.addEventListener("pointerup",()=>{ painting=false; renderLegend(); });
+core.addEventListener("pointercancel",()=>painting=false);
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, groups={}, clip, buildStart=0;
+const matCache={};
+function mat(key,canvas,opts={}){ if(matCache[key]) return matCache[key]; const t=new THREE.CanvasTexture(canvas); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
+  return matCache[key]=new THREE.MeshLambertMaterial(Object.assign({map:t,clippingPlanes:[clip]},opts)); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(38,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0);
+  root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+const orbit={theta:0.75,phi:1.0,radius:20,drag:null,idle:0};
+view.addEventListener("pointerdown",e=>{ orbit.drag={x:e.clientX,y:e.clientY}; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ if(!orbit.drag) return; orbit.theta-=(e.clientX-orbit.drag.x)*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-(e.clientY-orbit.drag.y)*0.008)); orbit.drag={x:e.clientX,y:e.clientY}; orbit.idle=0; });
+view.addEventListener("pointerup",()=>orbit.drag=null); view.addEventListener("pointercancel",()=>orbit.drag=null);
+view.addEventListener("wheel",e=>{ e.preventDefault(); orbit.radius=Math.min(160,Math.max(6,orbit.radius*(1+Math.sign(e.deltaY)*0.08))); },{passive:false});
+let buildTop=0, buildBottom=0, lastT=performance.now(), casingOn=true, modsOn=true;
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!orbit.drag){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
+  camera.position.set(Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, Math.cos(orbit.phi)*orbit.radius, Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(0,0,0);
+  const p=reduce?1:Math.min(1,(t-buildStart)/1100), e=1-Math.pow(1-p,3);
+  clip.constant=buildBottom+(buildTop-buildBottom)*e;   // plane rises: blocks appear layer by layer
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+let lastShape="";
+function rebuild3D(){
+  if(!renderer) return;
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  groups={};
+  const {X,Y,Z}=state, ix=X-2, iz=Z-2, H=Y-2, ox=-(X-1)/2, oy=-(Y-1)/2, oz=-(Z-1)/2;
+  const buckets={}; const put=(key,x,y,z)=>{ (buckets[key]=buckets[key]||[]).push(x+ox,y+oy,z+oz); };
+  for(let y=0;y<Y;y++)for(let x=0;x<X;x++)for(let z=0;z<Z;z++){
+    const bx=x===0||x===X-1, by=y===0||y===Y-1, bz=z===0||z===Z-1, n=bx+by+bz; if(!n) continue;
+    let k=n>=2?"casing":"glass";
+    if(y===Y-1&&!bx&&!bz&&state.cells[(x-1)*iz+(z-1)]==="rod") k="ctrl";
+    else if(x===Math.floor(X/2)&&z===Z-1&&y===Math.floor(Y/2)) k="controller";
+    else if(x===X-1&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)) k=state.mode==="active"&&state.variant==="reinforced"?"portIn":"power";
+    else if(x===0&&z===Math.floor(Z/2)&&y===Math.floor(Y/2)&&state.mode==="active"&&state.variant==="reinforced") k="portOut";
+    else if(x===Math.floor(X/2)&&z===0&&y===1) k="access";
+    put(k,x,y,z);
+  }
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue; for(let y=1;y<=H;y++) put(id==="rod"?"rod":"m:"+id,x+1,y,z+1); }
+  const cube=new THREE.BoxGeometry(1,1,1), m4=new THREE.Matrix4();
+  const matFor=k=>{
+    if(k==="casing") return mat(k,casingTex()); if(k==="glass") return mat(k,glassTex(),{transparent:true,opacity:0.5,depthWrite:false});
+    if(k==="ctrl") return mat(k,ctrlTex()); if(k==="controller") return mat(k,portTex(k,"#E2D03A")); if(k==="power") return mat(k,portTex(k,"#D23A3A"));
+    if(k==="portIn") return mat(k,portTex(k,"#3A7BD5")); if(k==="portOut") return mat(k,portTex(k,"#E9EEF2")); if(k==="access") return mat(k,portTex(k,"#7A5A2A"));
+    if(k==="rod") return mat("rod:"+state.fuel,rodTex(),{transparent:true,opacity:0.95});
+    const m=MOD[k.slice(2)]; return mat(k,blockTex(m),m.kind==="fluid"?{transparent:true,opacity:0.55,depthWrite:false}:{});
+  };
+  for(const k in buckets){
+    const arr=buckets[k], mesh=new THREE.InstancedMesh(cube,matFor(k),arr.length/3);
+    for(let i=0;i<arr.length/3;i++){ m4.makeTranslation(arr[i*3],arr[i*3+1],arr[i*3+2]); if(k.startsWith("m:")) m4.scale(new THREE.Vector3(0.97,1,0.97)); mesh.setMatrixAt(i,m4); }
+    const grp=k==="casing"||k==="glass"||["controller","power","portIn","portOut","access"].includes(k)?"shell":k.startsWith("m:")?"mods":"core";
+    if(k==="glass") mesh.renderOrder=2;
+    (groups[grp]=groups[grp]||new THREE.Group()).add(mesh);
+  }
+  for(const k in groups) root.add(groups[k]);
+  if(groups.shell) groups.shell.visible=casingOn; if(groups.mods) groups.mods.visible=modsOn;
+  buildBottom=-(Y/2)-0.5; buildTop=Y/2+0.6; buildStart=performance.now();
+  const shape=`${X}|${Y}|${Z}`; if(shape!==lastShape){ orbit.radius=Math.max(X,Z,Y)*1.9+4; lastShape=shape; }
+}
+
+/* ================= UI ================= */
+function renderCfg(){
+  for(const [id,key] of [["pDefault","default"],["pAtm10","atm10"],["pAero","aero"],["pCustom","custom"]]) $(id).setAttribute("aria-pressed",cfgPreset===key);
+  $("cfgHint").innerHTML=`Reactor power <b>×${fmt(cfg.power*cfg.reactorPower,2)}</b> (${cfg.power} × ${cfg.reactorPower}) · fuel use <b>×${cfg.fuelUsage}</b> · max <b>${cfg.maxSize}×${cfg.maxSize}×${cfg.maxHeight}</b>`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label,min,max] of CFG_FIELDS){
+    const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.min=min; i.max=max; i.step="any";
+    i.onchange=()=>{ const v=+i.value; if(!Number.isFinite(v)){ i.value=cfg[k]; return; } cfg[k]=Math.min(max,Math.max(min,k.startsWith("max")?Math.floor(v):v)); cfgPreset="custom"; saveCfg(); update(); };
+    g.append(l,i);
+  }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("er-reactor-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+function clampSize(){
+  const L=limits(), oix=state.X-2, oiz=state.Z-2;
+  state.X=Math.min(L.maxXZ,Math.max(3,state.X)); state.Z=Math.min(L.maxXZ,Math.max(3,state.Z)); state.Y=Math.min(L.maxY,Math.max(3,state.Y));
+  if(state.X-2!==oix||state.Z-2!==oiz) state.cells=resizeCells(state.X-2,state.Z-2,state.cells,oix,oiz);
+}
+function syncInputs(){
+  const L=limits(), V=VARIANTS[state.variant];
+  $("vBasic").setAttribute("aria-pressed",state.variant==="basic"); $("vReinf").setAttribute("aria-pressed",state.variant==="reinforced");
+  if(!V.partFluid) state.mode="passive";
+  $("mActive").disabled=!V.partFluid; $("mActive").title=V.partFluid?"":"Basic reactors can't run in active mode (no coolant capacity)";
+  $("mPassive").setAttribute("aria-pressed",state.mode==="passive"); $("mActive").setAttribute("aria-pressed",state.mode==="active");
+  for(const [id,f] of [["fYel","yellorium"],["fBlu","blutonium"],["fVer","verderium"]]) $(id).setAttribute("aria-pressed",state.fuel===f);
+  for(const [k,mx] of [["extX",L.maxXZ],["extZ",L.maxXZ],["extY",L.maxY]]){ const key=k.slice(3); $(k).max=mx; $(k+"N").max=mx; $(k).value=state[key]; $(k+"N").value=state[key]; }
+  $("rods").value=state.insertion; $("rodsN").value=state.insertion;
+  $("casingHint").textContent=`${V.name} reactors go up to ${L.maxXZ} × ${L.maxXZ} × ${L.maxY} (exterior)`+(state.variant==="basic"?". Basic is capped at 5 by the mod itself.":` from maxReactorSize (${cfg.maxSize}) and maxReactorHeight (${cfg.maxHeight}).`);
+}
+
+let result=null;
+function renderResults(R){
+  const C=R.C;
+  $("dims").innerHTML=`<span>Exterior <b>${state.X}×${state.Z}×${state.Y}</b></span><span>Interior <b>${C.ix}×${C.iz}×${C.H}</b></span><span>Rod columns <b>${C.cols.length}</b></span><span>Fuel capacity <b>${fmt(C.rodBlocks*4000)} mB</b></span>`;
+  if(!R.ok){ $("results").innerHTML=""; $("status").textContent=""; $("hudMain").textContent="No fuel rods"; $("hudSub").textContent="";
+    $("notes").innerHTML=`<li class="bad">Paint at least one fuel rod. Pick the fuel rod at the start of the list, then click the grid.</li>`; drawChart(null); return; }
+  const act=R.active, ingot=R.fuel>0?1000/R.fuel/1200:Infinity;
+  $("hudMain").innerHTML=act?`${fmt(R.steam)} <small>mB/t steam</small>`:`${fmt(R.rf)} <small>RF/t</small>`;
+  $("hudSub").textContent=`casing ${fmt(R.casingT)} °C · fuel ${fmt(R.fuelT)} °C`;
+  const cells=[
+    act?["Steam output",`${fmt(R.steam)} <small>mB/t</small>`,"hero"]:["Energy output",`${fmt(R.rf)} <small>RF/t</small>`,"hero"],
+    ["Casing temperature",`${fmt(R.casingT)} <small>°C</small>`],["Fuel temperature",`${fmt(R.fuelT)} <small>°C</small>`],
+    ["Fuel burn",`${fmt(R.fuel,4)} <small>mB/t</small>`],
+    act?["Steam per mB fuel",`${fmt(R.fuel?R.steam/R.fuel:0)} <small>mB</small>`]:["RF per mB fuel",`${fmt(R.fuel?R.rf/R.fuel:0)} <small>RF</small>`],
+    ["One ingot lasts",Number.isFinite(ingot)?`${fmt(ingot,1)} <small>min</small>`:"—"],
+    act?["Water boiled",`${fmt(R.water)} <small>mB/t</small>`]:["Output multiplier",`×${fmt(R.mult,2)} <small>config × tier</small>`],
+    ["Fertility (hidden)",`${fmt(R.fert,1)}`],["Wasted at casing",`${fmt(R.casingLossFrac*100,1)} <small>% of radiation</small>`],
+  ];
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  $("status").textContent=R.converged?`Settled after ${fmt(R.steadyAt/1200,1)} min of game time (${fmt(R.steadyAt)} ticks simulated)`:`Still warming up after ${fmt(R.ticks/1200,1)} min: values shown are the latest, not final`;
+  const n=[];
+  if(!R.converged) n.push(["warn","This design hadn't settled within the simulation limit. It's still heating up, so the real reactor will end up hotter than shown."]);
+  if(R.casingLossFrac>0.25) n.push(["warn",`${fmt(R.casingLossFrac*100,0)}% of the radiation hits the casing and is wasted. Rods next to the wall lose rays: leave a block or two of coolant between the outer rods and the casing.`]);
+  const airCells=state.cells.filter(c=>c==="air").length; if(airCells>0) n.push(["warn",`${airCells} interior column${airCells>1?"s are":" is"} air. Air absorbs only 10% and turns a quarter of that into heat, so it barely helps. Fill with a coolant block.`]);
+  if(act&&R.water>=R.fluidCap*0.98) n.push(["bad",R.fluidCap>=VARIANTS[state.variant].maxFluid
+    ? `Coolant-limited: ${fmt(R.fluidCap)} mB/t is the most water any Reinforced reactor can boil per tick, so the extra heat just raises the casing temperature. Use fewer rods, push the control rods in, or split this into two reactors.`
+    : `Coolant-limited: this casing can only boil ${fmt(R.fluidCap)} mB/t (1,000 per casing block, up to 200,000). A larger casing raises the limit.`]);
+  if(act&&R.casingT>=99&&R.steam<1) n.push(["warn","Not enough heat to boil water steadily. Add rods or use better coolant blocks."]);
+  if(act) n.push(["good",`Enough steam for ${fmt(R.steam/2000,2)} Reinforced turbine${R.steam/2000>=1.995?"s":""} at full 2,000 mB/t.`]);
+  if(state.insertion>0) n.push(["good",`Control rods at ${state.insertion}% cut fuel burn and radiation by the same ${state.insertion}%, and make rods absorb more of what reaches them.`]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  drawChart(R);
+}
+function drawChart(R){
+  const c=$("chart"), dpr=Math.min(2,devicePixelRatio||1), w=c.clientWidth, h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  if(!R||!R.ok||!R.hist.length) return;
+  const cs=getComputedStyle(document.documentElement), muted=cs.getPropertyValue("--muted").trim(), line=cs.getPropertyValue("--line").trim(), heat=cs.getPropertyValue("--heat").trim(), acc=cs.getPropertyValue("--accent").trim(), mono=cs.getPropertyValue("--font-mono");
+  const H=R.hist, tMax=H[H.length-1][0], TMax=Math.max(...H.map(p=>p[1]))*1.1||1, OMax=Math.max(...H.map(p=>p[2]))*1.1||1;
+  const pad={l:44,r:48,t:14,b:22}, X=t=>pad.l+t/tMax*(w-pad.l-pad.r), YT=v=>pad.t+(1-v/TMax)*(h-pad.t-pad.b), YO=v=>pad.t+(1-v/OMax)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.strokeStyle=line; g.lineWidth=1; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=pad.t+(1-f)*(h-pad.t-pad.b); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillStyle=heat; g.fillText(fmt(TMax*f)+"°",2,y+4); g.fillStyle=acc; g.textAlign="right"; g.fillText(fmt(OMax*f),w-2,y+4); g.textAlign="left"; }
+  g.fillStyle=muted; const mins=tMax/1200; for(const f of [0,0.5,1]){ const lbl=fmt(mins*f,1)+" min"; const tw=g.measureText(lbl).width; g.fillText(lbl,Math.min(w-pad.r-tw,Math.max(pad.l,X(tMax*f)-tw/2)),h-5); }
+  const plot=(idx,Y,color,wd)=>{ g.beginPath(); H.forEach((p,i)=>{ const x=X(p[0]), y=Y(p[idx]); i?g.lineTo(x,y):g.moveTo(x,y); }); g.strokeStyle=color; g.lineWidth=wd; g.stroke(); };
+  plot(2,YO,acc,1.5); plot(1,YT,heat,2);
+  g.font="600 11px "+mono; g.fillStyle=heat; g.fillText("casing °C",pad.l+4,pad.t+10); g.fillStyle=acc; const lbl=R.active?"steam mB/t":"RF/t"; g.fillText(lbl,w-pad.r-g.measureText(lbl).width-4,pad.t+10);
+}
+
+let timer=0;
+function schedule(){ clearTimeout(timer); $("status").textContent="Simulating…"; timer=setTimeout(run,60); }
+function run(){ result=simulate(state,cfg); renderResults(result); rebuild3D(); }
+function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); drawCore(); renderLegend(); schedule(); }
+
+/* wiring */
+$("pDefault").onclick=()=>usePreset("default"); $("pAtm10").onclick=()=>usePreset("atm10"); $("pAero").onclick=()=>usePreset("aero"); $("pCustom").onclick=()=>usePreset("custom");
+$("vBasic").onclick=()=>{ state.variant="basic"; update(); }; $("vReinf").onclick=()=>{ state.variant="reinforced"; update(); };
+$("mPassive").onclick=()=>{ state.mode="passive"; update(); }; $("mActive").onclick=()=>{ state.mode="active"; update(); };
+$("fYel").onclick=()=>{ state.fuel="yellorium"; update(); }; $("fBlu").onclick=()=>{ state.fuel="blutonium"; update(); }; $("fVer").onclick=()=>{ state.fuel="verderium"; update(); };
+for(const [k,key] of [["extX","X"],["extZ","Z"],["extY","Y"]]){ const set=v=>{ state[key]=Math.floor(+v||3); update(); }; $(k).oninput=e=>set(e.target.value); $(k+"N").onchange=e=>set(e.target.value); }
+{ const set=v=>{ state.insertion=Math.min(100,Math.max(0,Math.floor(+v||0))); syncInputs(); schedule(); }; $("rods").oninput=e=>set(e.target.value); $("rodsN").onchange=e=>set(e.target.value); }
+$("search").oninput=renderSlots;
+document.querySelectorAll("[data-pattern]").forEach(b=>b.onclick=()=>{ applyPattern(b.dataset.pattern); drawCore(); renderLegend(); schedule(); });
+$("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
+$("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",modsOn); if(groups.mods) groups.mods.visible=modsOn; };
+$("tRebuild").onclick=()=>{ buildStart=performance.now(); };
+addEventListener("resize",()=>{ if(result) drawChart(result); });
+
+// sensible starting design: 7x7x7, rods every other block, graphite between
+state.cells=resizeCells(state.X-2,state.Z-2); state.tool="graphite"; applyPattern("grid"); applyPattern("fill"); state.tool="rod";
+initGL(); update();
+})();
+</script>
+</body>
+</html>
