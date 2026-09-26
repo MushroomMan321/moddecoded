@@ -8,14 +8,15 @@
 <meta name="description" content="Create Aeronautics calculator: will your airship fly? Add up block weight, balloon volume, burners, levitite, propellers and thrusters, and see lift, the altitude it settles at and its top speed, from the Aeronautics 1.3.2 and Sable 2.0.5 code.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
 <style>
 :root{
   color-scheme:light;
   --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
   --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
   --good:#2E7D4F; --warn:#A8591A; --bad:#B03434; --sky:#3A7BD5; --weight:#B03434;
-  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
@@ -36,7 +37,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body)
 .crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .crumbs a{color:var(--accent-ink);text-decoration:none}
 header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
-h1{font-family:var(--font-display);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0;text-wrap:balance}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
 h1 .y{color:var(--accent-ink)}
 .src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .lede{max-width:72ch;margin:0;color:var(--muted)}
@@ -47,14 +48,14 @@ h1 .y{color:var(--accent-ink)}
 @media (max-width:900px){.stage{position:relative;top:0}}
 .panel{display:flex;flex-direction:column;gap:18px}
 .sect{display:flex;flex-direction:column;gap:10px}
-h2{font-family:var(--font-display);font-weight:500;font-size:18px;margin:0;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
 .hint{font-size:13px;color:var(--muted);margin:0}
 .box{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:10px}
 .view{position:relative;border-radius:6px;overflow:hidden;background:linear-gradient(#0B1830,#2B4A70);aspect-ratio:4/3;max-height:62vh;width:100%;touch-action:none;cursor:grab}
 .view:active{cursor:grabbing}
 .view canvas{display:block;width:100%;height:100%}
 .tl{position:absolute;left:12px;top:10px;right:120px;display:flex;flex-direction:column;gap:4px;pointer-events:none}
-.verdict{font-family:var(--font-display);font-size:26px;line-height:1.1;color:#F2E36A;text-shadow:0 1px 0 #000}
+.verdict{font:400 36px/1 var(--font-readout);color:#F2E36A;text-shadow:0 1px 0 #000}
 .verdict small{display:block;font-family:var(--font-mono);font-size:12px;color:#DDE6E2}
 .hud{font-family:var(--font-mono);font-size:11.5px;color:#DDE6E2;text-shadow:0 1px 0 #000;opacity:.9}
 .viewbar{position:absolute;left:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap}
@@ -69,7 +70,7 @@ h2{font-family:var(--font-display);font-weight:500;font-size:18px;margin:0;lette
 .alti .mark span{position:absolute;right:24px;top:-9px;white-space:nowrap;color:#F2E36A;font-weight:600;background:rgba(10,14,16,.7);padding:1px 5px;border-radius:3px}
 .alti .mark.ghost{background:transparent;border-top:2px dashed #F2E36A;height:0}
 .alti .mark.ghost span{color:#DDE6E2;font-weight:400;top:-10px}
-@media (max-width:560px){ .view{aspect-ratio:1/1} .verdict{font-size:19px} .hud{display:none} .alti .tick span{display:none} .tl{right:140px} }
+@media (max-width:560px){ .view{aspect-ratio:1/1} .verdict{font-size:28px} .hud{display:none} .alti .tick span{display:none} .tl{right:140px} }
 .sky{position:relative;border-radius:6px;overflow:hidden;background:linear-gradient(#0E1A2B,#23405F 55%,#4A6E8F);aspect-ratio:16/9;width:100%}
 .sky canvas{display:block;width:100%;height:100%}
 .chart-h{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase;margin:0}
@@ -91,8 +92,8 @@ select{font:600 13px var(--font-body);color:var(--ink);background:var(--bg);bord
 .results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
-.cell .v{font:600 19px var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.cell .v small{font-size:12px;color:var(--muted);font-weight:400}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
 .notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
 .notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
 .notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
