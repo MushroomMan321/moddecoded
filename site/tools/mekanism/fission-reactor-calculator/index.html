@@ -8,7 +8,7 @@
 <meta name="description" content="Mekanism fission reactor and turbine calculator: reactor temperature, steam, max safe burn rate, turbines needed and FE/t, from the Mekanism 10.7.19 source code, with config presets for ATM10, ATM10: Aeronautics and other All the Mods packs.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
 <style>
 :root{
   color-scheme:light;
@@ -16,7 +16,8 @@
   --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
   --good:#2E7D4F; --warn:#A8591A; --bad:#B03434; --heat:#D2552B; --steam:#3A7BD5;
   --viewport:#1B2226; --viewport-2:#0F1417;
-  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
@@ -38,7 +39,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body)
 .crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .crumbs a{color:var(--accent-ink);text-decoration:none}
 header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
-h1{font-family:var(--font-display);font-weight:700;font-size:clamp(26px,4vw,38px);line-height:1.05;margin:0;text-wrap:balance}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
 h1 .y{color:var(--accent-ink)}
 .src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .lede{max-width:72ch;margin:0;color:var(--muted)}
@@ -51,8 +52,8 @@ h1 .y{color:var(--accent-ink)}
 .view:active{cursor:grabbing}
 .view canvas{display:block;width:100%;height:100%}
 .hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
-.hud .big{font-family:var(--font-display);font-size:28px;line-height:1;color:#F2E36A}
-.hud .big small{font-size:14px;color:#C9D2CE}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
 .viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
 .viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
@@ -60,7 +61,7 @@ h1 .y{color:var(--accent-ink)}
 .box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
 .panel{display:flex;flex-direction:column;gap:18px}
 .sect{display:flex;flex-direction:column;gap:10px}
-h2{font-family:var(--font-display);font-weight:500;font-size:18px;margin:0;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
 h3.sub{font-size:14px;margin:4px 0 0;color:var(--muted);font-weight:700;letter-spacing:.03em;text-transform:uppercase}
 .row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
 @media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
@@ -97,10 +98,10 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
 .results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
 .cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
 .cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
-.cell .v{font:600 19px var(--font-mono);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.cell .v small{font-size:12px;color:var(--muted);font-weight:400}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
 .cell.hero{grid-column:1/-1;background:var(--accent-soft)}
-.cell.hero .v{font-family:var(--font-display);font-size:32px;font-weight:700}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
 .notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
 .notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
 .notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}

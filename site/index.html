@@ -8,13 +8,13 @@
 <meta name="description" content="How modded Minecraft machines actually work, built on each mod's real formulas and pinned to the exact version, not guessed from creative-mode tests.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
 <style>
 :root{
   color-scheme:light;
   --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
   --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
-  --font-display:"Pixelify Sans","Courier New",monospace;
+  --font-display:"VT323","Courier New",monospace;
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
@@ -26,15 +26,15 @@
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55;padding-inline:16px;padding-block:40px 64px}
 main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:40px}
-h1{font-family:var(--font-display);font-weight:700;font-size:clamp(34px,6vw,56px);line-height:1;margin:0 0 14px;text-wrap:balance}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(42px,7.5vw,70px);line-height:1;margin:0 0 14px;text-wrap:balance}
 h1 span{color:var(--accent-ink)}
 .lede{margin:0;max-width:60ch;color:var(--muted);font-size:18px}
 .lede b{color:var(--ink)}
-h2{font-family:var(--font-display);font-weight:500;font-size:20px;margin:0 0 12px;letter-spacing:.02em}
+h2{font-family:var(--font-display);font-weight:400;font-size:26px;line-height:1;margin:0 0 12px;letter-spacing:.02em}
 .tool{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 16px;align-items:start;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:16px}
 .tool:hover,.tool:focus-visible{border-color:var(--accent);outline:none}
 .tool .mod{grid-column:1/-1;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
-.tool .name{grid-column:1/-1;font-family:var(--font-display);font-size:24px;line-height:1.1}
+.tool .name{grid-column:1/-1;font-family:var(--font-display);font-size:30px;line-height:1.1}
 .tool p{grid-column:1/-1;margin:4px 0 0;color:var(--muted);max-width:62ch}
 .how{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
 .how h3{font-size:15px;margin:0 0 4px}
