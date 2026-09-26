@@ -30,7 +30,6 @@ site/                          everything that gets deployed (static, no build s
   data/packs.js                modpack config presets used by the calculators
   tools/<mod>/<tool>/index.html  one self-contained page per calculator
   guides/                      articles
-research/                      source notes: which class/method each formula comes from
 scripts/                       maintainer deploy helpers (Cloudflare Pages)
 ```
 
@@ -40,6 +39,6 @@ Pushes to `main` are deployed to Cloudflare Pages by the maintainer.
 
 ## License
 
-Code is [MIT](LICENSE). Pack data (`site/data/packs.js`) and research notes (`research/`) are
+Code is [MIT](LICENSE). Pack data (`site/data/packs.js`) is
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Mod names belong to their authors.
 This project isn't affiliated with any mod or modpack.
