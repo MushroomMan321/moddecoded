@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="canonical" href="https://moddecoded.com/tools/extreme-reactors/turbine-calculator/">
-<meta name="description" content="Extreme Reactors turbine calculator: pick induction coils, set steam flow and casing size, and see RPM and RF/t computed from the mod's own code (1.21.1-2.4.28).">
+<meta name="description" content="Extreme Reactors turbine calculator: pick induction coils, set steam flow and casing size, and see RPM and RF/t computed with the mod's real formulas (1.21.1-2.4.28).">
 <title>Extreme Reactors Turbine Calculator: RPM, Power &amp; Coils</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -176,9 +176,9 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Extreme Reactors / Turbine Calculator</nav>
   <header class="top">
     <h1>Extreme Reactors <span class="y">Turbine Calculator</span></h1>
-    <span class="src">Values read from the Extreme Reactors 1.21.1-2.4.28 jar</span>
+    <span class="src">Matches Extreme Reactors 1.21.1-2.4.28</span>
   </header>
-  <p class="lede">Pick coils from the item list, set the steam flow, and watch the turbine build. Every number comes from the mod's own <b>TurbineLogic</b> and <b>TurbineData</b> code, not from creative-mode testing.</p>
+  <p class="lede">Pick coils from the item list, set the steam flow, and watch the turbine build. Every number matches the mod's real mechanics, not creative-mode guesses.</p>
 
   <div class="grid">
     <section class="stage" aria-label="3D turbine preview">
@@ -328,7 +328,7 @@ spin-up τ = blades × mass / dragCoef  (ticks)</pre>
 <script>
 (() => {
 "use strict";
-/* ---------- data, straight from the jar ---------- */
+/* ---------- mod data ---------- */
 const STEAM_RF = 10; // FluidsRegistry.registerVapor("steam", 10.0f, ...)
 const VARIANTS = {
   basic:      {name:"Basic",      maxX:5,  maxY:10, maxZ:5,  maxFlow:1000, perBlade:15, rotorDrag:0.01, maxRpm:1000, bladeMass:8,  shaftMass:8},
@@ -337,7 +337,7 @@ const VARIANTS = {
 const BLADE_DRAG = 2.5e-4, INDUCTOR_BASE = 0.1, MIN_EXT = 5;
 // Exterior limits = min(config maxTurbineSize/maxTurbineHeight [default 32], variant _maxX/_maxY/_maxZ)
 // TurbineVariant: Basic = Builder.create(5, 10) -> 5 x 10 x 5; Reinforced = create(1000) -> bound by config
-// Server config (config/extremereactors/common.toml). Where each one applies, per the bytecode:
+// Server config (config/extremereactors/common.toml). Where each one applies, per the mod:
 //   power, turbinePower -> MultiblockTurbine.getAdjustedPowerProductionMultiplier (energy only, not drag/RPM)
 //   aero  -> TurbineData.update bladeDrag;  coil -> INDUCTOR_BASE_DRAG_COEFFICIENT;  mass -> frictionalDrag
 //   fluid -> TurbineData ctor: inputFluidPerBlade = floor(basePerBlade * fluid)

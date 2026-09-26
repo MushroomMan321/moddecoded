@@ -67,9 +67,8 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 ## Changing a calculator
 
 Each calculator is one self-contained file: `site/tools/<mod>/<tool>/index.html`. There's no build step.
-The formulas come from the mod's own code, and the notes behind each one (class and method names, mod
-version) are in [`research/`](research/). If you change a formula, say where in the mod's code the behavior comes
-from. The source has to be the mod's code or an in-game test, not a wiki.
+If you change a formula, say how you checked it: an in-game test (with mod version and pack) or the
+mod's public source. Wiki numbers aren't enough on their own.
 
 ## Preview locally
 

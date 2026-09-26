@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <link rel="canonical" href="https://moddecoded.com/tools/extreme-reactors/reactor-calculator/">
 <title>Extreme Reactors Reactor Calculator &amp; Simulator</title>
-<meta name="description" content="Extreme Reactors reactor calculator and simulator: paint fuel rods and coolant blocks, pick passive or active mode, and see RF/t, steam, temperatures and fuel burn simulated tick by tick with the mod's own code (1.21.1-2.4.28).">
+<meta name="description" content="Extreme Reactors reactor calculator and simulator: paint fuel rods and coolant blocks, pick passive or active mode, and see RF/t, steam, temperatures and fuel burn simulated tick by tick with the mod's real formulas (1.21.1-2.4.28).">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Pixelify+Sans:wght@500;700&display=swap">
@@ -147,9 +147,9 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Extreme Reactors / Reactor Calculator</nav>
   <header class="top">
     <h1>Extreme Reactors <span class="y">Reactor Calculator</span></h1>
-    <span class="src">Simulated with the tick loop from the Extreme Reactors 1.21.1-2.4.28 jar</span>
+    <span class="src">Simulates the Extreme Reactors 1.21.1-2.4.28 tick loop</span>
   </header>
-  <p class="lede">Paint fuel rods and coolant blocks, choose passive or active cooling, and the calculator runs the mod's own <b>ReactorLogic</b> tick by tick until the reactor settles. You get the same RF/t, steam, temperatures and fuel burn the controller would show.</p>
+  <p class="lede">Paint fuel rods and coolant blocks, choose passive or active cooling, and the calculator simulates the reactor tick by tick until it settles. You get the same RF/t, steam, temperatures and fuel burn the controller would show.</p>
 
   <div class="grid">
     <section class="stage" aria-label="3D reactor preview">
@@ -300,7 +300,7 @@ hardness /= moderation</pre>
 const $=id=>document.getElementById(id);
 const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
 
-/* ================= data from the jar ================= */
+/* ================= mod data ================= */
 // FuelProperties(moderationFactor, absorptionCoefficient, hardnessDivisor, fissionEventsPerFuelUnit, fuelUnitsPerFissionEvent)
 // Reaction reactivity from ReactionsRegistry.
 const FUELS = {
