@@ -110,6 +110,7 @@ select{font:600 13px var(--font-body);color:var(--ink);background:var(--surface)
 .btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
 .btn:hover{border-color:var(--accent)}
 .btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
 .cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
 .cfg-hint b{color:var(--ink);font-weight:600}
 details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
@@ -206,6 +207,12 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <div class="row"><label for="tW">Depth</label><input type="range" id="tW" min="5" max="17" step="2"><input class="num" id="tWN" type="number" min="5" max="17" step="2" aria-label="Turbine depth"></div>
         <div class="row"><label for="tH">Height</label><input type="range" id="tH" min="5" max="18"><input class="num" id="tHN" type="number" min="5" max="18" aria-label="Turbine height"></div>
         <p class="hint">Width and depth must be odd, from 5 to 17. Height 5 to 18.</p>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor and turbine. Paste a design code above to load it.</p>
       </div>
       <div class="box" id="export">
         <h2>Build it in Minecraft</h2>
@@ -347,7 +354,13 @@ const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("mekanism", DEFAULTS, CF
 let cfgPreset="default", cfg={...PRESETS.default};
 try{ const s=JSON.parse(localStorage.getItem("mek-fission-cfg")||"null"); if(s&&mdPackPresets.legacy[s.preset]) s.preset=mdPackPresets.legacy[s.preset];
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
-{ const h=decodeURIComponent(location.hash.slice(1)); if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } }
+// link hash: "#atm10" picks a pack preset, "#d=mdf1...." loads a design, "#atm10&d=mdf1...." does both
+const readHash=()=>{ let preset=null, design=null;
+  let h=location.hash.slice(1); try{ h=decodeURIComponent(h); }catch(e){}
+  for(const part of h.split("&")) if(part.startsWith("d=")) design=part.slice(2); else if(PRESETS[part]) preset=part;
+  return {preset,design}; };
+const hashAtLoad=readHash();
+if(hashAtLoad.preset){ cfgPreset=hashAtLoad.preset; cfg={...PRESETS[cfgPreset]}; }
 
 /* ================= state ================= */
 const state={L:7,W:7,H:7,A:4,cols:null,ci:0,cj:0,coolant:"water",burn:36,biome:0.8,
@@ -750,13 +763,59 @@ $("xVer").onchange=e=>{ try{ localStorage.setItem("mek-fission-mc",e.target.valu
 $("xWhat").onchange=renderExport;
 $("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
 
+/* design code: the whole design as one string, used by share links and by the planned in-game mod (docs/mekanism-planner-mod.md).
+   mdf1.L.W.H.A.cols.tL.tW.tH.rotor.blades.coils.vents.cond.coolant.burn.biome
+   cols: interior fuel columns, bit i = column x*(W-2)+z, least significant bit first, base64url without padding.
+   burn and biome are ×100 integers; coolant is w or s. Turbine counts are the effective (clamped) values. */
+const b64u={ enc:b=>btoa(String.fromCharCode(...b)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""),
+  dec:s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0)) };
+function encodeDesign(){ const {L,W,H,A,ci,cj,cols}=state, bits=new Uint8Array(Math.ceil(ci*cj/8));
+  cols.forEach((on,i)=>{ if(on) bits[i>>3]|=1<<(i&7); });
+  return ["mdf1",L,W,H,A,b64u.enc(bits),state.tL,state.tW,state.tH,Tb.rotor,Tb.blades,Tb.coils,Tb.vents,Tb.cond,
+    state.coolant==="sodium"?"s":"w",Math.round(R.burn*100),Math.round(state.biome*100)].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==17||p[0]!=="mdf1"||!/^[ws]$/.test(p[14])) return null;
+  const int=(i,a,b)=>{ const v=/^-?\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={L:int(1,3,18),W:int(2,3,18),H:int(3,4,18),A:int(4,1,15),tL:int(6,5,17),tW:int(7,5,17),tH:int(8,5,18),rotor:int(9,1,14),blades:int(10,0,28),
+    coils:int(11,1,9999),vents:int(12,1,9999),cond:int(13,0,9999),burn:int(15,0,1e9)/100,biome:int(16,-500,500)/100,coolant:p[14]==="s"?"sodium":"water"};
+  if(Object.values(d).some(v=>Number.isNaN(v))||d.A>d.H-3||d.tL%2===0||d.tW%2===0) return null;
+  let bits; try{ bits=b64u.dec(p[5]); }catch(e){ return null; }
+  d.ci=d.L-2; d.cj=d.W-2; if(bits.length!==Math.ceil(d.ci*d.cj/8)) return null;
+  d.cols=Array.from({length:d.ci*d.cj},(_,i)=>!!(bits[i>>3]>>(i&7)&1));
+  return d;
+}
+function applyDesign(d){ Object.assign(state,d);
+  // a biome temperature from the mod may not be one of the presets in the list; add it so the select can show it
+  if(![...$("amb").options].some(o=>+o.value===d.biome)) $("amb").add(new Option(`Other biome (${fmt(300+25*(Math.min(5,Math.max(-5,d.biome))-0.8),1)} K)`,String(d.biome))); }
+const shareUrl=()=>{ const parts=[]; if(PRESETS[cfgPreset]&&cfgPreset!=="default") parts.push(cfgPreset); parts.push("d="+encodeDesign());
+  return location.href.split("#")[0]+"#"+parts.join("&"); };
+// keep the address bar on the current design (after the first change, so a plain visit keeps a clean URL). Debounced: Safari limits replaceState calls.
+let hashLive=false, hashTimer=0;
+function renderShare(){ if(document.activeElement!==$("dCode")) $("dCode").value=encodeDesign();
+  if(!hashLive) return; clearTimeout(hashTimer); hashTimer=setTimeout(()=>{ try{ history.replaceState(null,"",shareUrl()); }catch(e){} },400); }
+const dMsgDefault=$("dMsg").textContent, say=t=>{ $("dMsg").textContent=t; clearTimeout(say.t); say.t=setTimeout(()=>$("dMsg").textContent=dMsgDefault,4000); };
+// the async clipboard API needs permission some browsers withhold; fall back to the old copy command on a hidden textarea
+async function copyText(text,done){ try{ await navigator.clipboard.writeText(text); return say(done); }catch(e){}
+  const t=document.createElement("textarea"); t.value=text; t.setAttribute("readonly",""); t.style.cssText="position:fixed;opacity:0";
+  document.body.append(t); t.select(); let ok=false; try{ ok=document.execCommand("copy"); }catch(e){} t.remove();
+  say(ok?done:"Couldn't reach the clipboard. Copy the address bar instead; it always holds this design."); }
+$("dLink").onclick=()=>copyText(shareUrl(),"Link copied.");
+$("dCopy").onclick=()=>copyText(encodeDesign(),"Design code copied.");
+// accepts a bare code or a whole share link
+const safeDecode=s=>{ try{ return decodeURIComponent(s); }catch(e){ return s; } };
+const codeIn=v=>decodeDesign((/mdf1\.[^&\s#]+/.exec(safeDecode(v))||[""])[0]);
+$("dCode").oninput=e=>{ const d=codeIn(e.target.value); if(d){ applyDesign(d); update(); say("Design loaded."); } };
+$("dCode").onchange=e=>{ if(!codeIn(e.target.value)) say("That isn't a design code. Codes start with mdf1."); e.target.value=encodeDesign(); };
+addEventListener("hashchange",()=>{ const h=readHash(); if(h.preset&&h.preset!==cfgPreset){ cfgPreset=h.preset; cfg={...PRESETS[h.preset]}; saveCfg(); renderPresetButtons(); }
+  const d=decodeDesign(h.design); if(d) applyDesign(d); update(); });
+
 function autoTurbine(){ const lim=turbineLimits(); state.rotor=lim.maxRot; state.blades=2*lim.maxRot; state.coils=Math.ceil(state.blades/cfg.bladesPerCoil);
   const t=turbineModel(); state.vents=t.maxVents; state.cond=Math.max(0,Math.min(t.aboveCells-state.coils,Math.ceil(t.intake/cfg.condenserRate))); }
 function update(){
   state.L=clampI(state.L,3,18); state.W=clampI(state.W,3,18); state.H=clampI(state.H,4,18); state.A=clampI(state.A,1,Math.max(1,state.H-3));
   state.tL=odd(clampI(state.tL,5,17)); state.tW=odd(clampI(state.tW,5,17)); state.tH=clampI(state.tH,5,18);
   resizeCols(); R=reactorModel(); Tb=turbineModel();
-  renderCfg(); syncInputs(); drawCore(); renderResults(); rebuild3D(R,Tb); renderGuide(); renderExport();
+  renderCfg(); syncInputs(); drawCore(); renderResults(); rebuild3D(R,Tb); renderGuide(); renderExport(); renderShare();
 }
 const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
 const odd=v=>v%2?v:v-1;
@@ -796,7 +855,9 @@ $("fr").onclick=()=>setFocus("r",true); $("ft").onclick=()=>setFocus("t",true); 
 addEventListener("resize",drawChart);
 
 // start: 7x7x7 with 9 isolated 4-high columns, a 17x17x18 turbine
-resizeCols(); pattern("spaced"); autoTurbine(); initGL(); update();
+// a design in the link replaces the default one
+resizeCols(); pattern("spaced"); autoTurbine(); { const d=decodeDesign(hashAtLoad.design); if(d) applyDesign(d); }
+initGL(); update(); hashLive=true;
 })();
 </script>
 </body>
