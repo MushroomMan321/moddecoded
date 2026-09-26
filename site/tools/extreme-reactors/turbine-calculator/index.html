@@ -241,7 +241,7 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
           </div>
           <input class="jei-search" id="search" type="search" placeholder="Search, or @mod" aria-label="Filter coil materials" autocomplete="off">
           <div class="slots" id="slots" role="list"></div>
-          <div class="jei-foot" id="jeiFoot">Click a block to add a layer of it</div>
+          <div class="jei-foot" id="jeiFoot">Click a block to add a layer of 8</div>
         </div>
         <div class="load" id="load"></div>
         <div class="btns">
@@ -275,6 +275,13 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
 bonus = max(1, Σbonus / n)
 drag  = rpm × 0.1 × ΣextractionRate</pre>
         <span class="ref">TurbineData.update · TurbineData$CoilStats.accept</span>
+      </div>
+      <div class="fact">
+        <h3>Coils must hug the shaft</h3>
+        <p>The turbine only accepts coils in the 8 blocks around the shaft on each layer, and only above the last blade layer. A corner coil needs a coil beside it on the shaft's side. Anything further out stops the turbine forming, so extra coils go up, not out.</p>
+<pre>per layer: 4 sides + 4 corners = 8 coils
+blades nearest the bearing, coils after</pre>
+        <span class="ref">MultiblockTurbine.validateRotor</span>
       </div>
       <div class="fact">
         <h3>Bonus is an exponent</h3>
@@ -335,6 +342,10 @@ const VARIANTS = {
   reinforced: {name:"Reinforced", maxX:1000, maxY:1000, maxZ:1000, maxFlow:2000, perBlade:25, rotorDrag:0.01, maxRpm:2000, bladeMass:10, shaftMass:10},
 };
 const BLADE_DRAG = 2.5e-4, INDUCTOR_BASE = 0.1, MIN_EXT = 5;
+// MultiblockTurbine.validateRotor only accepts a coil directly beside the shaft, or in a corner next to one of those.
+// So each layer holds at most the 8 blocks around the shaft; anything further out fails with "invalid_metals_shape".
+// Straight sides first: a corner coil only counts when a coil sits beside it on the shaft's side.
+const COIL_RING = [[1,0],[0,1],[-1,0],[0,-1],[1,1],[-1,1],[-1,-1],[1,-1]];
 // Exterior limits = min(config maxTurbineSize/maxTurbineHeight [default 32], variant _maxX/_maxY/_maxZ)
 // TurbineVariant: Basic = Builder.create(5, 10) -> 5 x 10 x 5; Reinforced = create(1000) -> bound by config
 // Server config (config/extremereactors/common.toml). Where each one applies, per the mod:
@@ -412,7 +423,7 @@ function layout(s){
   const ix=s.extX-2, iz=s.extZ-2, sx=Math.floor((ix-1)/2), sz=Math.floor((iz-1)/2);
   const avail=[ix-1-sx, iz-1-sz, sx, sz]; // room from the shaft toward +x, +z, -x, -z
   const maxArm=Math.max(...avail), L=Math.max(1,Math.min(s.bladeLen,maxArm));
-  const arms=avail.map(a=>Math.min(L,a)), perB=arms.reduce((a,b)=>a+b,0), perC=ix*iz-1;
+  const arms=avail.map(a=>Math.min(L,a)), perB=arms.reduce((a,b)=>a+b,0), perC=COIL_RING.length;
   const C=s.coils.reduce((a,r)=>a+r.n,0);
   const bladeLayers=s.blades>0&&perB>0?Math.ceil(s.blades/perB):0;
   const coilLayers=C>0?Math.ceil(C/perC):0;
@@ -571,11 +582,9 @@ function blocksFor(s){
   let b=s.blades;
   const dirs=[[1,0],[0,1],[-1,0],[0,-1]];
   for(let y=0;y<bladeLayers&&b>0;y++) for(let d=1;d<=Math.max(...arms)&&b>0;d++) dirs.forEach(([dx,dz],di)=>{ if(b<=0||d>arms[di]) return; out.push({type:"blade",x:dx*d,y,z:dz*d,y0,grp:"rotor",axis:dx?"x":"z"}); b--; });
-  // coils: ring by ring around the shaft so every coil touches the shaft or another coil
-  const ring=[]; for(let x=x0+1;x<x1;x++)for(let z=z0+1;z<z1;z++){ if(!x&&!z) continue; ring.push([x,z,Math.max(Math.abs(x),Math.abs(z)),Math.atan2(z,x)]); }
-  ring.sort((a,b)=>a[2]-b[2]||a[3]-b[3]);
+  // coils: the 8 blocks around the shaft, layer by layer above the blades
   let yi=bladeLayers, ri=0;
-  for(const r of s.coils) for(let i=0;i<r.n;i++){ const [x,z]=ring[ri]; out.push({type:"coil:"+r.id,x,y:yi,z,y0,grp:"coil"}); if(++ri>=perC){ ri=0; yi++; } }
+  for(const r of s.coils) for(let i=0;i<r.n;i++){ const [x,z]=COIL_RING[ri]; out.push({type:"coil:"+r.id,x,y:yi,z,y0,grp:"coil"}); if(++ri>=perC){ ri=0; yi++; } }
   return {out,H,E:Math.max(x1-x0,z1-z0)/2,cx:(x0+x1)/2,cz:(z0+z1)/2};
 }
 function meshFor(bk){
@@ -651,7 +660,7 @@ function renderSlots(){
     b.addEventListener("focus",e=>{ const r=b.getBoundingClientRect(); showTip(c,{clientX:r.right,clientY:r.top}); }); b.addEventListener("blur",hideTip);
     box.appendChild(b);
   }
-  $("jeiFoot").textContent=list.length?`${list.length} of ${COILS.length} · click a block to add a layer of it`:"Nothing matches. Try @thermal or @mekanism.";
+  $("jeiFoot").textContent=list.length?`${list.length} of ${COILS.length} · click a block to add a layer of 8`:"Nothing matches. Try @thermal or @mekanism.";
 }
 const tip=$("tip");
 function showTip(c,e){
@@ -711,7 +720,7 @@ function renderResults(R){
   if(R.rpm>=500&&R.fr>=0.97) n.push(["good",`On a cosine peak: ${pct(R.fr)} RPM factor.`]);
   if(R.rpm>V.maxRpm) n.push(["warn",`${fmt(R.rpm)} RPM is above the ${V.name} gauge's ${fmt(V.maxRpm)} RPM. The simulation doesn't clamp speed, but the in-game display will show it as overspeed.`]);
   if(R.rf>R.flow*STEAM_RF&&R.flow>0) n.push(["good",`Output is higher than the steam's ${fmt(R.flow*STEAM_RF)} RF/t because the coil bonus exponent (${fmt(R.expo,3)}) applies to drag.`]);
-  if(lay.H+2>V.maxY) n.push(["bad",`Needs an exterior height of ${lay.H+2}, but a ${V.name} turbine can be at most ${V.maxY} tall. Make the casing wider or deeper to fit more per layer, or use fewer blades or coils.`]);
+  if(lay.H+2>V.maxY) n.push(["bad",`Needs an exterior height of ${lay.H+2}, but a ${V.name} turbine can be at most ${V.maxY} tall. Longer blades in a wider casing fit more blades per layer. Coils are always 8 per layer, so use fewer coils or blades if it still doesn't fit.`]);
   if(state.variant==="basic"&&Math.ceil(R.flow/V.perBlade)>lay.perB*(V.maxY-2)) n.push(["warn",`A ${V.maxX}×${V.maxZ}×${V.maxY} Basic casing fits at most ${lay.perB*(V.maxY-2)} blades, fewer than the ${fmt(Math.ceil(R.flow/V.perBlade))} that ${fmt(R.flow)} mB/t needs. That's before leaving any layers for coils.`]);
   const X=state.extX, Z=state.extZ, Hx=lay.H+2;
   const used=lay.bladeLayers+lay.coilLayers, hb=$("hBar"); hb.classList.toggle("over",Hx>V.maxY);
@@ -719,7 +728,7 @@ function renderResults(R){
   $("hVal").textContent=`${used} / ${lay.H}`;
   if(lay.H>lay.minH) n.push(["warn",`The top ${lay.H-lay.minH} interior layer${lay.H-lay.minH>1?"s are":" is"} bare shaft. That adds ${fmt((lay.H-lay.minH)*V.shaftMass)} rotor mass and ${fmt((lay.H-lay.minH)*V.shaftMass*V.rotorDrag*cfg.mass,2)} RF/t of friction with no benefit.`]);
   $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
-  $("casingHint").textContent=`${V.name} casings go up to ${V.maxX} wide × ${V.maxZ} deep × ${V.maxY} tall (exterior). Height is set by how many blade and coil layers the rotor needs.`+(state.variant==="basic"?` Basic turbines are capped at 5 × 10 × 5 by the mod itself${cfg.maxSize<5||cfg.maxHeight<10?", and lower here by the server config":""}.`:` These limits come from maxTurbineSize (${cfg.maxSize}) and maxTurbineHeight (${cfg.maxHeight}) in the server config.`);
+  $("casingHint").textContent=`${V.name} casings go up to ${V.maxX} wide × ${V.maxZ} deep × ${V.maxY} tall (exterior). Height is set by how many blade and coil layers the rotor needs. Coils only go in the 8 blocks around the shaft, so a wider casing only makes room for longer blades.`+(state.variant==="basic"?` Basic turbines are capped at 5 × 10 × 5 by the mod itself${cfg.maxSize<5||cfg.maxHeight<10?", and lower here by the server config":""}.`:` These limits come from maxTurbineSize (${cfg.maxSize}) and maxTurbineHeight (${cfg.maxHeight}) in the server config.`);
   $("dims").innerHTML=`<span>Exterior <b>${X}×${Z}×${Hx}</b></span><span>Interior <b>${lay.ix}×${lay.iz}×${lay.H}</b></span><span>Rotor mass <b>${fmt(R.mass)}</b></span><span>Drag to coils <b>${pct(R.indCoef/(R.indCoef+R.bladeCoef||1))}</b></span>`;
   // bill of materials
   const shellCount=X*Z*Hx-lay.ix*lay.iz*lay.H, frame=4*(X-2)+4*(Z-2)+4*(Hx-2)+8;
