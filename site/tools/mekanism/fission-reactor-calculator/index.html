@@ -207,6 +207,14 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <div class="row"><label for="tH">Height</label><input type="range" id="tH" min="5" max="18"><input class="num" id="tHN" type="number" min="5" max="18" aria-label="Turbine height"></div>
         <p class="hint">Width and depth must be odd, from 5 to 17. Height 5 to 18.</p>
       </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <div class="row"><label for="xVer">Minecraft</label><select id="xVer" aria-label="Minecraft version"></select><span></span></div>
+        <div class="row"><label for="xWhat">Include</label><select id="xWhat"><option value="both">Reactor and turbine</option><option value="r">Reactor only</option><option value="t">Turbine only</option></select><span></span></div>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block. A survival Schematicannon may leave the rotors bare; if so, right-click each rotor with two turbine blades.</p>
+      </div>
     </section>
 
     <section class="panel" aria-label="Inputs and results">
@@ -604,8 +612,9 @@ function syncInputs(){
   $("amb").value=String(state.biome);
   $("turbHint").textContent=Tb.valid?`Up to ${Tb.maxRot} rotor blocks fit this casing (${2*Tb.rotor} blades max). ${fmt(Tb.dispersers)} pressure dispersers fill the layer above the rotor.`:"This casing is too small for a rotor: make it taller or wider.";
 }
+const turbinesNeeded=()=>Tb.valid&&Tb.intake>0?Math.ceil(R.steam/Tb.intake-1e-9):0;
 function renderResults(){
-  const need=Tb.valid&&Tb.intake>0?Math.ceil(R.steam/Tb.intake-1e-9):0;
+  const need=turbinesNeeded();
   const perTurbineJ=Tb.mult*Math.min(R.steam,Tb.intake), totalJ=Tb.mult*R.steam, FE=totalJ/cfg.feConversionRate;
   $("hudMain").innerHTML=`${big(FE)} <small>FE/t</small>`;
   $("hudSub").textContent=`${fmt(R.T-273.15)} °C · ${big(R.steam)} mB/t steam · ${need} turbine${need===1?"":"s"}`;
@@ -677,13 +686,77 @@ function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on);
   if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
 function stepLayer(d){ guide.layer+=d; renderGuide(); }
 
+/* schematic export: a vanilla structure file (gzipped NBT), which Create, Litematica and structure blocks all load.
+   Block IDs are the same from Mekanism 10.2 (1.18.2) to 10.7 (1.21.1); only DataVersion changes. */
+const MC_VERSIONS=[["1.21.1",3955],["1.20.1",3465],["1.19.2",3120],["1.18.2",2975]];
+const MG="mekanismgenerators:";
+const BLOCK_IDS={casing:MG+"fission_reactor_casing",port:MG+"fission_reactor_port",fuel:MG+"fission_fuel_assembly",rod:MG+"control_rod_assembly",
+  tcasing:MG+"turbine_casing",valve:MG+"turbine_valve",vent:MG+"turbine_vent",shaft:MG+"turbine_rotor",complex:MG+"rotational_complex",
+  disperser:"mekanism:pressure_disperser",coil:MG+"electromagnetic_coil",condenser:MG+"saturating_condenser"};
+const blockId=(s,k)=>k==="glass"?(s==="r"?MG+"reactor_glass":"mekanism:structural_glass"):BLOCK_IDS[k];
+// numbers are TAG_Int, strings TAG_String, arrays TAG_List, objects TAG_Compound: all a structure file needs
+function encodeNbt(root){
+  const out=[], te=new TextEncoder(), u8=v=>out.push(v&255), i16=v=>{ u8(v>>8); u8(v); }, i32=v=>{ u8(v>>>24); u8(v>>>16); u8(v>>>8); u8(v); };
+  const str=s=>{ const b=te.encode(s); i16(b.length); for(const x of b) out.push(x); };
+  const type=v=>typeof v==="number"?3:typeof v==="string"?8:Array.isArray(v)?9:10;
+  const put=v=>{ const t=type(v);
+    if(t===3) i32(v); else if(t===8) str(v);
+    else if(t===9){ u8(v.length?type(v[0]):0); i32(v.length); v.forEach(put); }
+    else { for(const k in v){ u8(type(v[k])); str(k); put(v[k]); } u8(0); } };
+  u8(10); str(""); put(root); return new Uint8Array(out);
+}
+// machines sit side by side along x with a 3-block gap, centered on each other in z, like the 3D view. Interiors are written as air.
+function exportParts(what){ const {L,W,H,tL,tW,tH}=state, p=[];
+  if(what!=="t") p.push(["r",L,W,H]); if(what!=="r"&&Tb.valid) p.push(["t",tL,tW,tH]); return p; }
+function buildStructure(what,dataVersion){
+  const map=blockMap(R,Tb), parts=exportParts(what), gap=3, depth=Math.max(...parts.map(p=>p[2]));
+  const palette=[], pidx={}, blocks=[], pal=name=>pidx[name]??(pidx[name]=palette.push({Name:name})-1);
+  // blades are items installed on rotors, so they become a count on each rotor's block entity, not blocks
+  const blades={}; for(const [key,k] of map) if(k==="blade"){ const y=key.split(",")[1]; blades[y]=(blades[y]||0)+1; }
+  let ox=0;
+  for(const [s,l,w,h] of parts){ const oz=Math.floor((depth-w)/2);
+    for(let y=0;y<h;y++)for(let x=0;x<l;x++)for(let z=0;z<w;z++){
+      const k=map.get(`${s}${x},${y},${z}`), b={pos:[ox+x,y,oz+z],state:pal(k&&k!=="blade"?blockId(s,k):"minecraft:air")};
+      if(k==="shaft") b.nbt={id:BLOCK_IDS.shaft,blades:blades[y]||0};
+      blocks.push(b); }
+    ox+=l+gap; }
+  return {DataVersion:dataVersion,size:[ox-gap,Math.max(...parts.map(p=>p[3])),depth],palette,blocks,entities:[]};
+}
+const canGzip=typeof CompressionStream==="function";
+function renderExport(){
+  const what=$("xWhat").value, parts=exportParts(what), need=turbinesNeeded(), dims=([,l,w,h])=>`${l}×${w}×${h}`;
+  const r=parts.find(p=>p[0]==="r"), t=parts.find(p=>p[0]==="t");
+  $("xGo").disabled=!canGzip||!parts.length;
+  if(!canGzip){ $("xHint").textContent="This browser can't compress files. Try a current Chrome, Firefox, Edge or Safari."; return; }
+  if(!parts.length){ $("xHint").textContent="This turbine casing is too small for a rotor, so there's nothing to export."; return; }
+  const bits=[r&&`the ${dims(r)} reactor`,t&&`one ${dims(t)} turbine`].filter(Boolean).join(" and ");
+  const notes=[];
+  if(t&&need>1) notes.push(`This reactor needs ${need} turbines; build the turbine ${need} times.`);
+  if(r&&what==="r"&&Tb.valid&&need) notes.push(`Its steam feeds ${need} turbine${need===1?"":"s"} of the size set above.`);
+  if(r&&state.coolant==="sodium") notes.push("Sodium cooling also needs a thermoelectric boiler, which isn't in the file.");
+  $("xHint").textContent=`Contains ${bits}. ${notes.join(" ")}`.trim();
+}
+async function downloadNbt(){
+  const [ver,dv]=MC_VERSIONS.find(v=>v[0]===$("xVer").value)||MC_VERSIONS[0], what=$("xWhat").value, {L,W,H,tL,tW,tH}=state;
+  const bytes=encodeNbt(buildStructure(what,dv));
+  const blob=await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))).blob();
+  const name=["mekanism",what!=="t"&&`fission-${L}x${W}x${H}`,what!=="r"&&`turbine-${tL}x${tW}x${tH}`,`mc${ver}`].filter(Boolean).join("-")+".nbt";
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+}
+for(const [v] of MC_VERSIONS){ const o=document.createElement("option"); o.value=o.textContent=v; $("xVer").append(o); }
+try{ const v=localStorage.getItem("mek-fission-mc"); if(MC_VERSIONS.some(m=>m[0]===v)) $("xVer").value=v; }catch(e){}
+$("xVer").onchange=e=>{ try{ localStorage.setItem("mek-fission-mc",e.target.value); }catch(err){} };
+$("xWhat").onchange=renderExport;
+$("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
+
 function autoTurbine(){ const lim=turbineLimits(); state.rotor=lim.maxRot; state.blades=2*lim.maxRot; state.coils=Math.ceil(state.blades/cfg.bladesPerCoil);
   const t=turbineModel(); state.vents=t.maxVents; state.cond=Math.max(0,Math.min(t.aboveCells-state.coils,Math.ceil(t.intake/cfg.condenserRate))); }
 function update(){
   state.L=clampI(state.L,3,18); state.W=clampI(state.W,3,18); state.H=clampI(state.H,4,18); state.A=clampI(state.A,1,Math.max(1,state.H-3));
   state.tL=odd(clampI(state.tL,5,17)); state.tW=odd(clampI(state.tW,5,17)); state.tH=clampI(state.tH,5,18);
   resizeCols(); R=reactorModel(); Tb=turbineModel();
-  renderCfg(); syncInputs(); drawCore(); renderResults(); rebuild3D(R,Tb); renderGuide();
+  renderCfg(); syncInputs(); drawCore(); renderResults(); rebuild3D(R,Tb); renderGuide(); renderExport();
 }
 const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
 const odd=v=>v%2?v:v-1;
