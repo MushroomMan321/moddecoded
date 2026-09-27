@@ -101,6 +101,7 @@ h1 .y{color:var(--accent-ink)}
 .atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
 .atm-list button:disabled{opacity:.5;cursor:not-allowed}
 .atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
 .hint{font-size:13px;color:var(--muted);margin:0}
 .btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
 .btn:hover{border-color:var(--accent)}
@@ -200,6 +201,12 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
         <div class="row"><label for="extY">Height (Y)</label><input type="range" id="extY" min="3" max="32" step="1"><input class="num" id="extYN" type="number" min="3" max="32" aria-label="Exterior height Y in blocks"></div>
         <div class="meter"><span>Rotor fills</span><div class="bar" id="hBar"><i></i></div><b id="hVal"></b></div>
         <p class="hint" id="casingHint"></p>
+      </div>
+      <div class="casing" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact turbine. Paste a design code above to load it.</p>
       </div>
     </section>
 
@@ -333,6 +340,7 @@ spin-up τ = blades × mass / dragCoef  (ticks)</pre>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
 <script>
 (() => {
 "use strict";
@@ -375,7 +383,6 @@ let cfgPreset="default", cfg={...PRESETS.default};
 try{ const saved=JSON.parse(localStorage.getItem("er-turbine-cfg")||"null"); if(saved&&mdPackPresets.legacy[saved.preset]) saved.preset=mdPackPresets.legacy[saved.preset];
   if(saved&&PRESETS[saved.preset]){ cfgPreset=saved.preset; cfg={...PRESETS[saved.preset]}; } // presets always reload their current values
   else if(saved&&saved.preset==="custom"&&saved.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...saved.cfg}; } }catch(e){}
-{ const h=decodeURIComponent(location.hash.slice(1)); if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } } // deep links from articles
 function tier(v){ const V=VARIANTS[v];
   return {...V, maxX:Math.min(V.maxX,cfg.maxSize), maxZ:Math.min(V.maxZ,cfg.maxSize), maxY:Math.min(V.maxY,cfg.maxHeight),
     perBlade:Math.max(1,Math.floor(V.perBlade*cfg.fluid))}; }
@@ -773,7 +780,7 @@ function update(src){
   if(src!=="height") state.extY=layout({...state,extY:0}).minH+2;
   state.coils=state.coils.filter(r=>r.n>0||state.coils.length===1);
   renderCfg(); syncInputs(); renderSlots(); renderLoad();
-  const R=simulate(state); renderResults(R);
+  const R=simulate(state); renderResults(R); share.render();
   clearTimeout(rebuildTimer); rebuildTimer=setTimeout(()=>rebuild(state),90);
 }
 
@@ -849,8 +856,29 @@ $("tRebuild").onclick=()=>rebuild(state,true);
 $("tSpin").setAttribute("aria-pressed",spinOn);
 addEventListener("resize",()=>drawChart(simulate(state)));
 
+/* design code (mdt1): the whole turbine as one string, used by share links and by the planned in-game mod. Spec: docs/planner-mod.md.
+   mdt1.variant.flow.X.Z.Y.bladeLength.blades.coils
+   variant b|r; X, Z, Y exterior (Y is the height the rotor actually uses); coils: id~count pairs, comma-separated, in placement order. */
+function encodeDesign(){ const lay=layout(state);
+  return ["mdt1",state.variant==="basic"?"b":"r",state.flow,state.extX,state.extZ,lay.H+2,lay.L,state.blades,
+    state.coils.map(r=>r.id+"~"+r.n).join(",")].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==9||p[0]!=="mdt1"||!/^[br]$/.test(p[1])) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={variant:p[1]==="b"?"basic":"reinforced",flow:int(2,0,1e6),extX:int(3,5,256),extZ:int(4,5,256),extY:int(5,3,256),bladeLen:int(6,1,127),blades:int(7,0,1e6),coils:[]};
+  if(Object.values(d).some(v=>Number.isNaN(v))) return null;
+  if(p[8]) for(const e of p[8].split(",")){ const m=/^([a-z0-9_]+)~(\d+)$/.exec(e); if(!m||!COIL[m[1]]||d.coils.some(r=>r.id===m[1])) return null; d.coils.push({id:m[1],n:+m[2]}); }
+  return d; }
+// "height" keeps the loaded exterior height instead of shrinking to the minimum
+const applyDesign=d=>{ Object.assign(state,d); state.base=null; update("height"); };
+const share=mdShare({prefix:"mdt1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:applyDesign, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
 initGL();
+if(share.atLoad.design) applyDesign(share.atLoad.design); else
 update(); // open on 24 enderium coils at 1300 mB/t: on the ~1,800 RPM peak, and a tidier-looking build than a tuned 2000 mB/t one
+share.live();
 })();
 </script>
 </body>

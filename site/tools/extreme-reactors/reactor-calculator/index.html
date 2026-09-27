@@ -86,6 +86,7 @@ h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;
 .atm-list button:disabled{opacity:.5;cursor:not-allowed}
 .atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
 .seg button:disabled{opacity:.45;cursor:not-allowed}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
 .hint{font-size:13px;color:var(--muted);margin:0}
 .hint a{color:var(--accent-ink)}
 .btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
@@ -170,6 +171,12 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <div class="row"><label for="extZ">Depth (Z)</label><input type="range" id="extZ" min="3" max="32"><input class="num" id="extZN" type="number" min="3" max="32" aria-label="Exterior depth Z in blocks"></div>
         <div class="row"><label for="extY">Height (Y)</label><input type="range" id="extY" min="3" max="48"><input class="num" id="extYN" type="number" min="3" max="48" aria-label="Exterior height Y in blocks"></div>
         <p class="hint" id="casingHint"></p>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
       </div>
     </section>
 
@@ -295,6 +302,7 @@ hardness /= moderation</pre>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
 <script>
 (() => {
 "use strict";
@@ -390,7 +398,6 @@ const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("extremereactors", DEFAU
 let cfgPreset="default", cfg={...PRESETS.default};
 try{ const s=JSON.parse(localStorage.getItem("er-reactor-cfg")||"null"); if(s&&mdPackPresets.legacy[s.preset]) s.preset=mdPackPresets.legacy[s.preset];
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
-{ const h=decodeURIComponent(location.hash.slice(1)); if(h&&PRESETS[h]){ cfgPreset=h; cfg={...PRESETS[h]}; } }
 
 /* ================= state ================= */
 const state={variant:"reinforced", mode:"active", fuel:"yellorium", insertion:0, X:7, Z:7, Y:7, cells:null, tool:"rod"};
@@ -808,7 +815,7 @@ function drawChart(R){
 }
 
 let timer=0;
-function schedule(){ clearTimeout(timer); $("status").textContent="Simulating…"; timer=setTimeout(run,60); }
+function schedule(){ clearTimeout(timer); $("status").textContent="Simulating…"; timer=setTimeout(run,60); share.render(); }
 function run(){ result=simulate(state,cfg); renderResults(result); rebuild3D(); }
 function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); drawCore(); renderLegend(); schedule(); }
 
@@ -843,9 +850,39 @@ $("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",mod
 $("tRebuild").onclick=()=>rebuild3D(true);
 addEventListener("resize",()=>{ if(result) drawChart(result); });
 
+/* design code (mdr1): the whole reactor as one string, used by share links and by the planned in-game mod. Spec: docs/planner-mod.md.
+   mdr1.variant.mode.fuel.insertion.X.Z.Y.palette.cells
+   variant b|r, mode a|p (active|passive), fuel y|b|v; X, Z, Y exterior.
+   palette: the ids used inside, comma-separated, in order of first appearance (column 0 first): "rod", "air" or a moderator id.
+   cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits each, least significant bit first,
+   base64url without padding. Column i = x*(Z-2)+z. */
+const FUEL_CODE={yellorium:"y",blutonium:"b",verderium:"v"}, FUEL_OF={y:"yellorium",b:"blutonium",v:"verderium"};
+const palBits=n=>Math.max(1,Math.ceil(Math.log2(n)));
+function encodeDesign(){ const pal=[], idx={}, vals=state.cells.map(c=>idx[c]??(idx[c]=pal.push(c)-1));
+  return ["mdr1",state.variant==="basic"?"b":"r",state.mode==="active"?"a":"p",FUEL_CODE[state.fuel],state.insertion,state.X,state.Z,state.Y,
+    pal.join(","),mdShare.b64u.enc(mdShare.packBits(vals,palBits(pal.length)))].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split(".");
+  if(p.length!==10||p[0]!=="mdr1"||!/^[br]$/.test(p[1])||!/^[ap]$/.test(p[2])||!FUEL_OF[p[3]]) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={variant:p[1]==="b"?"basic":"reinforced",mode:p[2]==="a"?"active":"passive",fuel:FUEL_OF[p[3]],insertion:int(4,0,100),X:int(5,3,256),Z:int(6,3,256),Y:int(7,3,256)};
+  if(Object.values(d).some(v=>Number.isNaN(v))) return null;
+  const pal=p[8].split(","); if(pal.some(id=>id!=="rod"&&!MOD[id])||new Set(pal).size!==pal.length) return null;
+  let bytes; try{ bytes=mdShare.b64u.dec(p[9]); }catch(e){ return null; }
+  const vals=mdShare.unpackBits(bytes,(d.X-2)*(d.Z-2),palBits(pal.length)); if(!vals||vals.some(v=>v>=pal.length)) return null;
+  d.cells=vals.map(v=>pal[v]); return d; }
+// a design bigger than this pack's config allows gets cut down by clampSize; say so
+const cutNote=d=>state.X!==d.X||state.Z!==d.Z||state.Y!==d.Y?`Loaded, but cut down to ${state.X}×${state.Z}×${state.Y}: the design is ${d.X}×${d.Z}×${d.Y} and this config allows less.`:null;
+const applyDesign=d=>{ Object.assign(state,d,{cix:d.X-2,ciz:d.Z-2}); update(); };
+const share=mdShare({prefix:"mdr1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:applyDesign, loaded:cutNote, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
 // starting design: 7x7x7 active (steam) reactor, rods every other block, air between
 state.cells=resizeCells(state.X-2,state.Z-2); state.cix=state.X-2; state.ciz=state.Z-2; state.tool="air"; applyPattern("grid"); applyPattern("fill"); state.tool="rod";
-initGL(); update();
+initGL();
+if(share.atLoad.design){ applyDesign(share.atLoad.design); const n=cutNote(share.atLoad.design); if(n) share.say(n); } else update();
+share.live();
 })();
 </script>
 </body>

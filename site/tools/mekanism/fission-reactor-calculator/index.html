@@ -336,6 +336,7 @@ heat −= n × 50  // removed anyway</pre>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
 <script>
 (() => {
 "use strict";
@@ -354,13 +355,6 @@ const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("mekanism", DEFAULTS, CF
 let cfgPreset="default", cfg={...PRESETS.default};
 try{ const s=JSON.parse(localStorage.getItem("mek-fission-cfg")||"null"); if(s&&mdPackPresets.legacy[s.preset]) s.preset=mdPackPresets.legacy[s.preset];
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
-// link hash: "#atm10" picks a pack preset, "#d=mdf1...." loads a design, "#atm10&d=mdf1...." does both
-const readHash=()=>{ let preset=null, design=null;
-  let h=location.hash.slice(1); try{ h=decodeURIComponent(h); }catch(e){}
-  for(const part of h.split("&")) if(part.startsWith("d=")) design=part.slice(2); else if(PRESETS[part]) preset=part;
-  return {preset,design}; };
-const hashAtLoad=readHash();
-if(hashAtLoad.preset){ cfgPreset=hashAtLoad.preset; cfg={...PRESETS[cfgPreset]}; }
 
 /* ================= state ================= */
 const state={L:7,W:7,H:7,A:4,cols:null,ci:0,cj:0,coolant:"water",burn:36,biome:0.8,
@@ -763,15 +757,13 @@ $("xVer").onchange=e=>{ try{ localStorage.setItem("mek-fission-mc",e.target.valu
 $("xWhat").onchange=renderExport;
 $("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
 
-/* design code: the whole design as one string, used by share links and by the planned in-game mod (docs/mekanism-planner-mod.md).
+/* design code (mdf1): the whole design as one string, used by share links and by the planned in-game mod. Spec: docs/planner-mod.md.
    mdf1.L.W.H.A.cols.tL.tW.tH.rotor.blades.coils.vents.cond.coolant.burn.biome
    cols: interior fuel columns, bit i = column x*(W-2)+z, least significant bit first, base64url without padding.
    burn and biome are ×100 integers; coolant is w or s. Turbine counts are the effective (clamped) values. */
-const b64u={ enc:b=>btoa(String.fromCharCode(...b)).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,""),
-  dec:s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")),c=>c.charCodeAt(0)) };
 function encodeDesign(){ const {L,W,H,A,ci,cj,cols}=state, bits=new Uint8Array(Math.ceil(ci*cj/8));
   cols.forEach((on,i)=>{ if(on) bits[i>>3]|=1<<(i&7); });
-  return ["mdf1",L,W,H,A,b64u.enc(bits),state.tL,state.tW,state.tH,Tb.rotor,Tb.blades,Tb.coils,Tb.vents,Tb.cond,
+  return ["mdf1",L,W,H,A,mdShare.b64u.enc(bits),state.tL,state.tW,state.tH,Tb.rotor,Tb.blades,Tb.coils,Tb.vents,Tb.cond,
     state.coolant==="sodium"?"s":"w",Math.round(R.burn*100),Math.round(state.biome*100)].join("."); }
 function decodeDesign(code){
   const p=String(code||"").trim().split("."); if(p.length!==17||p[0]!=="mdf1"||!/^[ws]$/.test(p[14])) return null;
@@ -779,7 +771,7 @@ function decodeDesign(code){
   const d={L:int(1,3,18),W:int(2,3,18),H:int(3,4,18),A:int(4,1,15),tL:int(6,5,17),tW:int(7,5,17),tH:int(8,5,18),rotor:int(9,1,14),blades:int(10,0,28),
     coils:int(11,1,9999),vents:int(12,1,9999),cond:int(13,0,9999),burn:int(15,0,1e9)/100,biome:int(16,-500,500)/100,coolant:p[14]==="s"?"sodium":"water"};
   if(Object.values(d).some(v=>Number.isNaN(v))||d.A>d.H-3||d.tL%2===0||d.tW%2===0) return null;
-  let bits; try{ bits=b64u.dec(p[5]); }catch(e){ return null; }
+  let bits; try{ bits=mdShare.b64u.dec(p[5]); }catch(e){ return null; }
   d.ci=d.L-2; d.cj=d.W-2; if(bits.length!==Math.ceil(d.ci*d.cj/8)) return null;
   d.cols=Array.from({length:d.ci*d.cj},(_,i)=>!!(bits[i>>3]>>(i&7)&1));
   return d;
@@ -787,27 +779,9 @@ function decodeDesign(code){
 function applyDesign(d){ Object.assign(state,d);
   // a biome temperature from the mod may not be one of the presets in the list; add it so the select can show it
   if(![...$("amb").options].some(o=>+o.value===d.biome)) $("amb").add(new Option(`Other biome (${fmt(300+25*(Math.min(5,Math.max(-5,d.biome))-0.8),1)} K)`,String(d.biome))); }
-const shareUrl=()=>{ const parts=[]; if(PRESETS[cfgPreset]&&cfgPreset!=="default") parts.push(cfgPreset); parts.push("d="+encodeDesign());
-  return location.href.split("#")[0]+"#"+parts.join("&"); };
-// keep the address bar on the current design (after the first change, so a plain visit keeps a clean URL). Debounced: Safari limits replaceState calls.
-let hashLive=false, hashTimer=0;
-function renderShare(){ if(document.activeElement!==$("dCode")) $("dCode").value=encodeDesign();
-  if(!hashLive) return; clearTimeout(hashTimer); hashTimer=setTimeout(()=>{ try{ history.replaceState(null,"",shareUrl()); }catch(e){} },400); }
-const dMsgDefault=$("dMsg").textContent, say=t=>{ $("dMsg").textContent=t; clearTimeout(say.t); say.t=setTimeout(()=>$("dMsg").textContent=dMsgDefault,4000); };
-// the async clipboard API needs permission some browsers withhold; fall back to the old copy command on a hidden textarea
-async function copyText(text,done){ try{ await navigator.clipboard.writeText(text); return say(done); }catch(e){}
-  const t=document.createElement("textarea"); t.value=text; t.setAttribute("readonly",""); t.style.cssText="position:fixed;opacity:0";
-  document.body.append(t); t.select(); let ok=false; try{ ok=document.execCommand("copy"); }catch(e){} t.remove();
-  say(ok?done:"Couldn't reach the clipboard. Copy the address bar instead; it always holds this design."); }
-$("dLink").onclick=()=>copyText(shareUrl(),"Link copied.");
-$("dCopy").onclick=()=>copyText(encodeDesign(),"Design code copied.");
-// accepts a bare code or a whole share link
-const safeDecode=s=>{ try{ return decodeURIComponent(s); }catch(e){ return s; } };
-const codeIn=v=>decodeDesign((/mdf1\.[^&\s#]+/.exec(safeDecode(v))||[""])[0]);
-$("dCode").oninput=e=>{ const d=codeIn(e.target.value); if(d){ applyDesign(d); update(); say("Design loaded."); } };
-$("dCode").onchange=e=>{ if(!codeIn(e.target.value)) say("That isn't a design code. Codes start with mdf1."); e.target.value=encodeDesign(); };
-addEventListener("hashchange",()=>{ const h=readHash(); if(h.preset&&h.preset!==cfgPreset){ cfgPreset=h.preset; cfg={...PRESETS[h.preset]}; saveCfg(); renderPresetButtons(); }
-  const d=decodeDesign(h.design); if(d) applyDesign(d); update(); });
+const share=mdShare({prefix:"mdf1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:d=>{ applyDesign(d); update(); }, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
 
 function autoTurbine(){ const lim=turbineLimits(); state.rotor=lim.maxRot; state.blades=2*lim.maxRot; state.coils=Math.ceil(state.blades/cfg.bladesPerCoil);
   const t=turbineModel(); state.vents=t.maxVents; state.cond=Math.max(0,Math.min(t.aboveCells-state.coils,Math.ceil(t.intake/cfg.condenserRate))); }
@@ -815,7 +789,7 @@ function update(){
   state.L=clampI(state.L,3,18); state.W=clampI(state.W,3,18); state.H=clampI(state.H,4,18); state.A=clampI(state.A,1,Math.max(1,state.H-3));
   state.tL=odd(clampI(state.tL,5,17)); state.tW=odd(clampI(state.tW,5,17)); state.tH=clampI(state.tH,5,18);
   resizeCols(); R=reactorModel(); Tb=turbineModel();
-  renderCfg(); syncInputs(); drawCore(); renderResults(); rebuild3D(R,Tb); renderGuide(); renderExport(); renderShare();
+  renderCfg(); syncInputs(); drawCore(); renderResults(); rebuild3D(R,Tb); renderGuide(); renderExport(); share.render();
 }
 const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
 const odd=v=>v%2?v:v-1;
@@ -856,8 +830,8 @@ addEventListener("resize",drawChart);
 
 // start: 7x7x7 with 9 isolated 4-high columns, a 17x17x18 turbine
 // a design in the link replaces the default one
-resizeCols(); pattern("spaced"); autoTurbine(); { const d=decodeDesign(hashAtLoad.design); if(d) applyDesign(d); }
-initGL(); update(); hashLive=true;
+resizeCols(); pattern("spaced"); autoTurbine(); if(share.atLoad.design) applyDesign(share.atLoad.design);
+initGL(); update(); share.live();
 })();
 </script>
 </body>
