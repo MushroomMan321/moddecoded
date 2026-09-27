@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="canonical" href="https://moddecoded.com/tools/mekanism/dynamic-tank-calculator/">
+<title>Mekanism Dynamic Tank Calculator</title>
+<meta name="description" content="Mekanism dynamic tank calculator: fluid and chemical capacity for any size, the smallest tank for a capacity, blocks to build, fill time and comparator levels, from the Mekanism 10.7.19 source code. Download the tank as a .nbt schematic.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:light;
+  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
+  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
+  --good:#2E7D4F; --warn:#A8591A; --bad:#B03434; --steam:#3A7BD5;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ color-scheme:dark;
+    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+    --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --steam:#7FAEF0; }
+}
+:root[data-theme="dark"]{ color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --steam:#7FAEF0; }
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide-cols h3{font-size:14px;margin:0 0 6px}
+.guide-cols h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{font:600 13px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;max-width:100%}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.fit{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fit label{font-size:14px;color:var(--muted)}
+.fit .num{width:130px}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+details.sig summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.sig-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden;margin-top:10px}
+.sig-grid div{background:var(--surface);padding:5px 8px;display:flex;align-items:baseline;gap:8px;font:12px var(--font-mono);color:var(--muted);font-variant-numeric:tabular-nums}
+.sig-grid b{font:400 22px/1 var(--font-readout);color:var(--ink);min-width:2ch}
+.sig-grid div.on{background:var(--accent-soft)}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Mekanism / Dynamic Tank Calculator</nav>
+  <header class="top">
+    <h1>Mekanism <span class="y">Dynamic Tank Calculator</span></h1>
+    <span class="src">Formulas from the Mekanism 1.21.1-10.7.19.85 source</span>
+  </header>
+  <p class="lede">Pick a size and see how much fluid or chemical the tank holds, what to build it from, how long it takes to fill and what a comparator reads. Or type a capacity and get the smallest tank that holds it. Every number comes from Mekanism's <b>TankMultiblockData</b> and its multiblock validator.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the dynamic tank"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
+        <div class="viewbar">
+          <button id="tCasing" aria-pressed="true" type="button">Casing</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols">
+          <div id="gLayer"></div>
+          <div id="gParts"></div>
+        </div>
+        <details open><summary>How it goes together</summary>
+          <ol>
+            <li>The 12 edges (and so the corners) must be <b>Dynamic Tank</b> blocks. Valves and glass on an edge stop the tank forming.</li>
+            <li>The six faces between the edges can be <b>Dynamic Tank</b>, <b>Structural Glass</b> or <b>Dynamic Valves</b>, mixed any way you like.</li>
+            <li>Leave the inside completely empty. Any block in there, even a torch, stops it forming.</li>
+            <li>Pipes and tubes connect to the <b>Dynamic Valves</b>; one valve both fills and drains. Right-click any tank block to open the GUI, where buckets and portable tanks fill or empty it.</li>
+          </ol>
+        </details>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact tank. Paste a design code above to load it.</p>
+      </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <div class="row"><label for="xVer">Minecraft</label><select id="xVer" aria-label="Minecraft version"></select><span></span></div>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block.</p>
+      </div>
+      <div class="box">
+        <h2>Tank size</h2>
+        <div class="row"><label for="L">Width</label><input type="range" id="L" min="3" max="18"><input class="num" id="LN" type="number" min="3" max="18" aria-label="Tank width"></div>
+        <div class="row"><label for="W">Depth</label><input type="range" id="W" min="3" max="18"><input class="num" id="WN" type="number" min="3" max="18" aria-label="Tank depth"></div>
+        <div class="row"><label for="H">Height</label><input type="range" id="H" min="3" max="18"><input class="num" id="HN" type="number" min="3" max="18" aria-label="Tank height"></div>
+        <p class="hint">Outside size, walls included: 3 to 18 blocks each way.</p>
+        <div class="fit">
+          <label for="fitN">Needs to hold</label>
+          <input class="num" id="fitN" type="number" min="1" step="any" value="100000" aria-describedby="fitMsg">
+          <span class="hint">buckets</span>
+          <button class="btn" type="button" id="fitGo">Find the smallest tank</button>
+        </div>
+        <p class="hint" id="fitMsg" role="status"></p>
+      </div>
+
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/Mekanism/general.toml</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Walls and valves</h2>
+        <div class="seg" role="group" aria-label="Wall blocks">
+          <button type="button" id="wGlass" aria-pressed="true">All glass</button>
+          <button type="button" id="wSides" aria-pressed="false">Glass sides</button>
+          <button type="button" id="wCasing" aria-pressed="false">All casing</button>
+        </div>
+        <div class="row"><label for="va">Valves</label><input type="range" id="va" min="0" max="20"><input class="num" id="vaN" type="number" min="0" aria-label="Dynamic valves"></div>
+        <p class="hint">Glass and casing hold the same amount; glass only lets you see in. Valves go on the bottom row of the front face first.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Contents</h2>
+        <div class="seg" role="group" aria-label="Contents">
+          <button type="button" id="cFluid" aria-pressed="true">Fluid</button>
+          <button type="button" id="cChem" aria-pressed="false">Chemical</button>
+        </div>
+        <div class="row"><label for="fi">Filled</label><input type="range" id="fi" min="0" max="100" step="1"><input class="num" id="fiN" type="number" min="0" max="100" step="1" aria-label="Percent filled"></div>
+        <div class="row"><label for="ra">Fill rate</label><input type="range" id="ra" min="100" max="64000" step="100"><input class="num" id="raN" type="number" min="1" aria-label="Fill rate in mB per tick"></div>
+        <p class="hint">Fill rate in mB per tick, whatever your pipes, tubes or pump deliver. Chemicals are gases, infuse types, pigments and slurries.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+        <details class="sig">
+          <summary>Comparator level for each fill amount</summary>
+          <div class="sig-grid" id="sigGrid"></div>
+          <p class="hint" style="margin-top:8px">The least the tank must hold for each signal strength on a comparator reading a Dynamic Valve.</p>
+        </details>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>The walls count toward capacity</h3>
+        <p>Capacity uses the tank's outside volume, walls and all, not the air inside. A 3×3×3 tank has one block of air in it and still holds 9,450 buckets.</p>
+<pre>volume   = length × width × height
+capacity = volume × fluidPerTank   (350,000 mB)</pre>
+        <span class="ref">MultiblockData.setShape · TankMultiblockData.setVolume</span>
+      </div>
+      <div class="fact">
+        <h3>Fluid or chemical, one at a time</h3>
+        <p>The tank is one fluid tank and one chemical tank merged together. Only one can hold anything at a time. The chemical side holds 16,000,000 mB per block, about 46× the fluid side.</p>
+<pre>fluid    = volume × 350,000 mB
+chemical = volume × 16,000,000 mB</pre>
+        <span class="ref">TankMultiblockData (MergedTank)</span>
+      </div>
+      <div class="fact">
+        <h3>Edges must be tank blocks</h3>
+        <p>Every edge position needs a frame block, and only the Dynamic Tank block counts as frame. Dynamic Valves and Structural Glass are fine anywhere on the faces.</p>
+<pre>edge:  Dynamic Tank only
+face:  Dynamic Tank, Dynamic Valve, Structural Glass
+inside: air only</pre>
+        <span class="ref">TankValidator · CuboidStructureValidator.validateFrame</span>
+      </div>
+      <div class="fact">
+        <h3>Only valves talk to comparators</h3>
+        <p>A comparator on a Dynamic Valve reads the fill level; the plain tank blocks give nothing. Any amount at all gives 1, and 15 means completely full.</p>
+<pre>f      = stored / capacity
+signal = floor(f × 14) + (f &gt; 0 ? 1 : 0)</pre>
+        <span class="ref">MekanismUtils.redstoneLevelFromContents</span>
+      </div>
+      <div class="fact">
+        <h3>18 × 18 × 18 is the ceiling</h3>
+        <p>Tanks are 3 to 18 blocks on every side. The biggest holds 2,041,200 buckets of fluid. The config caps <code>fluidPerTank</code> at 368,224 so that tank's capacity still fits in a Java int.</p>
+<pre>max fluidPerTank = 2,147,483,647 / 18³
+                 = 368,224</pre>
+        <span class="ref">CuboidStructureValidator · GeneralConfig</span>
+      </div>
+      <div class="fact">
+        <h3>Cubes are cheapest per bucket</h3>
+        <p>You only place the shell, and a cube encloses the most volume for the fewest wall blocks. A 10×10×10 tank takes 488 blocks for 350,000 buckets; a flat 3×18×18 takes 716 blocks and holds less.</p>
+<pre>blocks = L×W×H − (L−2)(W−2)(H−2)</pre>
+        <span class="ref">geometry</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script src="/data/schematic.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=(v)=>!Number.isFinite(v)?"—":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10?2:0);
+// mB as buckets, dropping trailing zeros: 675 → "0.675", 9450000 → "9,450"
+const bk=mB=>(mB/1000).toLocaleString(undefined,{maximumFractionDigits:3});
+function dur(ticks){ if(!Number.isFinite(ticks)) return "—"; const s=Math.ceil(ticks/20);
+  if(s<60) return `${s} s`; if(s<3600) return `${Math.floor(s/60)}m ${s%60}s`;
+  if(s<172800) return `${Math.floor(s/3600)}h ${Math.floor(s%3600/60)}m`; return `${fmt(Math.floor(s/86400))}d ${Math.floor(s%86400/3600)}h`; }
+
+/* ================= config (general.toml [dynamic_tank]) ================= */
+const DEFAULTS={fluidPerTank:350000, chemicalPerTank:16000000};
+const CFG_FIELDS=[["fluidPerTank","dynamic_tank.fluidPerTank"],["chemicalPerTank","dynamic_tank.chemicalPerTank"]];
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("mekanism", DEFAULTS, CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("mek-tank-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+
+/* ================= state and model (Mekanism 10.7.19.85) ================= */
+// walls: glass (every face block that isn't a valve), sides (glass on the four sides, casing floor and roof), casing
+const state={L:7,W:7,H:7,walls:"glass",valves:2,content:"fluid",fill:100,rate:1000};
+const shellOf=(L,W,H)=>L*W*H-(L-2)*(W-2)*(H-2);
+function model(){
+  const {L,W,H}=state, volume=L*W*H, inner=(L-2)*(W-2)*(H-2), shell=volume-inner;
+  const edges=4*(L-2)+4*(W-2)+4*(H-2)+8, faces=shell-edges, valves=Math.min(state.valves,faces);
+  const fluidCap=volume*cfg.fluidPerTank, chemCap=volume*cfg.chemicalPerTank;   // TankMultiblockData.setVolume
+  const cap=state.content==="fluid"?fluidCap:chemCap, stored=Math.round(cap*state.fill/100), f=cap?stored/cap:0;
+  const signal=Math.floor(f*14)+(f>0?1:0);                                       // MekanismUtils.redstoneLevelFromContents
+  return {volume,inner,shell,edges,faces,valves,fluidCap,chemCap,cap,stored,f,signal,fillTicks:state.rate>0?cap/state.rate:Infinity};
+}
+// smallest build (fewest shell blocks) that holds mB; ties go to less volume, then the most cube-like
+function fitTank(mB){ const per=state.content==="fluid"?cfg.fluidPerTank:cfg.chemicalPerTank; let best=null;
+  for(let L=3;L<=18;L++)for(let W=L;W<=18;W++)for(let H=3;H<=18;H++){ const v=L*W*H; if(v*per<mB) continue;
+    const key=[shellOf(L,W,H),v,Math.max(L,W,H)-Math.min(L,W,H)];
+    if(!best||key[0]<best.key[0]||key[0]===best.key[0]&&(key[1]<best.key[1]||key[1]===best.key[1]&&key[2]<best.key[2])) best={L,W,H,key}; }
+  return best; }
+
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plate(key,color,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b); }); }
+const T={
+  casing:()=>plate("casing","#7B838C",(g,b)=>{ g.fillStyle=shade(b,0.72); g.fillRect(3,3,10,1); g.fillRect(3,12,10,1); g.fillRect(3,3,1,10); g.fillRect(12,3,1,10); }),
+  glass:()=>tex("glass",g=>{ g.clearRect(0,0,16,16); g.fillStyle="rgba(170,205,225,0.9)"; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); }),
+  valve:()=>plate("valve","#7B838C",(g)=>{ g.fillStyle="#1A1E21"; g.fillRect(4,4,8,8); g.fillStyle="#3A7BD5"; g.fillRect(5,5,6,6); g.fillStyle="#9CC2F0"; g.fillRect(7,7,2,2); }),
+};
+const FLUID_COLOR={fluid:0x3A7BD5, chemical:0xB9D85A};
+
+/* ================= block map ================= */
+const SHELL=new Set(["casing","glass","valve"]);
+function blockMap(){
+  const {L,W,H}=state, map=new Map(), faceCells=[];
+  for(let y=0;y<H;y++)for(let x=0;x<L;x++)for(let z=0;z<W;z++){
+    const bx=x===0||x===L-1, by=y===0||y===H-1, bz=z===0||z===W-1, n=bx+by+bz; if(!n) continue;
+    const key=`${x},${y},${z}`;
+    if(n>=2){ map.set(key,"casing"); continue; }
+    map.set(key,state.walls==="glass"||state.walls==="sides"&&!by?"glass":"casing");
+    // valve order: side walls before floor and roof, lowest row first, front (camera-facing) then right, back, left, center of the row outward
+    const face=by?4:z===W-1?0:x===L-1?1:z===0?2:3, off=face===0||face===2?Math.abs(x-(L-1)/2):face<4?Math.abs(z-(W-1)/2):Math.abs(x-(L-1)/2)+Math.abs(z-(W-1)/2);
+    faceCells.push([key,(face===4?1e6+(y?1e5:0):y*1e4)+face*1e2+off]);
+  }
+  faceCells.sort((a,b)=>a[1]-b[1]);
+  for(let i=0;i<Math.min(state.valves,faceCells.length);i++) map.set(faceCells[i][0],"valve");
+  return map;
+}
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, groups={}, buildStart=0, buildTop=0, buildBottom=0, casingOn=true, fluid=null, fluidH=0, fluidGoal=0;
+const matCache={}, anims=[];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  return matCache[k]=new THREE.MeshLambertMaterial(k==="glass"?{map:t,transparent:true,opacity:0.5,depthWrite:false,clippingPlanes:[clip]}:{map:t,clippingPlanes:[clip]}); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  fluid=new THREE.Mesh(CUBE(),new THREE.MeshLambertMaterial({color:FLUID_COLOR.fluid,transparent:true,opacity:0.6,depthWrite:false,clippingPlanes:[clip]})); fluid.renderOrder=1; root.add(fluid);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms. goal eases the camera to a new framing.
+const orbit={theta:0.5,phi:1.1,radius:30,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(200,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(200,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+const framing=()=>({x:0,y:0,z:0,r:Math.max(state.L,state.W,state.H)*2.4+5});
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=place.y+guide.layer+0.001;
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=buildBottom+(buildTop-buildBottom)*(1-Math.pow(1-p,3)); }
+  // the fluid eases to its new level and sits on the floor of the interior
+  fluidH+=(fluidGoal-fluidH)*(reduce?1:1-Math.exp(-dt*6));
+  fluid.visible=!guide.on&&fluidH>0.01; fluid.scale.set(state.L-2.02,Math.max(0.001,fluidH),state.W-2.02); fluid.position.set(0,place.y+1+fluidH/2,0);
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=a.show();
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); } else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"&&a.mesh.parent) a.mesh.parent.remove(a.mesh); anims.splice(i,1); } }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0, place={x:0,y:0,z:0};
+const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+place.x+0.5,y+place.y+0.5,z+place.z]; };
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), g=groups.shell=new THREE.Group();
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); mesh.setMatrixAt(i,m4); });
+    if(k==="glass") mesh.renderOrder=2; g.add(mesh); }
+  root.add(g); g.visible=casingOn;
+}
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(R){
+  if(!renderer) return;
+  const {L,W,H}=state, shape=`${L}|${W}|${H}`, map=blockMap();
+  place={x:-L/2, y:-H/2, z:-W/2+0.5}; clearSwaps();
+  fluidGoal=R.f*(H-2); fluid.material.color.setHex(FLUID_COLOR[state.content]);
+  if(!shownMap||shape!==shownShape){ buildInstanced(map); buildBottom=-H/2-0.5; buildTop=H/2+0.6; buildStart=performance.now();
+    // re-frame the camera; jump there on first load
+    orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; if(!shownShape){ orbit.radius=orbit.goal.r; orbit.goal=null; fluidH=fluidGoal; }
+    shownMap=map; shownShape=shape; return; }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map; if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>2500){ buildInstanced(map); return; }
+  buildInstanced(map,new Set(added.map(a=>a[0])));
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now(), show=()=>casingOn;
+  const mk=(k,key)=>{ const m=new THREE.Mesh(CUBE(),mat(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); return m; };
+  for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y,show}); }
+  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
+  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y,show}); }
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+
+/* ================= UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  const same=cfgPreset!=="default"&&CFG_FIELDS.every(([k])=>cfg[k]===DEFAULTS[k]);
+  $("cfgHint").innerHTML=`Fluid <b>${fmt(cfg.fluidPerTank)}</b> mB per block · chemical <b>${fmt(cfg.chemicalPerTank)}</b> mB per block${same?" · same as the mod defaults":""}`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="1"; i.min="1";
+    i.onchange=()=>{ const v=Math.round(+i.value); if(!(v>0)){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("mek-tank-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+let R=null;
+function syncInputs(){
+  const set=(id,v,max)=>{ if(max!=null){ $(id).max=max; $(id+"N").max=max; } $(id).value=v; $(id+"N").value=v; };
+  set("L",state.L); set("W",state.W); set("H",state.H); set("va",R.valves,R.faces); set("fi",state.fill); set("ra",state.rate);
+  for(const [id,w] of [["wGlass","glass"],["wSides","sides"],["wCasing","casing"]]) $(id).setAttribute("aria-pressed",state.walls===w);
+  for(const [id,c] of [["cFluid","fluid"],["cChem","chemical"]]) $(id).setAttribute("aria-pressed",state.content===c);
+}
+function renderResults(){
+  const {L,W,H}=state, fluidSide=state.content==="fluid", what=fluidSide?"fluid":"chemical";
+  $("hudMain").innerHTML=`${big(R.cap/1000)} <small>buckets of ${what}</small>`;
+  $("hudSub").textContent=`${L}×${W}×${H} · ${fmt(R.shell)} blocks · ${state.fill}% full${R.valves?` · comparator ${R.signal}`:""}`;
+  const cells=[
+    [`${fluidSide?"Fluid":"Chemical"} capacity`,`${bk(R.cap)} <small>buckets · ${big(R.cap)} mB</small>`,"hero"],
+    [`${fluidSide?"Chemical":"Fluid"} capacity`,`${big((fluidSide?R.chemCap:R.fluidCap)/1000)} <small>buckets</small>`],
+    ["Volume",`${fmt(R.volume)} <small>blocks · ${fmt(R.inner)} of it air</small>`],
+    ["Blocks to build",`${fmt(R.shell)} <small>${fmt(R.edges)} on the edges</small>`],
+    ["Per block built",`${big(R.cap/1000/R.shell)} <small>buckets</small>`],
+    ["Stored",`${bk(R.stored)} <small>buckets · ${state.fill}%</small>`],
+    ["Comparator on a valve",R.valves?`${R.signal} <small>of 15</small>`:`— <small>no valve</small>`],
+    ["Fill from empty",`${dur(R.fillTicks)} <small>at ${fmt(state.rate)} mB/t</small>`],
+    ["Rest of the fill",`${dur((R.cap-R.stored)/state.rate)} <small>from ${state.fill}%</small>`],
+  ];
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(!R.valves) n.push(["warn","No valves. The tank still forms and its GUI fills or empties it from buckets and portable tanks, but pipes, tubes and comparators need a Dynamic Valve."]);
+  if(state.valves>R.faces) n.push(["warn",`Only ${R.faces} valves fit on the faces of this tank; the edges must stay Dynamic Tank blocks.`]);
+  if(state.walls!=="casing") n.push(["good","Structural Glass holds exactly as much as casing, so a glass tank costs you nothing in capacity."]);
+  if(!fluidSide) n.push(["good","It holds one chemical at a time, and no fluid while it does. Empty it before switching."]);
+  if(R.fillTicks>72000) n.push(["warn",`At ${fmt(state.rate)} mB/t it takes ${dur(R.fillTicks)} to fill. Valves don't limit the rate, so faster pipes, or more pipes into more valves, fill it sooner.`]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  // comparator: signal s needs f >= (s−1)/14, and 1 needs anything at all
+  $("sigGrid").innerHTML=Array.from({length:15},(_,i)=>{ const s=i+1, need=s===1?1:Math.ceil(R.cap*(s-1)/14);
+    return `<div class="${R.valves&&s===R.signal?"on":""}"><b>${s}</b><span>${s===1?"any amount":"≥ "+bk(need)+" B"}</span></div>`; }).join("");
+}
+/* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
+const NAMES={casing:"Dynamic Tank",glass:"Structural Glass",valve:"Dynamic Valve"}, ORDER=["casing","glass","valve"];
+const swatch=k=>swatch[k]||(swatch[k]=T[k]().toDataURL());
+function tally(map,layer){ const c={}; for(const [key,k] of map){ if(layer!=null&&+key.split(",")[1]!==layer-1) continue; c[k]=(c[k]||0)+1; }
+  return ORDER.filter(k=>c[k]).map(k=>[k,c[k]]); }
+const partsList=rows=>`<ul class="parts">${rows.map(([k,n])=>`<li><img src="${swatch(k)}" alt=""><span>${NAMES[k]}</span><span class="n">${fmt(n)}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const top=state.H; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const map=blockMap(), n=guide.layer, where=n===1?"floor":n===top?"roof":`layer ${n} of ${top}`;
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(map,n))}`;
+  $("gParts").innerHTML=`<h3>Whole tank</h3>${partsList(tally(map))}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
+/* schematic export (/data/schematic.js writes and downloads the file). The interior is written as air; the file holds no fluid. */
+const BLOCK_IDS={casing:"mekanism:dynamic_tank",glass:"mekanism:structural_glass",valve:"mekanism:dynamic_valve"};
+function buildStructure(dataVersion){
+  const {L,W,H}=state, map=blockMap(), palette=[], pidx={}, blocks=[], pal=name=>pidx[name]??(pidx[name]=palette.push({Name:name})-1);
+  for(let y=0;y<H;y++)for(let x=0;x<L;x++)for(let z=0;z<W;z++){ const k=map.get(`${x},${y},${z}`); blocks.push({pos:[x,y,z],state:pal(k?BLOCK_IDS[k]:"minecraft:air")}); }
+  return {DataVersion:dataVersion,size:[L,H,W],palette,blocks,entities:[]};
+}
+function renderExport(){
+  $("xGo").disabled=!mdSchematic.canGzip;
+  if(!mdSchematic.canGzip){ $("xHint").textContent="This browser can't compress files. Try a current Chrome, Firefox, Edge or Safari."; return; }
+  const {L,W,H}=state;
+  $("xHint").textContent=`Contains the empty ${L}×${W}×${H} tank: ${fmt(R.shell)} blocks${R.valves?`, ${R.valves} of them valves`:""}. Fill it once it's built.`;
+}
+async function downloadNbt(){
+  const [ver,dv]=mdSchematic.dataVersion($("xVer")), {L,W,H}=state;
+  await mdSchematic.download(buildStructure(dv),`mekanism-dynamic-tank-${L}x${W}x${H}-mc${ver}.nbt`);
+}
+mdSchematic.versionPicker($("xVer"),"mek-tank-mc");
+$("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
+
+/* design code (mdk1): the whole design as one string, used by share links.
+   mdk1.L.W.H.walls.valves.content.fill.rate
+   walls is g (all glass), s (glass sides) or c (all casing); content is f (fluid) or c (chemical);
+   fill is a whole percent; rate is mB/t. valves is the effective (clamped) count. */
+const WALLS={g:"glass",s:"sides",c:"casing"};
+function encodeDesign(){ return ["mdk1",state.L,state.W,state.H,state.walls[0],R.valves,state.content[0],state.fill,state.rate].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==9||p[0]!=="mdk1"||!WALLS[p[4]]||!/^[fc]$/.test(p[6])) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={L:int(1,3,18),W:int(2,3,18),H:int(3,3,18),walls:WALLS[p[4]],valves:int(5,0,9999),content:p[6]==="f"?"fluid":"chemical",fill:int(7,0,100),rate:int(8,1,1e9)};
+  return Object.values(d).some(v=>Number.isNaN(v))?null:d;
+}
+const share=mdShare({prefix:"mdk1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d); update(); }, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
+function update(){
+  state.L=clampI(state.L,3,18); state.W=clampI(state.W,3,18); state.H=clampI(state.H,3,18);
+  state.fill=Math.min(100,Math.max(0,Math.round(+state.fill||0))); state.rate=clampI(state.rate,1,1e9); state.valves=Math.max(0,Math.round(+state.valves||0));
+  R=model();
+  renderCfg(); syncInputs(); renderResults(); rebuild3D(R); renderGuide(); renderExport(); share.render();
+}
+
+/* wiring */
+// Preset row: Mod defaults · Modpack ▾ · Custom. "Modpack" opens the pack list; picking a pack closes it and relabels the button.
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+const bind=(id,key,after)=>{ const f=v=>{ state[key]=+v; if(after) after(); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
+const clearFit=()=>{ $("fitMsg").textContent=""; };
+bind("L","L",clearFit); bind("W","W",clearFit); bind("H","H",clearFit); bind("va","valves"); bind("fi","fill"); bind("ra","rate");
+$("wGlass").onclick=()=>{ state.walls="glass"; update(); }; $("wSides").onclick=()=>{ state.walls="sides"; update(); }; $("wCasing").onclick=()=>{ state.walls="casing"; update(); };
+$("cFluid").onclick=()=>{ state.content="fluid"; clearFit(); update(); }; $("cChem").onclick=()=>{ state.content="chemical"; clearFit(); update(); };
+function fit(){ const want=+$("fitN").value; if(!(want>0)){ $("fitMsg").textContent="Type how many buckets it needs to hold."; return; }
+  const best=fitTank(want*1000), what=state.content==="fluid"?"fluid":"chemical";
+  if(!best){ const max=18*18*18*(state.content==="fluid"?cfg.fluidPerTank:cfg.chemicalPerTank);
+    $("fitMsg").textContent=`Too big for one tank: the largest, 18×18×18, holds ${bk(max)} buckets of ${what}. You'd need ${fmt(Math.ceil(want*1000/max))} of them.`; return; }
+  Object.assign(state,{L:best.L,W:best.W,H:best.H}); update();
+  $("fitMsg").textContent=`${best.L}×${best.W}×${best.H} holds ${bk(R.cap)} buckets of ${what} with ${fmt(R.shell)} blocks, the fewest of any tank that fits ${fmt(want)}.`; }
+$("fitGo").onclick=fit; $("fitN").onkeydown=e=>{ if(e.key==="Enter") fit(); };
+$("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+
+// start: a 7×7×7 glass tank with two valves, full of water; a design in the link replaces it
+if(share.atLoad.design) Object.assign(state,share.atLoad.design);
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>

@@ -4,7 +4,7 @@
 // whose value differs from the mod's default; anything left out uses the default. Keys are written
 // "section.key", exactly as they appear in the .toml file:
 //   extremereactors -> config/extremereactors/common.toml
-//   mekanism        -> config/Mekanism/generators.toml (general.* and boiler.* keys: config/Mekanism/general.toml)
+//   mekanism        -> config/Mekanism/generators.toml (general.*, boiler.* and dynamic_tank.* keys: config/Mekanism/general.toml)
 // The keys each calculator reads are listed in its "Edit values" panel and in CONTRIBUTING.md.
 //
 //   id      URL-safe slug. It is also the deep link: /tools/.../turbine-calculator/#<id>

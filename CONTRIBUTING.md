@@ -63,6 +63,8 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `general.maxEnergyPerSteam` | general.toml | 10 |
 | `general.feConversionRate` | general.toml | 2.5 |
 | `boiler.superheatingHeatTransfer` | general.toml | 16000000 |
+| `dynamic_tank.fluidPerTank` | general.toml | 350000 |
+| `dynamic_tank.chemicalPerTank` | general.toml | 16000000 |
 
 ## Changing a calculator
 

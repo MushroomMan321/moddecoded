@@ -337,6 +337,7 @@ heat −= n × 50  // removed anyway</pre>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="/data/packs.js"></script>
 <script src="/data/share.js"></script>
+<script src="/data/schematic.js"></script>
 <script>
 (() => {
 "use strict";
@@ -693,25 +694,12 @@ function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on);
   if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
 function stepLayer(d){ guide.layer+=d; renderGuide(); }
 
-/* schematic export: a vanilla structure file (gzipped NBT), which Create, Litematica and structure blocks all load.
-   Block IDs are the same from Mekanism 10.2 (1.18.2) to 10.7 (1.21.1); only DataVersion changes. */
-const MC_VERSIONS=[["1.21.1",3955],["1.20.1",3465],["1.19.2",3120],["1.18.2",2975]];
+/* schematic export (/data/schematic.js writes and downloads the file) */
 const MG="mekanismgenerators:";
 const BLOCK_IDS={casing:MG+"fission_reactor_casing",port:MG+"fission_reactor_port",fuel:MG+"fission_fuel_assembly",rod:MG+"control_rod_assembly",
   tcasing:MG+"turbine_casing",valve:MG+"turbine_valve",vent:MG+"turbine_vent",shaft:MG+"turbine_rotor",complex:MG+"rotational_complex",
   disperser:"mekanism:pressure_disperser",coil:MG+"electromagnetic_coil",condenser:MG+"saturating_condenser"};
 const blockId=(s,k)=>k==="glass"?(s==="r"?MG+"reactor_glass":"mekanism:structural_glass"):BLOCK_IDS[k];
-// numbers are TAG_Int, strings TAG_String, arrays TAG_List, objects TAG_Compound: all a structure file needs
-function encodeNbt(root){
-  const out=[], te=new TextEncoder(), u8=v=>out.push(v&255), i16=v=>{ u8(v>>8); u8(v); }, i32=v=>{ u8(v>>>24); u8(v>>>16); u8(v>>>8); u8(v); };
-  const str=s=>{ const b=te.encode(s); i16(b.length); for(const x of b) out.push(x); };
-  const type=v=>typeof v==="number"?3:typeof v==="string"?8:Array.isArray(v)?9:10;
-  const put=v=>{ const t=type(v);
-    if(t===3) i32(v); else if(t===8) str(v);
-    else if(t===9){ u8(v.length?type(v[0]):0); i32(v.length); v.forEach(put); }
-    else { for(const k in v){ u8(type(v[k])); str(k); put(v[k]); } u8(0); } };
-  u8(10); str(""); put(root); return new Uint8Array(out);
-}
 // machines sit side by side along x with a 3-block gap, centered on each other in z, like the 3D view. Interiors are written as air.
 function exportParts(what){ const {L,W,H,tL,tW,tH}=state, p=[];
   if(what!=="t") p.push(["r",L,W,H]); if(what!=="r"&&Tb.valid) p.push(["t",tL,tW,tH]); return p; }
@@ -729,7 +717,7 @@ function buildStructure(what,dataVersion){
     ox+=l+gap; }
   return {DataVersion:dataVersion,size:[ox-gap,Math.max(...parts.map(p=>p[3])),depth],palette,blocks,entities:[]};
 }
-const canGzip=typeof CompressionStream==="function";
+const canGzip=mdSchematic.canGzip;
 function renderExport(){
   const what=$("xWhat").value, parts=exportParts(what), need=turbinesNeeded(), dims=([,l,w,h])=>`${l}×${w}×${h}`;
   const r=parts.find(p=>p[0]==="r"), t=parts.find(p=>p[0]==="t");
@@ -744,16 +732,11 @@ function renderExport(){
   $("xHint").textContent=`Contains ${bits}. ${notes.join(" ")}`.trim();
 }
 async function downloadNbt(){
-  const [ver,dv]=MC_VERSIONS.find(v=>v[0]===$("xVer").value)||MC_VERSIONS[0], what=$("xWhat").value, {L,W,H,tL,tW,tH}=state;
-  const bytes=encodeNbt(buildStructure(what,dv));
-  const blob=await new Response(new Blob([bytes]).stream().pipeThrough(new CompressionStream("gzip"))).blob();
+  const [ver,dv]=mdSchematic.dataVersion($("xVer")), what=$("xWhat").value, {L,W,H,tL,tW,tH}=state;
   const name=["mekanism",what!=="t"&&`fission-${L}x${W}x${H}`,what!=="r"&&`turbine-${tL}x${tW}x${tH}`,`mc${ver}`].filter(Boolean).join("-")+".nbt";
-  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=name; document.body.append(a); a.click(); a.remove();
-  setTimeout(()=>URL.revokeObjectURL(a.href),10000);
+  await mdSchematic.download(buildStructure(what,dv),name);
 }
-for(const [v] of MC_VERSIONS){ const o=document.createElement("option"); o.value=o.textContent=v; $("xVer").append(o); }
-try{ const v=localStorage.getItem("mek-fission-mc"); if(MC_VERSIONS.some(m=>m[0]===v)) $("xVer").value=v; }catch(e){}
-$("xVer").onchange=e=>{ try{ localStorage.setItem("mek-fission-mc",e.target.value); }catch(err){} };
+mdSchematic.versionPicker($("xVer"),"mek-fission-mc");
 $("xWhat").onchange=renderExport;
 $("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
 
