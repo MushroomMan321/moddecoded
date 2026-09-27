@@ -181,19 +181,6 @@ details.sig summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
           </ol>
         </details>
       </div>
-      <div class="box" id="share">
-        <h2>Share this design</h2>
-        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
-        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
-        <p class="hint" id="dMsg" role="status">The link opens this exact tank. Paste a design code above to load it.</p>
-      </div>
-      <div class="box" id="export">
-        <h2>Build it in Minecraft</h2>
-        <div class="row"><label for="xVer">Minecraft</label><select id="xVer" aria-label="Minecraft version"></select><span></span></div>
-        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
-        <p class="hint" id="xHint"></p>
-        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block.</p>
-      </div>
       <div class="box">
         <h2>Tank size</h2>
         <div class="row"><label for="L">Width</label><input type="range" id="L" min="3" max="18"><input class="num" id="LN" type="number" min="3" max="18" aria-label="Tank width"></div>
@@ -209,6 +196,19 @@ details.sig summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <p class="hint" id="fitMsg" role="status"></p>
       </div>
 
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact tank. Paste a design code above to load it.</p>
+      </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <div class="row"><label for="xVer">Minecraft</label><select id="xVer" aria-label="Minecraft version"></select><span></span></div>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block.</p>
+      </div>
     </section>
 
     <section class="panel" aria-label="Inputs and results">
