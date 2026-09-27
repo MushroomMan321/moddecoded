@@ -1,6 +1,6 @@
 /* Share box for the calculators: a design code in the page link (#d=<code>, optionally after a pack preset: #atm10&d=<code>),
    a text field that shows the current code and loads a pasted code or link, and copy buttons.
-   Each calculator supplies its own encode/decode; the formats are specified in docs/planner-mod.md.
+   Each calculator supplies its own encode/decode; each format is described above that calculator's encodeDesign.
 
    Page markup: #dCode (text input), #dLink and #dCopy (buttons), #dMsg (status line).
    Usage:

@@ -856,7 +856,7 @@ $("tRebuild").onclick=()=>rebuild(state,true);
 $("tSpin").setAttribute("aria-pressed",spinOn);
 addEventListener("resize",()=>drawChart(simulate(state)));
 
-/* design code (mdt1): the whole turbine as one string, used by share links and by the planned in-game mod. Spec: docs/planner-mod.md.
+/* design code (mdt1): the whole turbine as one string, used by share links.
    mdt1.variant.flow.X.Z.Y.bladeLength.blades.coils
    variant b|r; X, Z, Y exterior (Y is the height the rotor actually uses); coils: id~count pairs, comma-separated, in placement order. */
 function encodeDesign(){ const lay=layout(state);

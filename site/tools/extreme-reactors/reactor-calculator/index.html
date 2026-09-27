@@ -850,7 +850,7 @@ $("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",mod
 $("tRebuild").onclick=()=>rebuild3D(true);
 addEventListener("resize",()=>{ if(result) drawChart(result); });
 
-/* design code (mdr1): the whole reactor as one string, used by share links and by the planned in-game mod. Spec: docs/planner-mod.md.
+/* design code (mdr1): the whole reactor as one string, used by share links.
    mdr1.variant.mode.fuel.insertion.X.Z.Y.palette.cells
    variant b|r, mode a|p (active|passive), fuel y|b|v; X, Z, Y exterior.
    palette: the ids used inside, comma-separated, in order of first appearance (column 0 first): "rod", "air" or a moderator id.

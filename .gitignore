@@ -6,3 +6,6 @@ Thumbs.db
 promo/
 .claude/
 research/
+
+# private planning docs (not published)
+docs/

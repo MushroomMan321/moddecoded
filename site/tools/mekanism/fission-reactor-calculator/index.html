@@ -757,7 +757,7 @@ $("xVer").onchange=e=>{ try{ localStorage.setItem("mek-fission-mc",e.target.valu
 $("xWhat").onchange=renderExport;
 $("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
 
-/* design code (mdf1): the whole design as one string, used by share links and by the planned in-game mod. Spec: docs/planner-mod.md.
+/* design code (mdf1): the whole design as one string, used by share links.
    mdf1.L.W.H.A.cols.tL.tW.tH.rotor.blades.coils.vents.cond.coolant.burn.biome
    cols: interior fuel columns, bit i = column x*(W-2)+z, least significant bit first, base64url without padding.
    burn and biome are ×100 integers; coolant is w or s. Turbine counts are the effective (clamped) values. */
