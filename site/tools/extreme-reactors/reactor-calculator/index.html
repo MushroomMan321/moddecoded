@@ -172,12 +172,6 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <div class="row"><label for="extY">Height (Y)</label><input type="range" id="extY" min="3" max="48"><input class="num" id="extYN" type="number" min="3" max="48" aria-label="Exterior height Y in blocks"></div>
         <p class="hint" id="casingHint"></p>
       </div>
-      <div class="box" id="share">
-        <h2>Share this design</h2>
-        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
-        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
-        <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
-      </div>
     </section>
 
     <section class="panel" aria-label="Reactor inputs and results">
@@ -245,6 +239,12 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <canvas class="chart" id="chart" aria-label="Warm-up: casing temperature and output over time"></canvas>
         <ul class="notes" id="notes"></ul>
         <p class="hint">Assumes the reactor is kept topped up with fresh fuel, and waste is ejected automatically. Active mode assumes unlimited water in and steam pulled out as fast as it's made.</p>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
       </div>
     </section>
   </div>
