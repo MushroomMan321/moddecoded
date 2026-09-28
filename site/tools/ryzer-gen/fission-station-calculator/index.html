@@ -1,0 +1,792 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/ryzer-gen/fission-station-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Ryzer Gen Fission Station Calculator</title>
+<meta name="description" content="Ryzer Gen fission station core planner: lay out fuel, graphite, control rods and coolant on the 5×5 core and see power, core temperature, turbine efficiency, water and intake pumps, rod life and the cable fitting you need, from the Ryzer Gen 0.1.1-alpha source.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --ch-fuel:#35573F; --ch-mox:#3E5A33; --ch-mod:#26282A; --ch-ctrl:#5A3434; --ch-cool:#3F6A9E; --ch-target:#4B3D63; --ch-empty:#1E2528;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.src a{color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:64vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view.over{cursor:pointer}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;right:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.hud .status{font:400 24px/1 var(--font-readout);letter-spacing:.04em}
+.hover-line{position:absolute;left:10px;bottom:10px;right:200px;font:12px/1.4 var(--font-mono);color:#DDE6E2;text-shadow:0 1px 0 #000,0 0 4px #000;pointer-events:none;white-space:pre-line}
+@media (max-width:560px){.hover-line{right:10px;bottom:44px}.view{aspect-ratio:1/1;max-height:none}.hud .big{font-size:32px}}
+.st-good{color:var(--good)}.st-warn{color:var(--warn)}.st-bad{color:var(--bad)}.st-od{color:#F0A040}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.nogl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--muted);font-size:14px}
+.core{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:3px;width:100%;max-width:330px;padding:5px;background:#0B0F11;border:2px solid #3A4449;border-radius:4px;touch-action:none;user-select:none;-webkit-user-select:none}
+.core-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.core-cap{font:11.5px var(--font-mono);color:var(--muted);width:100%;max-width:330px;text-align:center}
+.ch{position:relative;aspect-ratio:1;border:0;border-radius:2px;padding:0;cursor:pointer;background:var(--ch-empty);box-shadow:inset 2px 2px 0 rgba(255,255,255,.08),inset -2px -2px 0 rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;color:#E5E9E3}
+.ch img{width:56%;height:56%;image-rendering:pixelated;pointer-events:none}
+.ch.t-U{background:var(--ch-fuel)}.ch.t-X{background:var(--ch-mox)}.ch.t-M{background:var(--ch-mod)}.ch.t-R{background:var(--ch-ctrl)}.ch.t-C{background:var(--ch-cool)}.ch.t-T{background:var(--ch-target)}
+.ch.t-M img{width:78%;height:78%}
+.ch .lbl{position:absolute;left:0;right:0;bottom:3px;text-align:center;font:400 16px/1 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2F5F0;text-shadow:0 1px 0 #000,0 0 3px #000;pointer-events:none}
+.ch .bar{position:absolute;left:10%;right:10%;bottom:0;height:3px;background:rgba(0,0,0,.5);pointer-events:none}
+.ch .bar i{display:block;height:100%;background:var(--good)}
+.ch.idle{opacity:.55}
+.ch.hot{outline:2px solid var(--bad);outline-offset:-2px}
+.ch.hot .bar i{background:var(--bad)}
+.ch.lit{box-shadow:inset 0 0 0 2px #F2E36A}
+.ch:focus-visible{outline:2px solid #F2E36A;outline-offset:1px;z-index:1}
+.ch:hover{filter:brightness(1.18)}
+.tools{display:flex;flex-wrap:wrap;gap:6px}
+.tool{display:flex;align-items:center;gap:6px;font:600 12.5px var(--font-body);padding:4px 8px 4px 4px;background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:4px;cursor:pointer}
+.tool .sw{width:22px;height:22px;border-radius:2px;display:flex;align-items:center;justify-content:center}
+.tool .sw img{width:16px;height:16px;image-rendering:pixelated}
+.tool kbd{font:500 10.5px var(--font-mono);color:#7D8884}
+.tool[aria-pressed="true"]{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+.tool:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#sOff[aria-pressed="true"]{background:#3F2A12;color:#F0B060}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.hint b{color:var(--ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer;text-align:left}
+.btn:hover{border-color:var(--accent)}
+.btn small{display:block;font:500 11px var(--font-mono);color:var(--muted)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+.credit{font-size:12.5px;color:var(--muted);margin:0}
+.credit a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Ryzer Gen / Fission Station Calculator</nav>
+  <header class="top">
+    <h1>Ryzer Gen <span class="y">Fission Station Calculator</span></h1>
+    <span class="src">Formulas from the <a href="https://github.com/MultiRyzer/ryzer-gen/tree/9afa898">Ryzer Gen 0.1.1-alpha source</a></span>
+  </header>
+  <p class="lede">Plan the fission station's 5×5 core channel by channel, the way the control screen does, and watch it in the station, drawn from the mod's own model. See the power it settles at, the core temperature, how much water it drinks and how long the rods last. The heat sums are <b>StationReactor</b>'s; the station is then run <b>tick by tick</b> as <b>StationRunner</b> does, so warm-up, SCRAM cycles and meltdowns show up too.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="Core layout">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the fission station with the planned core. Click a channel to paint it."></canvas>
+        <div class="hud">
+          <span class="big" id="hudMain">—</span>
+          <span class="status" id="hudStatus" aria-live="polite"></span>
+          <span id="hudSub"></span>
+        </div>
+        <div class="hover-line" id="hudHover"></div>
+        <div class="viewbar">
+          <button id="tCut" aria-pressed="false" type="button">Cutaway</button>
+          <button id="tGlass" aria-pressed="true" type="button">Glass</button>
+          <button id="tFront" type="button">Front</button>
+        </div>
+      </div>
+      <p class="hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Click a channel to paint it with the tool picked on the right, right-click to clear it. Cutaway lifts off the head and turbine to look down on the core.</p>
+      <div class="box">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs">
+      <div class="sect">
+        <h2>Core layout</h2>
+        <div class="tools" id="tools" role="group" aria-label="Channel tool"></div>
+        <div class="core-wrap">
+          <span class="core-cap">back of the station</span>
+          <div class="core" id="core" role="grid" aria-label="Core channels, as seen from the station's front"></div>
+          <span class="core-cap">front · control core</span>
+        </div>
+        <p class="hint">Pick a tool, then click or drag across the channels, here or on the 3D station. Right-click clears. Keys 1–7 pick tools. Laid out as the control screen shows it: as seen from the front, front row at the bottom.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/ryzergen-common.toml</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Safeties</h2>
+        <div class="seg" role="group" aria-label="Safeties">
+          <button type="button" id="sOn" aria-pressed="true">On</button>
+          <button type="button" id="sOff" aria-pressed="false">Off (overdrive)</button>
+        </div>
+        <p class="hint" id="sHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Layouts</h2>
+        <div class="btns" id="layouts"></div>
+        <p class="hint">The control screen rates a core against the best layout the mod's own search found. How close can you get?</p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this core</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact core. Paste a design code above to load it.</p>
+      </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <ul class="parts" id="xParts"></ul>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">For Create's <b>Schematicannon</b>, put the file in <code>.minecraft/schematics</code>, load it at a Schematic Table and fire away; Litematica reads the same folder. For a structure block, put it in <code>saves/&lt;world&gt;/generated/minecraft/structures</code>. The station forms by itself when its last part is placed, facing north: the Station Control Core sits on the north side. Rotate it when you place it. Minecraft 1.21.1, the only version Ryzer Gen runs on.</p>
+        <p class="hint">The control core carries this core's channel plan in its block data. A structure block keeps it. The Schematicannon and Litematica may leave block data out; then plan the channels again in the control screen. Rods, graphite and control rods go in by hand or through the fuel port. Not tried in-game yet.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Each rod is set by its four neighbours</h3>
+        <p>Only the channels directly beside a rod count, not diagonals. Graphite adds heat without adding burn, so it is the only way to get more energy out of each rod.</p>
+<pre>heat = 1000 × (1 + 0.4·graphite + 0.2·fuel
+               − 0.35·control − 0.2·target)
+burn =        (1 + 0.2·fuel − 0.35·control
+               − 0.2·target)
+both at least 0.1; MOX: 2000 heat, 4× the life</pre>
+        <span class="ref">StationReactor.analyse</span>
+      </div>
+      <div class="fact">
+        <h3>Load sets the temperature, temperature sets the turbine</h3>
+        <p>A rod's heat is split evenly between the coolant channels touching it. Each channel carries 3,000, more with MOX in the core. The harder the coolant works, the hotter the core settles and the better the turbine does.</p>
+<pre>capacity = 3000 × (1 + MOX share) [× 1.3 overdrive]
+load     = heat ÷ (working channels × capacity)
+core °C  = 150 + 450 × load
+turbine  = 25% + 15% × load   (20% in overdrive)</pre>
+        <span class="ref">StationReactor.capacity · settledTemperature · efficiency</span>
+      </div>
+      <div class="fact">
+        <h3>"Too hot" on the screen isn't always too hot</h3>
+        <p>The control screen calls a core too hot if any rod has no coolant beside it, or any one channel is over its capacity, and plans 0 FE/t. The running station is kinder: that heat warms the core, and every working channel then carries it off. So the core only overheats if the total heat is more than all the working channels carry together. This page shows what the station does, and flags when the screen disagrees. It looks unintended, so a later version may close it.</p>
+<pre>removed = min(working × capacity × ramp(°C),
+              heat − uncooled + stored heat)
+stored  = (°C − 20) × 20,000</pre>
+        <span class="ref">StationRunner.tick</span>
+      </div>
+      <div class="fact">
+        <h3>100% isn't the ceiling</h3>
+        <p>The rating divides by the best layout the mod's own search found, 8,006 FE/t for uranium, and caps at 100%. That layout isn't the ceiling: better ones exist. Finding them is the fun part.</p>
+<pre>rating = min(1, planned ÷ (8006 × output%))
+MOX reference: 16,012</pre>
+        <span class="ref">StationReactor.BEST_URANIUM · Analysis.rating</span>
+      </div>
+      <div class="fact">
+        <h3>Water: 1 mB for every 50 heat</h3>
+        <p>Water is cheap, so the station drinks a lot of it: 1 mB per 50 thermal FE carried off, 1 per 25 in overdrive. The reference core needs 420 mB/t, five intake pumps. The station's own tank holds 16 buckets, about 2 seconds of that, so the pumps have to keep up.</p>
+<pre>water mB/t = heat ÷ (200 ÷ (4 × water_use%))
+overdrive: 8 in place of 4
+pumps      = water ÷ pump_rate (100 mB/t)</pre>
+        <span class="ref">StationRunner.heatPerWater · IntakePumpBlockEntity</span>
+      </div>
+      <div class="fact">
+        <h3>One cable side takes 1,000 FE/t</h3>
+        <p>The energy port pushes everything it holds into the block beside it. A Ryzer Gen energy cable only takes 1,000 FE/t in on a side unless that side has a fitting. The reference core makes 8,006, just over a silver fitting's 8,000. Anything the cable can't take fills the station's 2M FE buffer, and once that's full the rest is lost.</p>
+<pre>none 1,000 · silver ×8 · busbar ×32 · cryogenic ×1024</pre>
+        <span class="ref">CableUpgrade · EnergyCableBlockEntity.energyFor</span>
+      </div>
+      <div class="fact">
+        <h3>Overdrive: half as much power again, no SCRAM</h3>
+        <p>Every rod makes and burns 30% more, every channel carries 30% more, and the turbine tops out at 45%. There's no SCRAM, so an overloaded core heats until it melts down at 1,000°C. Every fuel channel must hold a live rod: after a 10 s grace, a gap starts a 5 minute flux tilt countdown, then the core goes unstable.</p>
+<pre>heat, burn, capacity × 1.3
+turbine = 25% + 20% × load
+tilt    = 10 s grace + flux_tilt_seconds (300)</pre>
+        <span class="ref">StationReactor.OVERDRIVE_HEAT · StationRunner.tick</span>
+      </div>
+      <div class="fact">
+        <h3>SCRAM at 900°C, restart below 400°C</h3>
+        <p>With the safeties on, a core that can't shed its heat climbs to 900°C, drops its rods and cools to 400°C before it starts again. While it cools, every coolant channel keeps boiling water at full load, and the turbine keeps turning. So an overloaded core loses little: it averages close to what its coolant makes at full load. This page simulates the cycles and shows the average.</p>
+<pre>+ (heat − removed) ÷ 20,000 °C per tick
+SCRAM ≥ 900°C · restart &lt; 400°C</pre>
+        <span class="ref">StationRunner.tick</span>
+      </div>
+    </div>
+    <p class="credit">Station model and textures from <a href="https://github.com/MultiRyzer/ryzer-gen">Ryzer Gen</a> by Ryzer (MIT). Not checked in-game yet: if your station doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="station-model.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script src="/data/schematic.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const kfe=v=>!Number.isFinite(v)?"—":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v);
+const dur=ticks=>{ if(!Number.isFinite(ticks)) return "—"; const s=Math.round(ticks/20);
+  if(s<60) return `${s} s`; if(s<3600) return `${Math.floor(s/60)}m ${String(s%60).padStart(2,"0")}s`; return `${Math.floor(s/3600)}h ${String(Math.floor(s%3600/60)).padStart(2,"0")}m`; };
+
+/* ================= config (config/ryzergen-common.toml) ================= */
+const DEFAULTS={outputPct:100, waterPct:100, pumpRate:100, energyRate:1000};
+const CFG_FIELDS=[["outputPct","fission_station.output_percent"],["waterPct","fission_station.water_use_percent"],["pumpRate","water.pump_rate"],["energyRate","cables.energy_rate"]];
+const CFG_MIN={outputPct:1, waterPct:1, pumpRate:1, energyRate:1};
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("ryzergen", DEFAULTS, CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("rg-station-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+
+/* ================= channels ================= */
+// One letter per channel type; the design code stores them in grid order (row by row, as seen from the front).
+const ICON={
+  U:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhElEQVR42mNgIBHIKqr9ZyAXgDT7hsT+J8sQmGYQtnJwJ80QkOKHz17/P3nhOliztoEZGBNlCLLmzbuP/J+3fCNpml2uxYExTDMIk2wzyACtbFfyNMNsBhlAkrORNZNsM8zfZPsZZDPIySQ5G5RAyHY2cgojSTOyISSnMGyGkK2ZkqwKAFXdw907ygolAAAAAElFTkSuQmCC",
+  X:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhElEQVR42mNgIBHIKqr9ZyAXgDT7hsT+J8sQmGYQtnJwJ80QkOKHz17/P3nhOliztoEZGBNlCLLmzbuP/J+3fCNpmv93yYExTDMIk2wzyIAVQTzkaYbZDDKAJGcjaybZZpi/yfYzyGaQk0lyNiiBkO1s5BRGkmZkQ0hOYdgMIVszJVkVAAR5xac1lVaVAAAAAElFTkSuQmCC",
+  M:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAtElEQVR42o2TsQ2DUAxEb4BETBAJKRtQ0GSNVKkyDx0d2xLlSxf5v9iIwhIYn313Nnq+3vs3pvnR4jbef8+X69AifnPOdfLHCI6FbuCcazxYGSBjQTYOZbSWdetkxWaUI4LpCRnyXexcASuJcoKboLQI6jzgdLptWfSl84BTz/qRmhjBmSTnOxMJrqaxYfPAHV3MguqEzVLZyXor0bjKF2X7NZg/VLkFgo9o/11idiDUf2TsB2oFfyhMDfPhAAAAAElFTkSuQmCC",
+  R:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAhElEQVR42mNgIBHIKqr9ZyAXgDT7hsT+J8sQmGYQtnJwJ80QkOKHz17/P3nhOliztoEZGBNlCLLmzbuP/J+3fCNpmi/a2IAxTDMIk2wzyIAuNTXyNMNsBhlAkrORNZNsM8zfZPsZZDPIySQ5G5RAyHY2cgojSTOyISSnMGyGkK2ZkqwKANscwrNwjTKxAAAAAElFTkSuQmCC",
+  C:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAARElEQVR42mPYvPvIf0oww6gB/xkePnv9nxLMcPLC9f+UYAbTE1//U4IZpKOK/1OCGeYt3/ifEszQ1j/rPyV4NCVSwQAAfggYfpYfbawAAAAASUVORK5CYII=",
+  T:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAbklEQVR42mNgIBHIKqr9ZyAXgDT7hsT+J8sQmGYQtnJwJ80QkOKHz17/P3nhOliztoEZGBNlCLLmzbuP/J+3fCPpmkEYphmESbYZRJOtmSKbydYMw/S1GZRAKNIMS2EkaUY2hOQUhs0QsjVTklUBbE3PqfMtS2QAAAAASUVORK5CYII=",
+};
+const TYPES={
+  U:{name:"Uranium rod", long:"Uranium fuel rod"},
+  X:{name:"MOX rod", long:"MOX fuel rod"},
+  M:{name:"Graphite", long:"Graphite block (moderator)"},
+  R:{name:"Control rod", long:"Control rod"},
+  C:{name:"Coolant", long:"Coolant channel"},
+  T:{name:"Target rod", long:"Lithium target rod (needs preview.next_tier)"},
+  E:{name:"Clear", long:"Unplanned"},
+};
+const TOOL_ORDER=["U","X","M","R","C","T","E"];
+const isFuel=k=>k==="U"||k==="X";
+
+/* ================= model (Ryzer Gen 0.1.1-alpha, StationReactor + StationRunner) ================= */
+const G=5, N=25;
+const NB=Array.from({length:N},(_,i)=>{ const x=i%G, z=(i/G)|0, o=[]; if(x>0)o.push(i-1); if(x<G-1)o.push(i+1); if(z>0)o.push(i-G); if(z<G-1)o.push(i+G); return o; });
+const URANIUM_HEAT=1000, MOX_HEAT=2000, URANIUM_LIFE=36000, MOX_LIFE=144000, COOLANT_CAPACITY=3000;
+const BEST_URANIUM=8006, BEST_MOX=16012, BEST_T=544, OVERDRIVE_HEAT=1.3, TARGET_WORK=60000;
+const HEAT_CAPACITY=20000, AMBIENT=20, SCRAM_T=900, RESET_T=400, MELTDOWN_T=1000, WATER_TANK=16000, BUFFER=2000000;
+const FITTINGS=[["no fitting",1],["silver fitting",8],["busbar fitting",32],["cryogenic fitting",1024]];
+const ramp=T=>Math.min(1,Math.max(0,(T-150)/450));
+const eff=(T,od)=>0.25+(od?0.20:0.15)*ramp(T);
+function analyse(core,od){
+  const mult=cfg.outputPct/100, boost=od?OVERDRIVE_HEAT:1;
+  const heat=new Array(N).fill(0), burn=new Array(N).fill(0), load=new Array(N).fill(0), breed=new Array(N).fill(0), nbr=new Array(N).fill(null), cooledBy=new Array(N).fill(0);
+  let gen=0, rods=0, mox=0, cool=0;
+  for(let i=0;i<N;i++){
+    if(core[i]==="C") cool++;
+    if(!isFuel(core[i])) continue;
+    let h=1, b=1; const c={M:0,F:0,R:0,T:0};
+    for(const n of NB[i]){ const k=core[n];
+      if(k==="M"){ h+=0.4; c.M++; } else if(isFuel(k)){ h+=0.2; b+=0.2; c.F++; } else if(k==="R"){ h-=0.35; b-=0.35; c.R++; } else if(k==="T"){ h-=0.2; b-=0.2; c.T++; } }
+    heat[i]=(core[i]==="X"?MOX_HEAT:URANIUM_HEAT)*Math.max(0.1,h)*mult*boost; burn[i]=Math.max(0.1,b)*boost; nbr[i]=c;
+    gen+=heat[i]; rods++; if(core[i]==="X") mox++;
+  }
+  // each rod's heat goes, shared evenly, to the coolant channels beside it
+  let stranded=0, uncooledRods=0;
+  for(let i=0;i<N;i++){ if(heat[i]<=0) continue;
+    const cs=NB[i].filter(n=>core[n]==="C"); cooledBy[i]=cs.length;
+    if(!cs.length){ stranded+=heat[i]; uncooledRods++; continue; }
+    for(const n of cs) load[n]+=heat[i]/cs.length; }
+  for(let i=0;i<N;i++) if(core[i]==="T") for(const n of NB[i]) breed[i]+=heat[n];
+  const share=rods?mox/rods:0, cap=COOLANT_CAPACITY*mult*boost*(1+share);
+  let working=0, overloaded=0;
+  for(let i=0;i<N;i++) if(load[i]>0){ working++; if(load[i]>cap){ stranded+=load[i]-cap; overloaded++; } }
+  return {heat,burn,load,breed,nbr,cooledBy,gen,stranded,uncooledRods,overloaded,working,cool,rods,mox,share,cap,od};
+}
+// what the control screen shows (Analysis.plannedOutput, rodMinutes, rating)
+function screen(a){
+  const lf=a.working?a.gen/(a.working*a.cap):0, T=150+450*Math.min(1,lf), steady=a.gen>0&&a.stranded<=0.5;
+  const out=steady?a.gen*eff(T,a.od):0;
+  const burnt=a.burn.reduce((s,b)=>s+b,0), avgLife=a.rods?(a.mox*MOX_LIFE+(a.rods-a.mox)*URANIUM_LIFE)/a.rods:0;
+  const rodMin=a.rods?avgLife/(burnt/a.rods)/1200:0;
+  let best=(BEST_URANIUM*(1-a.share)+BEST_MOX*a.share)*cfg.outputPct/100;
+  if(a.od) best*=OVERDRIVE_HEAT*eff(BEST_T,true)/eff(BEST_T,false);
+  return {lf,T,steady,out,rodMin,best,rating:a.rods?Math.min(1,out/best):0};
+}
+// StationRunner.tick, with water always supplied and every fuel channel kept full
+function simulate(a,od){
+  const W=a.working>0?a.working:a.cool, holds=a.gen>0&&W>0&&a.gen<=W*a.cap*(1+1e-9);
+  const Tset=holds?150+450*a.gen/(W*a.cap):NaN, steadyOut=holds?a.gen*eff(Tset,od):0;
+  const r={holds,Tset,steadyOut,warm:null,scram:null,melt:null,avg:0,peak:AMBIENT,onFrac:1};
+  if(a.gen<=0) return r;
+  let T=AMBIENT, scram=false, sum=0, n=0, on=0;
+  const LIMIT=20*3600*4;
+  for(let t=0;t<LIMIT;t++){
+    if(scram&&T<RESET_T) scram=false;
+    const gen=scram?0:a.gen, stored=(T-AMBIENT)*HEAT_CAPACITY, carry=gen>0?Math.max(0,gen-a.stranded):0;
+    const working=gen>0&&a.working>0?a.working:a.cool;
+    const removed=Math.max(0,Math.min(working*a.cap*ramp(T),carry+stored));
+    T+=(gen-removed)/HEAT_CAPACITY; if(gen<=0) T-=(T-AMBIENT)*0.0005; T=Math.max(AMBIENT,T); r.peak=Math.max(r.peak,T);
+    if(!od&&T>=SCRAM_T&&!scram){ scram=true; if(r.scram==null) r.scram=t; }
+    if(od&&T>=MELTDOWN_T){ r.melt=t; return r; }
+    const out=removed*eff(T,od);
+    if(holds){ if(out>=0.99*steadyOut){ r.warm=t; return r; } continue; }
+    if(r.scram!=null){ sum+=out; n++; if(gen>0) on++; if(n>=20*1800) break; }
+  }
+  if(n){ r.avg=sum/n; r.onFrac=on/n; }
+  return r;
+}
+
+/* ================= state ================= */
+// Channel letters in the mod's channel order: x across, then z from the front (StationReactor channel i, see disp()).
+const LAYOUTS=[
+  ["starter","Starter core","5 rods, each beside coolant","EEEEEEUCUEECUCEEUCUEEEEEE"],
+  ["clear","Empty core","start from scratch","EEEEEEEEEEEEEEEEEEEEEEEEE"],
+];
+const state={core:[...LAYOUTS[0][3]], safeties:true, tool:"U"};
+
+/* ================= core grid ================= */
+// The control screen draws channel i at column 4 − i%5, row 4 − i/5: seen from the front, front row at the bottom.
+const disp=i=>[G-1-i%G, G-1-((i/G)|0)], chan=(col,row)=>(G-1-row)*G+(G-1-col);
+const coreEl=$("core"), cells=[];
+for(let row=0;row<G;row++) for(let col=0;col<G;col++){ const i=chan(col,row), b=document.createElement("button"); b.type="button"; b.className="ch"; b.dataset.i=i;
+  b.innerHTML=`<img alt=""><span class="lbl"></span><span class="bar"><i></i></span>`; coreEl.append(b); cells[i]=b; }
+coreEl.addEventListener("pointerover",e=>{ const c=e.target.closest(".ch"); if(c) setHover(+c.dataset.i); });
+coreEl.addEventListener("pointerleave",()=>setHover(-1));
+let painting=null;
+function paint(i,k){ if(state.core[i]===k) return; state.core[i]=k; update(); }
+coreEl.addEventListener("contextmenu",e=>e.preventDefault());
+coreEl.addEventListener("pointerdown",e=>{ const c=e.target.closest(".ch"); if(!c) return; e.preventDefault();
+  painting=e.button===2?"E":state.tool; coreEl.setPointerCapture(e.pointerId); paint(+c.dataset.i,painting); });
+coreEl.addEventListener("pointermove",e=>{ if(!painting) return; const el=document.elementFromPoint(e.clientX,e.clientY), c=el&&el.closest(".ch"); if(c) paint(+c.dataset.i,painting); });
+const endPaint=()=>{ painting=null; };
+coreEl.addEventListener("pointerup",endPaint); coreEl.addEventListener("pointercancel",endPaint);
+coreEl.addEventListener("keydown",e=>{ const c=e.target.closest(".ch"); if(!c) return; const i=+c.dataset.i;
+  if(e.key==="Enter"||e.key===" "){ e.preventDefault(); paint(i,state.tool); return; }
+  if(e.key==="Delete"||e.key==="Backspace"){ e.preventDefault(); paint(i,"E"); return; }
+  const mv={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key]; if(!mv) return; e.preventDefault();
+  const [col,row]=disp(i), c2=col+mv[0], r2=row+mv[1]; if(c2<0||c2>=G||r2<0||r2>=G) return; cells[chan(c2,r2)].focus(); });
+
+for(const [idx,k] of TOOL_ORDER.entries()){ const b=document.createElement("button"); b.type="button"; b.className="tool"; b.dataset.k=k;
+  b.innerHTML=`<span class="sw" style="background:var(--ch-${{U:"fuel",X:"mox",M:"mod",R:"ctrl",C:"cool",T:"target",E:"empty"}[k]})">${ICON[k]?`<img src="${ICON[k]}" alt="">`:""}</span>${TYPES[k].name}<kbd>${idx+1}</kbd>`;
+  b.title=TYPES[k].long; b.onclick=()=>{ state.tool=k; renderTools(); }; $("tools").append(b); }
+function renderTools(){ for(const b of $("tools").children) b.setAttribute("aria-pressed",b.dataset.k===state.tool); }
+addEventListener("keydown",e=>{ if(e.ctrlKey||e.metaKey||e.altKey||/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  const k=TOOL_ORDER[+e.key-1]; if(k){ state.tool=k; renderTools(); } });
+
+const TIPS=[];
+function renderCore(a,sim){
+  const maxHeat=Math.max(1,...a.heat);
+  for(let i=0;i<N;i++){ const k=state.core[i], c=cells[i], img=c.querySelector("img"), lbl=c.querySelector(".lbl"), bar=c.querySelector(".bar");
+    c.className=`ch t-${k}`; if(ICON[k]){ img.src=ICON[k]; img.hidden=false; } else img.hidden=true;
+    let text="", fill=null, tip=TYPES[k].long;
+    if(isFuel(k)){ text=kfe(a.heat[i]); fill=a.heat[i]/maxHeat; const nb=a.nbr[i];
+      tip+=`\nHeat: ${fmt(a.heat[i])} FE/t · burns at ${fmt(a.burn[i]*100)}% speed`;
+      if(nb.M) tip+=`\nGraphite beside it: ${nb.M} (+40% heat each, no extra burn)`;
+      if(nb.F) tip+=`\nFuel beside it: ${nb.F} (+20% heat and burn each)`;
+      if(nb.R) tip+=`\nControl rods beside it: ${nb.R} (−35% heat and burn each)`;
+      if(nb.T) tip+=`\nTarget rods beside it: ${nb.T} (−20% heat and burn each)`;
+      if(a.cooledBy[i]) tip+=`\nCooled by ${a.cooledBy[i]} coolant channel${a.cooledBy[i]>1?"s":""}, sharing its heat`;
+      else { tip+="\nNo coolant beside it: the control screen counts its heat as uncooled"; c.classList.add("hot"); } }
+    else if(k==="C"){ const f=a.load[i]/a.cap; text=a.load[i]>0?`${fmt(f*100)}%`:""; fill=Math.min(1,f);
+      tip+=a.load[i]>0?`\nLoad: ${fmt(a.load[i])} of ${fmt(a.cap)} FE/t (${fmt(f*100)}%)`:"\nNo fuel beside it: idle while the core runs";
+      if(a.load[i]<=0) c.classList.add("idle"); if(f>1+1e-9) c.classList.add("hot"); }
+    else if(k==="T"){ if(a.breed[i]>0){ const min=TARGET_WORK*1000/a.breed[i]/1200; text=`${fmt(min)}m`; tip+=`\nBreeds in ${fmt(min,1)} min from ${fmt(a.breed[i])} FE/t of fuel heat beside it`; }
+      else tip+="\nNo fuel beside it: not breeding"; }
+    else if(k==="M"||k==="R"){ const f=NB[i].filter(n=>isFuel(state.core[n])).length; tip+=f?`\nBeside ${f} fuel rod${f>1?"s":""}`:"\nNo fuel beside it: does nothing"; if(!f) c.classList.add("idle"); }
+    lbl.textContent=text; bar.hidden=fill==null; if(fill!=null) bar.firstChild.style.width=`${Math.max(0,Math.min(1,fill))*100}%`;
+    const [col,row]=disp(i); TIPS[i]=tip; c.title=tip; c.classList.toggle("lit",i===hoverI); c.setAttribute("aria-label",`Row ${row+1} of 5 from the back, column ${col+1}: ${tip.replace(/\n/g,". ")}`);
+  }
+  if(hoverI>=0) $("hudHover").textContent=TIPS[hoverI];
+}
+
+/* ================= results ================= */
+let A=null, S=null, SIM=null;
+function renderResults(){
+  const od=!state.safeties, a=A, s=S, r=SIM;
+  const fitNeed=out=>FITTINGS.find(([,m])=>cfg.energyRate*m>=out-1e-6);
+  const hpw=200/Math.max(0.01,(od?8:4)*cfg.waterPct/100);
+  const running=r.holds?r.steadyOut:r.avg;
+  const water=r.holds?Math.ceil(a.gen/hpw):NaN;
+  const pumps=Math.ceil(water/cfg.pumpRate);
+  // fuel: rods burnt per hour while running
+  let rodsU=0, rodsX=0; for(let i=0;i<N;i++){ if(state.core[i]==="U") rodsU+=a.burn[i]*72000/URANIUM_LIFE; if(state.core[i]==="X") rodsX+=a.burn[i]*72000/MOX_LIFE; }
+  const onFrac=r.holds?1:r.onFrac;
+  rodsU*=onFrac; rodsX*=onFrac;
+  const targets=[]; for(let i=0;i<N;i++) if(state.core[i]==="T"&&a.breed[i]>0) targets.push(TARGET_WORK*1000/a.breed[i]/1200);
+
+  // HUD: what the running station shows
+  let status, cls;
+  if(!a.rods){ status="NO FUEL"; cls="st-warn"; }
+  else if(r.holds){ status=od?"OVERDRIVE":"ONLINE"; cls=od?"st-od":"st-good"; }
+  else if(od){ status=r.melt!=null?"MELTDOWN RISK":"RUNAWAY"; cls="st-bad"; }
+  else { status="SCRAM CYCLES"; cls="st-bad"; }
+  $("hudStatus").textContent=status; $("hudStatus").className=`status ${cls}`;
+  $("hudMain").innerHTML=a.rods&&(r.holds||!od)?`${kfe(running)} <small>FE/t${r.holds?`, ${fmt(r.Tset)}°C`:od?"":" average"}</small>`:"— <small>FE/t</small>";
+  $("hudSub").textContent=!a.rods?"Plan some fuel channels.":s.steady?`Screen plan: ${kfe(s.out)} FE/t, ${fmt(eff(s.T,od)*100)}% at ${fmt(s.T)}°C · rods last ${fmt(s.rodMin)} min · rating ${fmt(s.rating*100)}%`
+    :`Screen: "Too hot: add coolant", ${kfe(a.stranded)} FE/t uncooled · rods last ${fmt(s.rodMin)} min · rating 0%`;
+
+  const cellsOut=[];
+  if(!a.rods) cellsOut.push(["Power out","— <small>no fuel planned</small>","hero"]);
+  else if(r.holds) cellsOut.push(["Power out",`${fmt(r.steadyOut)} <small>FE/t once warm</small>`,"hero"]);
+  else if(od) cellsOut.push(["Power out",`— <small>${r.melt!=null?`melts down after ${dur(r.melt)}`:"never settles"}</small>`,"hero"]);
+  else cellsOut.push(["Power out",`${fmt(r.avg)} <small>FE/t average, cycling through SCRAMs</small>`,"hero"]);
+  if(a.rods){
+    cellsOut.push(["Core temperature",r.holds?`${fmt(r.Tset)}°C <small>settled</small>`:od?`→ 1,000°C <small>no SCRAM</small>`:`400–900°C <small>SCRAM, restart, SCRAM</small>`]);
+    cellsOut.push(["Turbine efficiency",r.holds?`${fmt(eff(r.Tset,od)*100,1)}% <small>of ${fmt(a.gen)} FE/t heat</small>`:`${fmt((od?45:40))}% <small>at full load</small>`]);
+    cellsOut.push(["Coolant load",`${fmt(a.gen/Math.max(1e-9,(a.working||a.cool)*a.cap)*100)}% <small>${a.working} of ${a.cool} channels working</small>`]);
+    cellsOut.push(["Screen rating",s.steady?`${fmt(s.rating*100)}% <small>vs the ${kfe(s.best)} FE/t reference</small>`:`0% <small>screen says too hot</small>`]);
+    cellsOut.push(["Rods last",`${fmt(s.rodMin)} <small>min on average</small>`]);
+    const burning=r.holds||!od;
+    if(burning) cellsOut.push(["Fuel per hour",`${fmt(rodsU+rodsX,1)} <small>rods${rodsU&&rodsX?` · ${fmt(rodsU,1)} U, ${fmt(rodsX,1)} MOX`:rodsX?" MOX":" uranium"}</small>`]);
+    if(burning) cellsOut.push(["Ingots per hour",`${fmt(rodsU*2+rodsX,1)} <small>uranium · ${fmt(rodsU+rodsX,1)} steel${rodsX?` · ${fmt(rodsX,1)} plutonium`:""}</small>`]);
+    cellsOut.push(["Water",r.holds?`${fmt(water)} <small>mB/t · ${fmt(water*20/1000,1)} B/s</small>`:`— <small>boils all it gets</small>`]);
+    cellsOut.push(["Intake pumps",r.holds?`${fmt(pumps)} <small>at ${fmt(cfg.pumpRate)} mB/t each</small>`:`— <small>fix the core first</small>`]);
+    const peakOut=r.holds?r.steadyOut:Math.min(a.gen,(a.working||a.cool)*a.cap)*eff(600,od), fit=fitNeed(peakOut);
+    cellsOut.push(["Energy port cable",fit?`${fit[0]} <small>${fmt(cfg.energyRate*fit[1])} FE/t on that side</small>`:`— <small>over ${fmt(cfg.energyRate*1024)} FE/t</small>`]);
+    cellsOut.push(["Warm-up",r.holds?`${dur(r.warm)} <small>to 99% output</small>`:r.scram!=null?`${dur(r.scram)} <small>to the first SCRAM</small>`:r.melt!=null?`${dur(r.melt)} <small>to meltdown</small>`:"—"]);
+    if(targets.length) cellsOut.push(["Tritium breeding",`${fmt(Math.min(...targets),1)} <small>min per target rod${targets.length>1?`, fastest of ${targets.length}`:""}</small>`]);
+    if(burning&&rodsU>0) cellsOut.push(["Plutonium from it",`${fmt(rodsU/3,1)} <small>MOX rods/h from ${fmt(rodsU,1)} spent rods</small>`]);
+  }
+  $("results").innerHTML=cellsOut.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+
+  const n=[];
+  if(a.rods&&!a.cool) n.push(["bad","No coolant channels: the heat has nowhere to go."]);
+  if(a.rods&&r.holds&&!s.steady){
+    const why=[a.uncooledRods?`${a.uncooledRods} rod${a.uncooledRods>1?"s have":" has"} no coolant beside ${a.uncooledRods>1?"them":"it"}`:"",a.overloaded?`${a.overloaded} coolant channel${a.overloaded>1?"s are":" is"} over capacity`:""].filter(Boolean).join(" and ");
+    n.push(["warn",`The control screen will say "Too hot: add coolant" (${why}) and rate this core 0%. The running station pools its coolant, so it still settles at ${fmt(r.Tset)}°C and makes ${fmt(r.steadyOut)} FE/t. Found in the 0.1.1-alpha code; it may change in a later version.`]); }
+  if(a.rods&&!r.holds&&a.cool){
+    const over=a.gen-(a.working||a.cool)*a.cap;
+    if(od) n.push(["bad",`The core makes ${fmt(over)} FE/t more heat than its coolant can carry. With the safeties off nothing stops it: it ${r.melt!=null?`melts down after ${dur(r.melt)}`:"keeps heating"}. Unless <code>fission_station.meltdowns</code> is off, that leaves a crater and destroys the station.`]);
+    else { const ceiling=(a.working||a.cool)*a.cap*eff(600,false);
+      n.push(["warn",`The core makes ${fmt(over)} FE/t more heat than its coolant can carry, so it SCRAMs at 900°C after ${dur(r.scram)}, cools to 400°C and starts again, over and over. The coolant keeps boiling water while the core cools, so it still averages ${fmt(r.avg)} FE/t, ${fmt(r.avg/ceiling*100)}% of what this coolant makes at full load. The fission runs ${fmt(r.onFrac*100)}% of the time, and the announcer calls every SCRAM.`]); } }
+  if(a.rods&&r.holds&&a.gen/((a.working||a.cool)*a.cap)<0.6) n.push(["warn",`The coolant only works at ${fmt(a.gen/((a.working||a.cool)*a.cap)*100)}%, so the core settles cool and the turbine runs at ${fmt(eff(r.Tset,od)*100)}%. More fuel or graphite, or fewer coolant channels, gets closer to 40%.`]);
+  if(a.rods&&r.holds){
+    const fit=fitNeed(r.steadyOut);
+    if(fit&&fit[1]>1) n.push(["warn",`A plain Ryzer Gen energy cable only takes ${fmt(cfg.energyRate)} FE/t in from the energy port. Put a ${fit[0]} on the cable's side that touches the port (it takes ${fmt(cfg.energyRate*fit[1])}), or the station's 2M FE buffer fills and the rest is lost.`]); }
+  if(a.rods&&r.holds) n.push(["good",`${fmt(pumps)} intake pump${pumps>1?"s":""} (${fmt(water)} mB/t), ${pumps>1?"each ":""}with at least two water source blocks beside it and ${fmt(10)} FE/t of power. The station's own tank holds ${fmt(WATER_TANK/1000)} buckets, ${dur(WATER_TANK/water)} of running.`]);
+  if(od&&a.rods) n.push(["warn","Overdrive: keep every fuel channel full. A spent or missing rod starts a flux tilt after 10 seconds; 5 minutes later the core goes unstable and heads for meltdown. Re-arming the safeties SCRAMs it."]);
+  if(state.core.includes("T")) n.push(["warn","Lithium target rods only exist with <code>preview.next_tier = true</code>. Their tritium has no use yet."]);
+  if(a.rods&&a.mox&&a.mox<a.rods) n.push(["good",`MOX is ${fmt(a.share*100)}% of the fuel, so every coolant channel carries ${fmt(1+a.share,2)}× as much.`]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}"><span>${t}</span></li>`).join("");
+}
+
+/* ================= 3D station: the mod's own model (station-model.js, from fission_station.json) ================= */
+// Everything is in design pixels (16 to a block) from the station's north-west bottom corner, facing north, as the mod draws it.
+const MODEL=window.RG_STATION, view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const TILE={}; if(MODEL) MODEL.names.forEach((n,i)=>TILE[n]=i);
+const CX=i=>96+(i%G-2)*20, CZ=i=>96+(((i/G)|0)-2)*20;   // StationRenderer.channelX / channelZ
+const CUT_Y=80;                                          // top of the chamber: the rods end here, the reactor head starts
+let renderer=null, scene, camera, root, clip, MAT={}, rotor, glass, steam, rodMeshes=[], hits=[], outline, hoverI=-1, cutaway=false, running=false, spin=0, steamA=0;
+const uvOf=(t,u,v)=>{ const [tx,ty,tw,th]=MODEL.tiles[t]; return [(tx+u/16*tw)/MODEL.size[0], 1-(ty+v/16*th)/MODEL.size[1]]; };
+// flat quads: [tile, then x, y, z, u, v for each of 4 corners], wound anticlockwise seen from outside
+function geometry(flat){
+  const n=flat.length/21, pos=new Float32Array(n*18), uv=new Float32Array(n*12);
+  for(let q=0;q<n;q++){ const o=q*21, t=flat[o];
+    [0,1,2,0,2,3].forEach((k,j)=>{ const c=o+1+k*5; pos.set([flat[c]/16,flat[c+1]/16,flat[c+2]/16],q*18+j*3); uv.set(uvOf(t,flat[c+3],flat[c+4]),q*12+j*2); }); }
+  const g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.BufferAttribute(pos,3)); g.setAttribute("uv",new THREE.BufferAttribute(uv,2)); g.computeVertexNormals(); return g;
+}
+function split(flat,test){ const a=[], b=[]; for(let o=0;o<flat.length;o+=21){ const dst=test(MODEL.names[flat[o]])?a:b; for(let k=0;k<21;k++) dst.push(flat[o+k]); } return [a,b]; }
+// StationGeometry.box: a box cut every 16 pixels up so its texture keeps its scale; uv in texture pixels
+const FRAME={n:(a,b)=>[[b[0],b[1],a[2]],[a[0]-b[0],0,0],[0,a[1]-b[1],0]], s:(a,b)=>[[a[0],b[1],b[2]],[b[0]-a[0],0,0],[0,a[1]-b[1],0]],
+  w:(a,b)=>[[a[0],b[1],a[2]],[0,0,b[2]-a[2]],[0,a[1]-b[1],0]], e:(a,b)=>[[b[0],b[1],b[2]],[0,0,a[2]-b[2]],[0,a[1]-b[1],0]],
+  u:(a,b)=>[[a[0],b[1],a[2]],[b[0]-a[0],0,0],[0,0,b[2]-a[2]]], d:(a,b)=>[[a[0],a[1],b[2]],[b[0]-a[0],0,0],[0,0,a[2]-b[2]]]};
+function face(out,t,f,a,b,[u1,v1,u2,v2]){ const [o,eu,ev]=FRAME[f](a,b), at=(s,r)=>o.map((v,k)=>v+eu[k]*s+ev[k]*r);
+  out.push(t,...at(0,0),u1,v1,...at(0,1),u1,v2,...at(1,1),u2,v2,...at(1,0),u2,v1); }
+function box(out,x1,y1,z1,x2,y2,z2,tex){ const t=TILE[tex], w=x2-x1, d=z2-z1;
+  for(let y=y1;y<y2;y=Math.floor(y/16+1)*16){ const top=Math.min(y2,Math.floor(y/16+1)*16), h=top-y;
+    for(const f of "nsweud"){ if(f==="d"&&y>y1||f==="u"&&top<y2) continue;
+      face(out,t,f,[x1,y,z1],[x2,top,z2],f==="u"||f==="d"?[0,0,w,d]:[0,16-h,f==="w"||f==="e"?d:w,16]); } } }
+// StationRenderer.rods and plumes: what each channel looks like, glowing while the station runs
+function rodQuads(){
+  const lit=[], glow=[], mist=[];
+  for(let i=0;i<N;i++){ const x=CX(i), z=CZ(i), k=state.core[i];
+    box(lit,x-5,24,z-5,x+5,27,z+5,"steel_dark");
+    if(isFuel(k)){ box(lit,x-4.5,27,z-4.5,x+4.5,30,z+4.5,"nozzle");
+      for(const dx of [-3.5,0.5]) for(const dz of [-3.5,0.5]) box(running?glow:lit,x+dx,30,z+dz,x+dx+3,76,z+dz+3,running?"fuel_pin":"fuel_pin_off");
+      for(const y of [41,55,69]) box(lit,x-4.5,y,z-4.5,x+4.5,y+1.5,z+4.5,"spacer");
+      box(lit,x-4.5,76,z-4.5,x+4.5,80,z+4.5,"nozzle"); }
+    else if(k==="C"){ box(running?glow:lit,x-2.5,27,z-2.5,x+2.5,80,z+2.5,"cherenkov");
+      for(let y=29;y<79;y+=8) box(lit,x-3.5,y,z-3.5,x+3.5,y+2,z+3.5,"copper");
+      for(const [sx,sz] of [[7,0],[0,7]]) mist.push(TILE.steam, x-sx,80,z-sz,0,0, x-sx,30,z-sz,0,16, x+sx,30,z+sz,16,16, x+sx,80,z+sz,16,0); }
+    else if(k==="M") box(lit,x-4,27,z-4,x+4,80,z+4,"moderator");
+    else if(k==="R"){ box(lit,x-4.5,27,z-4.5,x+4.5,31,z+4.5,"nozzle"); box(lit,x-3,44,z-3,x+3,72,z+3,"control"); box(lit,x-1,72,z-1,x+1,80,z+1,"spacer"); }
+    else if(k==="T") box(lit,x-4,27,z-4,x+4,80,z+4,"lead"); }
+  return {lit,glow,mist};
+}
+function initGL(){
+  if(typeof THREE==="undefined"||!MODEL){ view.insertAdjacentHTML("beforeend",`<p class="nogl">The 3D view couldn't load. The calculator still works.</p>`); return; }
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true,preserveDrawingBuffer:true}); renderer.setClearColor(0,0); }
+  catch(e){ renderer=null; view.insertAdjacentHTML("beforeend",`<p class="nogl">This browser can't show WebGL, so there's no 3D view. The calculator still works.</p>`); return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.7); sun.position.set(-9,16,-7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),1e4);
+  const atlas=new THREE.TextureLoader().load(MODEL.atlas); atlas.magFilter=atlas.minFilter=THREE.NearestFilter; atlas.generateMipmaps=false;
+  const planes=[clip];
+  MAT.lit=new THREE.MeshLambertMaterial({map:atlas,alphaTest:0.5,clippingPlanes:planes});
+  MAT.glow=new THREE.MeshBasicMaterial({map:atlas,alphaTest:0.5,clippingPlanes:planes});
+  MAT.glass=new THREE.MeshLambertMaterial({map:atlas,transparent:true,depthWrite:false,clippingPlanes:planes});
+  MAT.steam=new THREE.MeshBasicMaterial({map:atlas,transparent:true,depthWrite:false,opacity:0,side:THREE.DoubleSide,clippingPlanes:planes});
+  root=new THREE.Group(); root.position.set(-6,-5.5,-6); scene.add(root);
+  const emissive=new Set(MODEL.emissive), [g1,l1]=split(MODEL.groups.static,n=>emissive.has(n));
+  root.add(new THREE.Mesh(geometry(l1),MAT.lit), new THREE.Mesh(geometry(g1),MAT.glow));
+  rotor=new THREE.Group(); rotor.position.set(6,0,6); const rm=new THREE.Mesh(geometry(MODEL.groups.rotor),MAT.lit); rm.position.set(-6,0,-6); rotor.add(rm); root.add(rotor);
+  steam=new THREE.Mesh(geometry(MODEL.groups.steam),MAT.steam); steam.renderOrder=1; root.add(steam);
+  glass=new THREE.Mesh(geometry(MODEL.groups.glass),MAT.glass); glass.renderOrder=3; root.add(glass);
+  // one invisible box per channel, for clicking and hovering in 3D
+  // (sized to what the channel shows in rebuildRods: just the collar when empty, so rays reach the rows behind)
+  const hitGeo=new THREE.BoxGeometry(1,1,1), hitMat=new THREE.MeshBasicMaterial({visible:false});
+  for(let i=0;i<N;i++){ const m=new THREE.Mesh(hitGeo,hitMat); m.userData.i=i; root.add(m); hits.push(m); }
+  outline=new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(1,1,1)),new THREE.LineBasicMaterial({color:0xF2E36A,depthTest:false,transparent:true}));
+  outline.renderOrder=9; outline.visible=false; root.add(outline);
+  new ResizeObserver(resize).observe(view); resize(); orbit.radius=framing().r; requestAnimationFrame(frame);
+}
+function rebuildRods(){
+  if(!renderer) return;
+  running=A.rods>0&&(SIM.holds||state.safeties);
+  for(const m of rodMeshes){ root.remove(m); m.geometry.dispose(); } rodMeshes=[];
+  const q=rodQuads(), add=(flat,mat,order)=>{ if(!flat.length) return; const m=new THREE.Mesh(geometry(flat),mat); if(order) m.renderOrder=order; root.add(m); rodMeshes.push(m); };
+  add(q.lit,MAT.lit); add(q.glow,MAT.glow); add(q.mist,MAT.steam,2);
+  hits.forEach((m,i)=>{ const top=state.core[i]==="E"?30:80; m.scale.set(18/16,(top-24)/16,18/16); m.position.set(CX(i)/16,(24+top)/32,CZ(i)/16); });
+  placeOutline();
+}
+function placeOutline(){ if(!outline) return; outline.visible=hoverI>=0; if(hoverI<0) return; const h=hits[hoverI];
+  outline.position.copy(h.position); outline.scale.set(h.scale.x*1.06,h.scale.y+1/16,h.scale.z*1.06); }
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms. goal eases to a new framing.
+// theta π puts the camera on the north side, in front of the control core.
+const orbit={theta:Math.PI-0.55,phi:1.12,radius:32,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const ptrs=new Map(); let downAt=null;
+const framing=()=>({x:0,y:cutaway?-1.5:0,z:0,r:cutaway?24:31,phi:cutaway?0.62:1.12});
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(120,Math.max(4,orbit.goal.r*f)); else orbit.radius=Math.min(120,Math.max(4,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+function channelAt(e){ if(!renderer) return -1; const r=view.getBoundingClientRect(), rc=new THREE.Raycaster();
+  rc.setFromCamera({x:(e.clientX-r.left)/r.width*2-1,y:-(e.clientY-r.top)/r.height*2+1},camera);
+  const hit=rc.intersectObjects(hits)[0]; return hit?hit.object.userData.i:-1; }
+function setHover(i){ if(i===hoverI) return; hoverI=i;
+  for(let j=0;j<N;j++) cells[j].classList.toggle("lit",j===i);
+  placeOutline();
+  view.classList.toggle("over",i>=0);
+  $("hudHover").textContent=i>=0?TIPS[i]||"":""; }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); downAt={x:e.clientX,y:e.clientY,button:e.button,moved:false};
+  orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId);
+  if(!p){ if(e.pointerType==="mouse") setHover(channelAt(e)); return; }
+  if(downAt&&Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>5) downAt.moved=true;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(!downAt||!downAt.moved) return;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.15,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ const click=downAt&&!downAt.moved&&ptrs.size===1&&e.type==="pointerup"; ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false;
+  if(click&&(downAt.button===0||downAt.button===2)){ const i=channelAt(e); if(i>=0) paint(i,downAt.button===2?"E":state.tool); }
+  if(!ptrs.size) downAt=null; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("pointerleave",()=>{ if(!ptrs.size) setHover(-1); });
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>3&&!reduce&&hoverI<0) orbit.theta+=dt*0.08; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"],["theta",orbit,"theta"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  // the turbine spins up and the steam fades in while the station runs (StationRenderer)
+  spin+=((running?1:0)-spin)*(reduce?1:1-Math.exp(-dt*0.8)); if(!reduce) rotor.rotation.y-=dt*spin*2.4;
+  steamA+=((running?1:0)-steamA)*(reduce?1:1-Math.exp(-dt*1.5)); MAT.steam.opacity=Math.min(1,steamA*1.2); steam.visible=MAT.steam.opacity>0.02;
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+function setCutaway(on){ cutaway=on; $("tCut").setAttribute("aria-pressed",on); if(clip) clip.constant=on?CUT_Y/16-5.5+0.001:1e4; orbit.goal=framing(); }
+$("tCut").onclick=()=>setCutaway(!cutaway);
+$("tGlass").onclick=e=>{ const on=e.currentTarget.getAttribute("aria-pressed")!=="true"; e.currentTarget.setAttribute("aria-pressed",on); if(glass) glass.visible=on; };
+$("tFront").onclick=()=>{ const th=Math.round((orbit.theta-Math.PI)/(2*Math.PI))*2*Math.PI+Math.PI; orbit.goal={...framing(),theta:th}; orbit.idle=-6; };
+
+/* ================= schematic (a vanilla structure file, facing north like StationLayout's design) ================= */
+const PART_IDS={casing:"ryzergen:station_casing",glass:"ryzergen:station_glass",rotor:"ryzergen:turbine_rotor",core:"ryzergen:station_core"};
+const PART_NAMES={casing:"Station Casing",glass:"Station Glass",rotor:"Turbine Rotor",core:"Station Control Core"};
+const PART_ICON={
+  casing:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAASklEQVR42mOwcnD/TwlmABEPn70mGc9bvhHVgM27j5CEsRpw8sJ1ojBOAyh2wagBw8KAtv5ZePGKIJ7//7vkaOACEIccDDeAEgwAbu/dbLqmNzcAAAAASUVORK5CYII=",
+  glass:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZ0lEQVR42mPwDYn9Ty7WNjD7zwBiWDm4k4VRDGDAA5a9+///4bPXKGqINgCbZqINwKWZKAPwaSZoACHNeA0gRjNOA4jVjNUAUjSD1GIYQIpmkFqSEhK28CHZAHQvUj8pk52ZQAQlGACyESOQMbrLAQAAAABJRU5ErkJggg==",
+  rotor:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAPklEQVR42mPQNjD7TwlmABG+IbEkYwwDrBzcScLDzYCXi7PIwnADTpa7koWpZ8CKIB6y8Gg6QDKA4txICQYA4Cnfnd0wUr0AAAAASUVORK5CYII=",
+  core:"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAZklEQVR42mOwcnD/TwlmABEPn70mGc9bvhHVgM27j5CEsRpg7xpAFMZrgKyiGl5MlAGmJ75ixUQbQHUXkGwANrzs3X86eYGiaKQ4IYGwy7U4MAax2/pnYWCCBpDlAhCHHAw3gBIMAITPbCcH3FWrAAAAAElFTkSuQmCC",
+};
+// StationLayout.PARTS: rings of casing and glass, the control core front and centre, the rotor in the turbine band
+function stationCells(){
+  const cells=new Map(), inside=(x,z,r)=>Math.hypot(x+0.5-6,z+0.5-6)<=r;
+  for(let y=0;y<11;y++){ const r=y>=8?5.5:6, wall=y>=1&&y<=4?"glass":"casing";
+    for(let x=0;x<12;x++) for(let z=0;z<12;z++)
+      if(inside(x,z,r)&&(!inside(x+1,z,r)||!inside(x-1,z,r)||!inside(x,z+1,r)||!inside(x,z-1,r))) cells.set(`${x},${y},${z}`,wall);
+      else if(inside(x,z,r)) cells.set(`${x},${y},${z}`,"air"); }
+  cells.set("5,0,0","core"); cells.set("6,6,6","rotor");
+  return cells;
+}
+const CELLS=stationCells();
+const PLAN_ID={E:0,U:1,X:1,M:2,R:3,C:4,T:5};   // StationReactor.Channel ordinals, as the core saves its plan
+function buildStructure(){
+  const palette=[], pidx={}, blocks=[];
+  const pal=k=>pidx[k]??(pidx[k]=palette.push(k==="air"?{Name:"minecraft:air"}:{Name:PART_IDS[k],Properties:k==="core"?{facing:"north",formed:"false",lit:"false"}:{formed:"false",lit:"false"}})-1);
+  const plan=Int32Array.from(state.core,k=>PLAN_ID[k]);
+  blocks.push({pos:[5,0,0],state:pal("core"),nbt:{id:PART_IDS.core,plan}});
+  for(const [key,k] of CELLS) if(k!=="core") blocks.push({pos:key.split(",").map(Number),state:pal(k)});
+  return {DataVersion:3955,size:[12,11,12],palette,blocks,entities:[]};
+}
+function renderExport(){
+  const c={}; for(const k of CELLS.values()) if(k!=="air") c[k]=(c[k]||0)+1;
+  $("xParts").innerHTML=["casing","glass","rotor","core"].map(k=>`<li><img src="${PART_ICON[k]}" alt=""><span>${PART_NAMES[k]}</span><span class="n">${fmt(c[k])}</span></li>`).join("");
+  const planned=state.core.filter(k=>k!=="E").length;
+  $("xGo").disabled=!mdSchematic.canGzip;
+  $("xHint").textContent=!mdSchematic.canGzip?"This browser can't compress files. Try a current Chrome, Firefox, Edge or Safari."
+    :`${fmt(Object.values(c).reduce((s,n)=>s+n,0))} blocks, 12×12 and 11 high, with the inside of the ring cleared. The core's plan has ${planned} of 25 channels planned.`;
+}
+$("xGo").onclick=()=>mdSchematic.download(buildStructure(),"ryzer-gen-fission-station.nbt").catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
+
+/* ================= config UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  const same=cfgPreset!=="default"&&CFG_FIELDS.every(([k])=>cfg[k]===DEFAULTS[k]);
+  $("cfgHint").innerHTML=`Output <b>${fmt(cfg.outputPct)}%</b> · water use <b>${fmt(cfg.waterPct)}%</b> · pump <b>${fmt(cfg.pumpRate)}</b> mB/t · cable <b>${fmt(cfg.energyRate)}</b> FE/t${same?" · same as the mod defaults":""}`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="1"; i.min=CFG_MIN[k];
+    i.onchange=()=>{ const v=Math.round(+i.value); if(!(v>=CFG_MIN[k])){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("rg-station-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+// no modpack ships Ryzer Gen yet: hide the pack picker until packs.js lists one
+$("pAtm").hidden=!ATM_PACKS.length;
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+
+$("sOn").onclick=()=>{ state.safeties=true; update(); }; $("sOff").onclick=()=>{ state.safeties=false; update(); };
+function renderSafeties(){ $("sOn").setAttribute("aria-pressed",state.safeties); $("sOff").setAttribute("aria-pressed",!state.safeties);
+  $("sHint").textContent=state.safeties?"SCRAM at 900°C. Shift-click the safety switch in the control screen to take them off."
+    :"30% more heat and burn, 30% more cooling, the turbine up to 45%, and no SCRAM. Water use doubles."; }
+
+for(const [id,name,sub,code] of LAYOUTS){ const b=document.createElement("button"); b.type="button"; b.className="btn"; b.dataset.id=id;
+  b.innerHTML=`${name}<small>${sub}</small>`; b.onclick=()=>{ state.core=[...code]; update(); }; $("layouts").append(b); }
+
+/* design code (mdrg1): mdrg1.<25 channel letters in the mod's channel order (x across, then z from the front)>.<s safeties on | o overdrive>
+   letters: E empty, U uranium, X MOX, M graphite, R control rod, C coolant, T lithium target */
+function encodeDesign(){ return `mdrg1.${state.core.join("")}.${state.safeties?"s":"o"}`; }
+function decodeDesign(code){ const m=/^mdrg1\.([EUXMRCT]{25})\.([so])$/.exec(String(code||"").trim()); return m?{core:[...m[1]],safeties:m[2]==="s"}:null; }
+const share=mdShare({prefix:"mdrg1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d); update(); }, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+function update(){
+  const od=!state.safeties;
+  A=analyse(state.core,od); S=screen(A); SIM=simulate(A,od);
+  renderCfg(); renderSafeties(); renderTools(); renderCore(A,SIM); renderResults(); rebuildRods(); renderExport(); share.render();
+}
+if(share.atLoad.design) Object.assign(state,share.atLoad.design);
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>
