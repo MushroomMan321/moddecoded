@@ -228,7 +228,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
         <p class="hint" id="xHint"></p>
         <p class="hint">For Create's <b>Schematicannon</b>, put the file in <code>.minecraft/schematics</code>, load it at a Schematic Table and fire away; Litematica reads the same folder. For a structure block, put it in <code>saves/&lt;world&gt;/generated/minecraft/structures</code>. The station forms by itself when its last part is placed, facing north: the Station Control Core sits on the north side. Rotate it when you place it. Minecraft 1.21.1, the only version Ryzer Gen runs on.</p>
-        <p class="hint">The control core carries this core's channel plan in its block data. A structure block keeps it. The Schematicannon and Litematica may leave block data out; then plan the channels again in the control screen. Rods, graphite and control rods go in by hand or through the fuel port. Not tried in-game yet.</p>
+        <p class="hint">The control core carries this core's channel plan in its block data. A structure block keeps it. The Schematicannon and Litematica may leave block data out; then plan the channels again in the control screen. Rods, graphite and control rods go in by hand or through the fuel port. Tested with <code>/place template</code> (what a structure block does) on a server: the station formed by itself and kept the plan. The Schematicannon hasn't been tried.</p>
       </div>
     </section>
   </div>
@@ -300,7 +300,7 @@ SCRAM ≥ 900°C · restart &lt; 400°C</pre>
         <span class="ref">StationRunner.tick</span>
       </div>
     </div>
-    <p class="credit">Station model and textures from <a href="https://github.com/MultiRyzer/ryzer-gen">Ryzer Gen</a> by Ryzer (MIT). Not checked in-game yet: if your station doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
+    <p class="credit">Station model and textures from <a href="https://github.com/MultiRyzer/ryzer-gen">Ryzer Gen</a> by Ryzer (MIT). Checked in-game on 28 September 2026 with Ryzer Gen 0.1.1-alpha on an ATM10: Aeronautics server: the numbers matched to the FE/t for five cores (safeties on and off), a full SCRAM cycle and the cable limits. If your station doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
   </section>
 </div>
 
