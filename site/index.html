@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
 <link rel="canonical" href="https://moddecoded.com/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -14,17 +15,12 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
 <style>
 :root{
-  color-scheme:light;
-  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
-  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
   --font-display:"VT323","Courier New",monospace;
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root{ color-scheme:dark;
-    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
-    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614; }
 }
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55}
@@ -32,7 +28,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body)
 .hero{position:relative;overflow:hidden;background:radial-gradient(120% 140% at 30% 0%,#1B2226,#0F1417);color:#E5E9E3;border-bottom:1px solid #2A332D;padding:64px 16px 52px}
 .hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:32px 32px;background-position:-1px -1px;-webkit-mask-image:radial-gradient(90% 100% at 75% 0%,#000,transparent 75%);mask-image:radial-gradient(90% 100% at 75% 0%,#000,transparent 75%);pointer-events:none}
 .hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#E2D03A}
-.hero-in{position:relative;max-width:860px;margin:0 auto}
+.hero-in{position:relative;max-width:828px;margin:0 auto}
 h1{font-family:var(--font-display);font-weight:400;font-size:clamp(52px,10vw,92px);line-height:.9;margin:0 0 18px;text-wrap:balance}
 h1 span{color:#F2E36A}
 .lede{margin:0;max-width:60ch;color:#B7C1BB;font-size:18px}

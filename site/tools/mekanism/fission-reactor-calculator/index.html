@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
 <link rel="canonical" href="https://moddecoded.com/tools/mekanism/fission-reactor-calculator/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -14,28 +15,17 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
 <style>
 :root{
-  color-scheme:light;
-  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
-  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
-  --good:#2E7D4F; --warn:#A8591A; --bad:#B03434; --heat:#D2552B; --steam:#3A7BD5;
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0;
   --viewport:#1B2226; --viewport-2:#0F1417;
   --font-display:"VT323","Courier New",monospace;
   --font-readout:"VT323",var(--font-mono);
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){ color-scheme:dark;
-    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
-    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
-    --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0; }
-}
-:root[data-theme="dark"]{ color-scheme:dark;
-  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
-  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
-  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0; }
 *{box-sizing:border-box}
-html{color-scheme:light}
 body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
 [hidden]{display:none!important}
 .wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}

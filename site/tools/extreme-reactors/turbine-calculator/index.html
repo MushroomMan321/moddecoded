@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
 <link rel="canonical" href="https://moddecoded.com/tools/extreme-reactors/turbine-calculator/">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="icon" href="/favicon.ico" sizes="48x48">
@@ -13,7 +14,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
 <style>
-html{color-scheme:light}
 body{margin:0}
 img{max-width:100%}
 [hidden]{display:none!important}
@@ -21,28 +21,14 @@ img{max-width:100%}
 .crumbs a{color:var(--accent-ink);text-decoration:none}
 .crumbs a:hover{text-decoration:underline}
 :root{
-  --bg:#EDEFEA; --surface:#F8F9F6; --ink:#1A201D; --muted:#5A645E; --line:#D2D8D0;
-  --accent:#B8A500; --accent-ink:#665C00; --accent-soft:#F1EBB0;
-  --good:#2E7D4F; --warn:#A8591A; --bad:#B03434;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B;
   --viewport:#1B2226; --viewport-2:#0F1417;
   --font-display:"VT323","Courier New",monospace;
   --font-readout:"VT323",var(--font-mono);
   --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    color-scheme:dark;
-    --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
-    --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
-    --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B;
-  }
-}
-:root[data-theme="dark"]{
-  color-scheme:dark;
-  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
-  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
-  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B;
 }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
