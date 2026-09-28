@@ -101,6 +101,14 @@ window.MD_PACKS = [
       mekanism: { absent: true, note: "no Mekanism yet" },
     },
   },
+  {
+    // Craftoria 1.37.0 ships Mekanism 10.7.19 and no Extreme Reactors.
+    id: "craftoria", name: "Craftoria", mc: "1.21.1",
+    source: { repo: "https://github.com/TeamAOF/Craftoria", commit: "5689ac1", checked: "2026-09-28" },
+    mods: {
+      mekanism: { config: { "fission_reactor.energyPerFissionFuel": 500000 } },
+    },
+  },
 ];
 
 // ---- helper used by the calculators (contributors don't need to touch this) ----
