@@ -4,7 +4,8 @@ node_modules/
 .DS_Store
 Thumbs.db
 promo/
-.claude/
+.claude/*
+!.claude/settings.json
 research/
 
 # private planning docs (not published)
