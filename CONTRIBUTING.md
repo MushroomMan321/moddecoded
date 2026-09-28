@@ -66,6 +66,17 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `dynamic_tank.fluidPerTank` | general.toml | 350000 |
 | `dynamic_tank.chemicalPerTank` | general.toml | 16000000 |
 
+### Ryzer Gen: `config/ryzergen-common.toml`
+
+Defaults are for Ryzer Gen 0.1.1-alpha (MC 1.21.1).
+
+| Key | Default |
+|---|---|
+| `fission_station.output_percent` | 100 |
+| `fission_station.water_use_percent` | 100 |
+| `water.pump_rate` | 100 |
+| `cables.energy_rate` | 1000 |
+
 ## Changing a calculator
 
 Each calculator is one self-contained file: `site/tools/<mod>/<tool>/index.html`. There's no build step.

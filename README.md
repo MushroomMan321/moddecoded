@@ -13,6 +13,7 @@ your server.
 | [Mekanism fission reactor + turbine](https://moddecoded.com/tools/mekanism/fission-reactor-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Mekanism dynamic tank](https://moddecoded.com/tools/mekanism/dynamic-tank-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Create Aeronautics airship](https://moddecoded.com/tools/create-aeronautics/airship-calculator/) | 1.3.2 |
+| [Ryzer Gen fission station](https://moddecoded.com/tools/ryzer-gen/fission-station-calculator/) | 0.1.1-alpha (MC 1.21.1) |
 
 ## Contributing
 
@@ -31,7 +32,7 @@ site/                          everything that gets deployed (static, no build s
   data/packs.js                modpack config presets used by the calculators
   tools/<mod>/<tool>/index.html  one self-contained page per calculator
   guides/                      articles
-scripts/                       maintainer deploy helpers (Cloudflare Pages)
+scripts/                       maintainer helpers: Cloudflare Pages deploy, the Ryzer Gen station model
 ```
 
 Preview locally with `python -m http.server 8000 -d site`, then open http://localhost:8000.
