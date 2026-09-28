@@ -46,6 +46,7 @@ h1 .y{color:var(--accent-ink)}
 
 /* viewport */
 .stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
 @media (max-width:900px){.stage{position:relative;top:0}}
 .view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:1/1;max-height:74vh;width:100%;touch-action:none;cursor:grab}
 .view:active{cursor:grabbing}
@@ -53,10 +54,29 @@ h1 .y{color:var(--accent-ink)}
 .hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
 .hud .rpm{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
 .hud .rpm small{font:400 14px var(--font-mono);color:#C9D2CE}
-.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
 .viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
-.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+@media (max-width:520px){.layerbar{top:66px}}   /* clear of the HUD, whose readout can be wide */
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide h3{font-size:14px;margin:0 0 6px}
+.guide h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px;background:#3A4248}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.parts li small{color:var(--muted)}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
 .dims{font-family:var(--font-mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
 .dims b{color:var(--ink);font-weight:600}
 .casing{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
@@ -177,13 +197,37 @@ details.cfg summary:focus-visible{outline:2px solid var(--accent);outline-offset
       <div class="view" id="view">
         <canvas id="gl" aria-label="Rotating 3D model of the turbine design"></canvas>
         <div class="hud"><span class="rpm" id="hudRpm">0 <small>RPM</small></span><span id="hudRf">0 RF/t</span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
         <div class="viewbar">
+          <button id="tFit" type="button" title="Re-centre and zoom to fit the turbine">Fit</button>
           <button id="tCasing" aria-pressed="true" type="button">Casing</button>
           <button id="tSpin" aria-pressed="true" type="button">Spin</button>
-          <button id="tRebuild" type="button">Rebuild</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
         </div>
       </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
       <div class="dims" id="dims"></div>
+      <div class="casing guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols"><div id="gLayer"></div><div id="gParts"></div></div>
+        <details open><summary>How it goes together</summary>
+          <ol>
+            <li>The 12 edges (and so the corners) must be <b>Turbine Housing</b>. Glass, the controller, ports and the bearing go on the faces, never on an edge. Every outside block has to be a turbine part.</li>
+            <li>Exactly one <b>Turbine Rotor Bearing</b>, on a face. This guide puts it in the middle of the floor.</li>
+            <li><b>Turbine Rotor Shafts</b> run from the bearing straight across the whole interior with no gaps, and must end against <b>Turbine Housing</b> on the opposite face, not glass or a port. Shafts anywhere else stop it forming.</li>
+            <li><b>Turbine Rotor Blades</b> stick straight out from the shaft in the four flat directions, unbroken from the shaft outward. Every blade layer must be closer to the bearing than every coil layer; one layer can't have both.</li>
+            <li>Coil blocks only count in the 3×3 ring touching the shaft, so 8 per layer at most. A corner coil also needs the side coil next to it. The rest of the interior stays air.</li>
+            <li>At least one <b>Turbine Controller</b>. Power taps and fluid ports aren't needed for it to form, and both Active and Passive versions work. Fluid ports start in inlet mode: switch one to outlet in its screen to get water back out.</li>
+            <li>Basic and Reinforced parts don't mix. Basic turbines are at most 5 × 5 wide and 10 tall; Reinforced ones are limited by <code>maxTurbineSize</code> and <code>maxTurbineHeight</code> (32 by default).</li>
+          </ol>
+          <p class="hint" style="margin-top:8px">From <code>MultiblockTurbine.isMachineWhole</code> and <code>validateRotor</code> in the Extreme Reactors 1.21.1-2.4.28 jar, with the shared frame checks in ZeroCore 2.4.21.</p>
+        </details>
+      </div>
       <div class="casing">
         <h2>Casing size</h2>
         <div class="row"><label for="extX">Width (X)</label><input type="range" id="extX" min="5" max="32" step="1"><input class="num" id="extXN" type="number" min="5" max="32" aria-label="Exterior width X in blocks"></div>
@@ -506,18 +550,19 @@ function iconFor(c,size=32){
 /* ---------- three.js scene ---------- */
 const view=document.getElementById("view"), cvs=document.getElementById("gl");
 const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
-let renderer=null, scene, camera, root, rotor, shell, statics;
+let renderer=null, scene, camera, root, rotor, shell, statics, clip;
 const meshes=new Map(); const anims=[]; const matCache={};
 const G={ cube:null, blade:null };
 function mat(key,canvas,opts={}){
   if(matCache[key]) return matCache[key];
   const t=new THREE.CanvasTexture(canvas); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
-  return matCache[key]=new THREE.MeshLambertMaterial(Object.assign({map:t},opts));
+  return matCache[key]=new THREE.MeshLambertMaterial(Object.assign({map:t,clippingPlanes:[clip]},opts));
 }
 function initGL(){
   try{ renderer=new THREE.WebGLRenderer({canvas:cvs,antialias:true,alpha:true}); renderer.setClearColor(0x000000,0); }catch(e){ renderer=null; }
   if(!renderer||typeof THREE==="undefined"){ view.insertAdjacentHTML("beforeend",'<p style="position:absolute;inset:auto 12px 12px;color:#ddd;font-size:13px">3D preview needs WebGL. Results still update below.</p>'); return; }
   renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  renderer.localClippingEnabled=true; clip=new THREE.Plane(new THREE.Vector3(0,-1,0),1e6);   // only the build guide moves this
   scene=new THREE.Scene();
   camera=new THREE.PerspectiveCamera(38,1,0.1,800);
   scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95));
@@ -532,21 +577,47 @@ function initGL(){
 }
 function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
 
-// orbit
-const orbit={theta:0.75,phi:1.05,radius:20,target:0,drag:null,idle:0};
-view.addEventListener("pointerdown",e=>{ orbit.drag={x:e.clientX,y:e.clientY}; view.setPointerCapture(e.pointerId); });
-view.addEventListener("pointermove",e=>{ if(!orbit.drag) return; orbit.theta-=(e.clientX-orbit.drag.x)*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-(e.clientY-orbit.drag.y)*0.008)); orbit.drag={x:e.clientX,y:e.clientY}; orbit.idle=0; });
-view.addEventListener("pointerup",()=>orbit.drag=null); view.addEventListener("pointercancel",()=>orbit.drag=null);
-view.addEventListener("wheel",e=>{ e.preventDefault(); orbit.radius=Math.min(120,Math.max(6,orbit.radius*(1+Math.sign(e.deltaY)*0.08))); },{passive:false});
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms.
+// "Fit" eases the camera back to frame the whole turbine; goal holds the framing it's easing toward.
+const orbit={theta:0.75,phi:1.05,radius:20,target:{x:0,y:0,z:0},goal:null,fitR:20,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(120,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(120,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+// the turbine is centred on the origin (root is shifted by -cx/-cz, blocks by y0); fitR is set by rebuild from its size
+function fit(){ orbit.goal={x:0,y:0,z:0,r:orbit.fitR,...(guide.on?{phi:0.8}:{})}; }
 
-let spinOn=!reduce, casingOn=true, targetRpm=0, visRpm=0, lastT=performance.now();
+let spinOn=!reduce, casingOn=true, targetRpm=0, visRpm=0, lastT=performance.now(), shownY0=0;
 function frame(t){
   const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
-  if(!orbit.drag){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.12; }
-  camera.position.set(Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, Math.cos(orbit.phi)*orbit.radius, Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius);
-  camera.lookAt(0,0,0);
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.12; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius);
+  camera.lookAt(o.x,o.y,o.z);
+  // guide: cut at the top of layer n (block y = n-2, the floor being y = -1)
+  clip.constant=guide.on?guide.layer-1.5+shownY0+0.001:1e6;
   visRpm+=(targetRpm-visRpm)*Math.min(1,dt*1.5);
-  if(spinOn) rotor.rotation.y+=dt*(visRpm/1800)*2*Math.PI*0.9;
+  if(guide.on){ const q=Math.PI/2, r=rotor.rotation.y; rotor.rotation.y+=(Math.round(r/q)*q-r)*Math.min(1,dt*6); }   // park blades on the grid
+  else if(spinOn) rotor.rotation.y+=dt*(visRpm/1800)*2*Math.PI*0.9;
   for(let i=anims.length-1;i>=0;i--){
     const a=anims[i], p=Math.min(1,Math.max(0,(t-a.t0)/a.dur));
     if(t<a.t0){ a.mesh.visible=false; continue; }
@@ -568,6 +639,7 @@ function blocksFor(s){
     const n=bx+by+bz; if(!n) continue;
     let type=n>=2?"casing":"glass";
     if(y===-1&&x===0&&z===0) type="bearing";
+    else if(y===H&&x===0&&z===0) type="casing";   // the rotor must end against Turbine Housing, not glass
     // every port sits on the bottom wall layer, on the two faces the default camera (+X,+Z) shows
     else if(y===0&&z===z1&&x===Math.max(x0+1,-2)) type="controller";
     else if(y===0&&z===z1&&x===Math.min(x1-1,2)) type="power";
@@ -585,29 +657,29 @@ function blocksFor(s){
   for(const r of s.coils) for(let i=0;i<r.n;i++){ const [x,z]=COIL_RING[ri]; out.push({type:"coil:"+r.id,x,y:yi,z,y0,grp:"coil"}); if(++ri>=perC){ ri=0; yi++; } }
   return {out,H,E:Math.max(x1-x0,z1-z0)/2,cx:(x0+x1)/2,cz:(z0+z1)/2};
 }
+const PORT_COLORS={bearing:"#C9A24A",controller:"#E2D03A",power:"#D23A3A",steam:"#E9EEF2",water:"#3A7BD5"};
+function texFor(type){
+  if(type==="casing") return casingTex(); if(type==="glass") return glassTex(); if(PORT_COLORS[type]) return portTex(type,PORT_COLORS[type]);
+  if(type==="shaft") return shaftTex(); if(type==="blade") return bladeTex();
+  const c=COIL[type.slice(5)]; return storageTex(c.color,c.id);
+}
 function meshFor(bk){
-  let m;
-  if(bk.type==="glass"){ m=new THREE.Mesh(G.cube, matCache.glass||(matCache.glass=(()=>{ const t=new THREE.CanvasTexture(glassTex()); t.magFilter=t.minFilter=THREE.NearestFilter; return new THREE.MeshLambertMaterial({map:t,transparent:true,opacity:0.55,depthWrite:false}); })())); m.renderOrder=2; }
-  else if(bk.type==="casing") m=new THREE.Mesh(G.cube,mat("casing",casingTex()));
-  else if(bk.type==="bearing") m=new THREE.Mesh(G.cube,mat("bearing",portTex("bearing","#C9A24A")));
-  else if(bk.type==="controller") m=new THREE.Mesh(G.cube,mat("controller",portTex("controller","#E2D03A")));
-  else if(bk.type==="power") m=new THREE.Mesh(G.cube,mat("power",portTex("power","#D23A3A")));
-  else if(bk.type==="steam") m=new THREE.Mesh(G.cube,mat("steam",portTex("steam","#E9EEF2")));
-  else if(bk.type==="water") m=new THREE.Mesh(G.cube,mat("water",portTex("water","#3A7BD5")));
-  else if(bk.type==="shaft") m=new THREE.Mesh(G.shaft,mat("shaft",shaftTex()));
-  else if(bk.type==="blade"){ m=new THREE.Mesh(G.blade,mat("blade",bladeTex())); m.rotation.set(0.42,bk.axis==="z"?Math.PI/2:0,0,"YXZ"); }
-  else { const c=COIL[bk.type.slice(5)]; m=new THREE.Mesh(G.cube,mat("coil:"+c.id,storageTex(c.color,c.id))); m.scale.setScalar(0.98); }
+  let m; const k=bk.type;
+  if(k==="glass"){ m=new THREE.Mesh(G.cube,mat(k,texFor(k),{transparent:true,opacity:0.55,depthWrite:false})); m.renderOrder=2; }
+  else if(k==="shaft") m=new THREE.Mesh(G.shaft,mat(k,texFor(k)));
+  else if(k==="blade"){ m=new THREE.Mesh(G.blade,mat(k,texFor(k))); m.rotation.set(0.42,bk.axis==="z"?Math.PI/2:0,0,"YXZ"); }
+  else if(k.startsWith("coil:")){ m=new THREE.Mesh(G.cube,mat(k,texFor(k))); m.scale.setScalar(0.98); }
+  else m=new THREE.Mesh(G.cube,mat(k,texFor(k)));
   m.position.set(bk.x,bk.y+bk.y0,bk.z); return m;
 }
 let lastShape="";
-function rebuild(s,force){
+function rebuild(s){
   if(!renderer) return;
   const {out,H,E,cx,cz}=blocksFor(s);
   const shape=`${E}|${H}`;
-  root.position.set(-cx,0,-cz);
+  root.position.set(-cx,0,-cz); shownY0=-(H/2)+0.5;
   const next=new Map(); for(const bk of out) next.set(`${bk.type}|${bk.x},${bk.y},${bk.z}|${bk.y0}`,bk);
   const now=performance.now();
-  if(force){ for(const [k,m] of meshes){ m.parent&&m.parent.remove(m); } meshes.clear(); anims.length=0; }
   for(const [k,m] of meshes) if(!next.has(k)){ meshes.delete(k); if(reduce){ m.parent&&m.parent.remove(m); } else anims.push({mesh:m,kind:"out",t0:now,dur:160}); }
   let fresh=[]; for(const [k,bk] of next) if(!meshes.has(k)){ const m=meshFor(bk); ({rotor,shell,coil:statics})[bk.grp].add(m); meshes.set(k,m); fresh.push([bk,m]); }
   if(!reduce){
@@ -616,7 +688,8 @@ function rebuild(s,force){
     fresh.forEach(([bk,m],i)=>{ m.visible=false; anims.push({mesh:m,kind:"in",y:m.position.y,t0:now+ (i/Math.max(1,fresh.length))*span, dur:260}); });
   }
   shell.visible=casingOn;
-  if(shape!==lastShape){ orbit.radius=Math.max(2*E,H+2)*1.75+4; lastShape=shape; }
+  // re-frame the camera on the new size; jump there on first load
+  if(shape!==lastShape){ orbit.fitR=Math.max(2*E,H+2)*1.75+4; fit(); if(!lastShape){ orbit.radius=orbit.fitR; orbit.goal=null; } lastShape=shape; }
 }
 
 /* ---------- UI ---------- */
@@ -730,7 +803,7 @@ function renderResults(R){
   $("dims").innerHTML=`<span>Exterior <b>${X}×${Z}×${Hx}</b></span><span>Interior <b>${lay.ix}×${lay.iz}×${lay.H}</b></span><span>Rotor mass <b>${fmt(R.mass)}</b></span><span>Drag to coils <b>${pct(R.indCoef/(R.indCoef+R.bladeCoef||1))}</b></span>`;
   // bill of materials
   const shellCount=X*Z*Hx-lay.ix*lay.iz*lay.H, frame=4*(X-2)+4*(Z-2)+4*(Hx-2)+8;
-  const rows=[["Turbine casing (frame)",frame],["Turbine glass / casing (faces)",shellCount-frame-5],["Controller, bearing, power tap, 2 fluid ports",5],["Rotor shaft",lay.H],["Rotor blades",state.blades]];
+  const rows=[["Turbine Housing (frame)",frame],["Turbine Glass / Housing (faces)",shellCount-frame-5],["Controller, bearing, power tap, 2 fluid ports",5],["Rotor shaft",lay.H],["Rotor blades",state.blades]];
   for(const r of state.coils) if(r.n) rows.push([COIL[r.id].name,r.n]);
   $("bom").innerHTML=rows.map(([k,v])=>`<span>${k}</span><b>${fmt(v)}</b>`).join("");
   drawChart(R);
@@ -765,12 +838,37 @@ function tune(mode){
   last.n=bestN; update();
 }
 
+/* build guide: per-layer block counts and a full parts list, read off the same block list the 3D view draws */
+// in-game names: assets/bigreactors/lang/en_us.json, block.bigreactors.{basic,reinforced}_turbine*
+const PART_NAMES={casing:"Turbine Housing",glass:"Turbine Glass",bearing:"Turbine Rotor Bearing",controller:"Turbine Controller",power:"Turbine Active Forge Energy Power Tap",
+  steam:"Turbine Active Forge Fluid Port",water:"Turbine Active Forge Fluid Port",shaft:"Turbine Rotor Shaft",blade:"Turbine Rotor Blade"};
+const PART_NOTES={power:"or Passive",steam:"inlet mode: steam in",water:"outlet mode: water out"};
+const PART_ORDER=["casing","glass","bearing","controller","power","steam","water","shaft","blade"];
+const partName=k=>k.startsWith("coil:")?COIL[k.slice(5)].name:`${PART_NAMES[k]} (${tier(state.variant).name})`+(PART_NOTES[k]?` <small>· ${PART_NOTES[k]}</small>`:"");
+const swatches={}, swatch=k=>swatches[k]||(swatches[k]=texFor(k).toDataURL());
+function tally(out,layer){ const c={};
+  for(const bk of out){ if(layer!=null&&bk.y!==layer-2) continue; c[bk.type]=(c[bk.type]||0)+1; }
+  const rank=k=>k.startsWith("coil:")?PART_ORDER.length+COIL[k.slice(5)].order:PART_ORDER.indexOf(k);
+  return Object.keys(c).sort((a,b)=>rank(a)-rank(b)).map(k=>[k,c[k]]); }
+const partsList=rows=>`<ul class="parts">${rows.map(([k,n])=>`<li><img src="${swatch(k)}" alt=""><span>${partName(k)}</span><span class="n">${fmt(n)}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const {out,H}=blocksFor(state), top=H+2; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const n=guide.layer, where=n===1?"floor":n===top?"roof":`layer ${n} of ${top}`;
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(out,n))}`;
+  $("gParts").innerHTML=`<h3>Whole turbine <small>· ${state.extX}×${state.extZ}×${top}</small></h3>${partsList(tally(out))}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
 let rebuildTimer=0;
 function update(src){
   if(src!=="height") state.extY=layout({...state,extY:0}).minH+2;
   state.coils=state.coils.filter(r=>r.n>0||state.coils.length===1);
   renderCfg(); syncInputs(); renderSlots(); renderLoad();
-  const R=simulate(state); renderResults(R); share.render();
+  const R=simulate(state); renderResults(R); share.render(); renderGuide();
   clearTimeout(rebuildTimer); rebuildTimer=setTimeout(()=>rebuild(state),90);
 }
 
@@ -842,7 +940,9 @@ $("sortBtn").onclick=()=>{ const keys=Object.keys(SORTS); sortMode=keys[(keys.in
 $("tuneMax").onclick=()=>tune("max"); $("tuneCheap").onclick=()=>tune("cheap");
 $("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(shell) shell.visible=casingOn; };
 $("tSpin").onclick=e=>{ spinOn=!spinOn; e.target.setAttribute("aria-pressed",spinOn); };
-$("tRebuild").onclick=()=>rebuild(state,true);
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+$("tFit").onclick=fit;
 $("tSpin").setAttribute("aria-pressed",spinOn);
 addEventListener("resize",()=>drawChart(simulate(state)));
 

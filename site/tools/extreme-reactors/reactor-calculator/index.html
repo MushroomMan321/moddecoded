@@ -42,6 +42,7 @@ h1 .y{color:var(--accent-ink)}
 .grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
 .stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
 @media (max-width:900px){.stage{position:relative;top:0}}
 .view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:1/1;max-height:64vh;width:100%;touch-action:none;cursor:grab}
 .view:active{cursor:grabbing}
@@ -52,7 +53,26 @@ h1 .y{color:var(--accent-ink)}
 .viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
 .viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
-.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+@media (max-width:520px){.layerbar{top:66px}}   /* clear of the HUD, whose readout can be wide */
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide h3{font-size:14px;margin:0 0 6px}
+.guide h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px;background:#3A4248}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.parts li small{color:var(--muted)}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
 .dims{font-family:var(--font-mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
 .dims b{color:var(--ink);font-weight:600}
 .box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
@@ -151,13 +171,37 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
       <div class="view" id="view">
         <canvas id="gl" aria-label="Rotating 3D model of the reactor design"></canvas>
         <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
         <div class="viewbar">
+          <button id="tFit" type="button" title="Re-centre and zoom to fit the reactor">Fit</button>
           <button id="tCasing" aria-pressed="true" type="button">Casing</button>
           <button id="tMods" aria-pressed="true" type="button">Coolant blocks</button>
-          <button id="tRebuild" type="button">Rebuild</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
         </div>
       </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
       <div class="dims" id="dims"></div>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols"><div id="gLayer"></div><div id="gParts"></div></div>
+        <details open><summary>How it goes together</summary>
+          <ol>
+            <li>The 12 edges (and so the corners) must be <b>Reactor Casing</b>. Glass, the controller, ports, power taps and control rods go on the faces, never on an edge. Every outside block has to be a reactor part.</li>
+            <li>All <b>Reactor Control Rods</b> go on the same face; this guide uses the roof. Behind each one, an unbroken column of <b>Reactor Fuel Rods</b> must cross the whole interior and end against plain <b>Reactor Casing</b> on the opposite face. Glass or a port there stops it forming, and so does a fuel rod that isn't in one of these columns.</li>
+            <li>Everything else inside must be air or a moderator block or fluid, which is anything you can paint in the layout editor. No other reactor part may go inside.</li>
+            <li>At least one <b>Reactor Controller</b>. Power taps, fluid ports and access ports aren't needed for it to form, and both Active and Passive versions work.</li>
+            <li>The reactor runs in active (steam) mode if any <b>Reactor Fluid Port</b> is attached, and passive (power) mode if none is. Basic reactors have no fluid port, so they're always passive.</li>
+            <li>Fluid ports and the <b>Reactor Solid Access Port</b> start in inlet mode; switch them in the port's screen. Water and fuel go in through inlet ports; steam comes out of an outlet fluid port and waste out of an outlet access port, so add a second access port set to outlet if you want waste taken out.</li>
+            <li>Basic and Reinforced parts don't mix. Basic reactors are at most 5 × 5 × 5; Reinforced ones are limited by <code>maxReactorSize</code> (32) and <code>maxReactorHeight</code> (48).</li>
+          </ol>
+          <p class="hint" style="margin-top:8px">From <code>MultiblockReactor.isMachineWhole</code> and <code>validateFuelAssembly</code> in the Extreme Reactors 1.21.1-2.4.28 jar, with the shared frame checks in ZeroCore 2.4.21.</p>
+        </details>
+      </div>
       <div class="box">
         <h2>Casing size</h2>
         <div class="row"><label for="extX">Width (X)</label><input type="range" id="extX" min="3" max="32"><input class="num" id="extXN" type="number" min="3" max="32" aria-label="Exterior width X in blocks"></div>
@@ -617,19 +661,45 @@ function initGL(){
   new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
 }
 function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
-const orbit={theta:0.75,phi:1.0,radius:20,drag:null,idle:0};
-view.addEventListener("pointerdown",e=>{ orbit.drag={x:e.clientX,y:e.clientY}; view.setPointerCapture(e.pointerId); });
-view.addEventListener("pointermove",e=>{ if(!orbit.drag) return; orbit.theta-=(e.clientX-orbit.drag.x)*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-(e.clientY-orbit.drag.y)*0.008)); orbit.drag={x:e.clientX,y:e.clientY}; orbit.idle=0; });
-view.addEventListener("pointerup",()=>orbit.drag=null); view.addEventListener("pointercancel",()=>orbit.drag=null);
-view.addEventListener("wheel",e=>{ e.preventDefault(); orbit.radius=Math.min(160,Math.max(6,orbit.radius*(1+Math.sign(e.deltaY)*0.08))); },{passive:false});
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms.
+// "Fit" eases the camera back to frame the whole reactor; goal holds the framing it's easing toward.
+const orbit={theta:0.75,phi:1.0,radius:20,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(160,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(160,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+// the reactor is centred on the origin (see off in rebuild3D); stand back far enough to see all of it
+const framing=()=>({x:0, y:0, z:0, r:Math.max(state.X,state.Z,state.Y)*1.9+4});
+function fit(){ orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; }
 let buildTop=0, buildBottom=0, lastT=performance.now(), casingOn=true, modsOn=true;
 const anims=[];   // per-block swaps: {mesh, kind:"in"|"out", t0, dur, y}
 function frame(t){
   const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
-  if(!orbit.drag){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
-  camera.position.set(Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, Math.cos(orbit.phi)*orbit.radius, Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(0,0,0);
-  const p=reduce?1:Math.min(1,(t-buildStart)/1100), e=1-Math.pow(1-p,3);
-  clip.constant=buildBottom+(buildTop-buildBottom)*e;   // full builds only: plane rises layer by layer
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=off.y+guide.layer-0.5+0.001;   // top of layer n (block y = n-1)
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100), e=1-Math.pow(1-p,3);
+    clip.constant=buildBottom+(buildTop-buildBottom)*e; }   // full builds only: plane rises layer by layer
   for(let i=anims.length-1;i>=0;i--){
     const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
     const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=a.show();
@@ -649,24 +719,34 @@ function blockMap(){
   for(let y=0;y<Y;y++)for(let x=0;x<X;x++)for(let z=0;z<Z;z++){
     const bx=x===0||x===X-1, by=y===0||y===Y-1, bz=z===0||z===Z-1, n=bx+by+bz; if(!n) continue;
     let k=n>=2?"casing":"glass";
-    if(y===Y-1&&!bx&&!bz&&state.cells[(x-1)*iz+(z-1)]==="rod") k="ctrl";
-    // every port sits on the bottom wall layer, on the two faces the default camera (+X,+Z) shows
-    else if(y===1&&z===Z-1&&x===Math.max(1,Math.floor(X/2)-1)) k="controller";
-    else if(y===1&&z===Z-1&&x===Math.min(X-2,Math.floor(X/2)+1)) k="access";
-    else if(y===1&&x===X-1&&z===Math.min(Z-2,Math.floor(Z/2)+1)) k=active?"portIn":"power";
-    else if(y===1&&x===X-1&&z===Math.max(1,Math.floor(Z/2)-1)&&active) k="portOut";
+    const rodCol=!bx&&!bz&&state.cells[(x-1)*iz+(z-1)]==="rod";
+    if(y===Y-1&&rodCol) k="ctrl";
+    else if(y===0&&rodCol) k="casing";   // a fuel column must end against Reactor Casing, not glass (validateFuelAssembly)
     map.set(x+","+y+","+z,k);
   }
+  // ports go on the wall faces, bottom wall layer first, on the two faces the default camera (+X,+Z) shows;
+  // small reactors spill onto the next layer up, then the back walls
+  const walls=[[],[],[],[]], spread=(n,a,b)=>[...new Set([a,b,...Array.from({length:n-2},(_,i)=>i+1)].filter(i=>i>=1&&i<=n-2))];
+  for(let y=1;y<Y-1;y++){ const sx=spread(X,Math.floor(X/2)-1,Math.floor(X/2)+1), sz=spread(Z,Math.floor(Z/2)+1,Math.floor(Z/2)-1);
+    for(const x of sx){ walls[0].push(x+","+y+","+(Z-1)); walls[3].push(x+","+y+",0"); } for(const z of sz){ walls[1].push((X-1)+","+y+","+z); walls[2].push("0,"+y+","+z); } }
+  const used=new Set(), put=(k,first)=>{ for(const w of [first,0,1,2,3]) for(const key of walls[w]) if(!used.has(key)){ used.add(key); map.set(key,k); return; } };
+  put("controller",0); put("access",0);
+  if(active){ put("portIn",1); put("portOut",1); } else put("power",1);
   for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue;
     const k=id==="rod"?"rod:"+state.fuel:"m:"+id; for(let y=1;y<=H;y++) map.set((x+1)+","+y+","+(z+1),k); }
   return map;
 }
+const PORT_COLORS={controller:"#E2D03A",power:"#D23A3A",portIn:"#3A7BD5",portOut:"#E9EEF2",access:"#7A5A2A"};
+function texFor(k){
+  if(k==="casing") return casingTex(); if(k==="glass") return glassTex(); if(k==="ctrl") return ctrlTex();
+  if(PORT_COLORS[k]) return portTex(k,PORT_COLORS[k]); if(k.startsWith("rod")) return rodTex();
+  return blockTex(MOD[k.slice(2)]);
+}
 function matFor(k){
-  if(k==="casing") return mat(k,casingTex()); if(k==="glass") return mat(k,glassTex(),{transparent:true,opacity:0.5,depthWrite:false});
-  if(k==="ctrl") return mat(k,ctrlTex()); if(k==="controller") return mat(k,portTex(k,"#E2D03A")); if(k==="power") return mat(k,portTex(k,"#D23A3A"));
-  if(k==="portIn") return mat(k,portTex(k,"#3A7BD5")); if(k==="portOut") return mat(k,portTex(k,"#E9EEF2")); if(k==="access") return mat(k,portTex(k,"#7A5A2A"));
-  if(k.startsWith("rod:")) return mat(k,rodTex(),{transparent:true,opacity:0.95});
-  const m=MOD[k.slice(2)]; return mat(k,blockTex(m),m.kind==="fluid"?{transparent:true,opacity:0.55,depthWrite:false}:{});
+  if(k==="glass") return mat(k,texFor(k),{transparent:true,opacity:0.5,depthWrite:false});
+  if(k.startsWith("rod:")) return mat(k,texFor(k),{transparent:true,opacity:0.95});
+  if(k.startsWith("m:")&&MOD[k.slice(2)].kind==="fluid") return mat(k,texFor(k),{transparent:true,opacity:0.55,depthWrite:false});
+  return mat(k,texFor(k));
 }
 const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
 let off={x:0,y:0,z:0};
@@ -688,16 +768,17 @@ function buildInstanced(map,skip){
 }
 let shownMap=null, shownShape="", swapGroup=null, settleTimer=0;
 function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
-function rebuild3D(force){
+function rebuild3D(){
   if(!renderer) return;
   const {X,Y,Z}=state, shape=`${X}|${Y}|${Z}`, map=blockMap();
   off={x:-(X-1)/2, y:-(Y-1)/2, z:-(Z-1)/2};
   clearSwaps();
   // New size (or first build): build everything with the rising layer-by-layer animation.
-  if(force||!shownMap||shape!==shownShape){
+  if(!shownMap||shape!==shownShape){
     buildInstanced(map);
     buildBottom=-(Y/2)-0.5; buildTop=Y/2+0.6; buildStart=performance.now();
-    if(shape!==shownShape) orbit.radius=Math.max(X,Z,Y)*1.9+4;
+    // re-frame the camera on the new size; jump there on first load
+    fit(); if(!shownShape){ const g=orbit.goal; orbit.target={x:g.x,y:g.y,z:g.z}; orbit.radius=g.r; orbit.goal=null; }
     shownMap=map; shownShape=shape; return;
   }
   // Same size: only the blocks that changed are torn out and replaced.
@@ -807,9 +888,35 @@ function drawChart(R){
   g.font="600 11px "+mono; g.fillStyle=heat; g.fillText("casing °C",pad.l+4,pad.t+10); g.fillStyle=acc; const lbl=R.active?"steam mB/t":"RF/t"; g.fillText(lbl,w-pad.r-g.measureText(lbl).width-4,pad.t+10);
 }
 
+/* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
+// in-game names: assets/bigreactors/lang/en_us.json, block.bigreactors.{basic,reinforced}_reactor*
+const PART_NAMES={casing:"Reactor Casing",glass:"Reactor Glass",controller:"Reactor Controller",power:"Reactor Active Forge Energy Power Tap",
+  portIn:"Reactor Active Forge Fluid Port",portOut:"Reactor Active Forge Fluid Port",access:"Reactor Solid Access Port",ctrl:"Reactor Control Rod",rod:"Reactor Fuel Rod"};
+const PART_NOTES={power:"or Passive",portIn:"inlet mode: water in",portOut:"outlet mode: steam out",access:"inlet mode: fuel in"};
+const PART_ORDER=["casing","glass","controller","power","portIn","portOut","access","ctrl","rod"];
+const partName=k=>{ if(k.startsWith("m:")){ const m=MOD[k.slice(2)]; return m.kind==="fluid"?`${m.name} <small>· fluid</small>`:m.name; }
+  return `${PART_NAMES[k]} (${VARIANTS[state.variant].name})`+(PART_NOTES[k]?` <small>· ${PART_NOTES[k]}</small>`:""); };
+const swatches={}, swatch=k=>{ const id=k==="rod"?"rod:"+state.fuel:k; return swatches[id]||(swatches[id]=texFor(k).toDataURL()); };
+function tally(map,layer){ const c={};
+  for(const [key,k0] of map){ if(layer!=null&&+key.split(",")[1]!==layer-1) continue; const k=k0.startsWith("rod:")?"rod":k0; c[k]=(c[k]||0)+1; }
+  const rank=k=>k.startsWith("m:")?PART_ORDER.length+MOD[k.slice(2)].order:PART_ORDER.indexOf(k);
+  return Object.keys(c).sort((a,b)=>rank(a)-rank(b)).map(k=>[k,c[k]]); }
+const partsList=rows=>`<ul class="parts">${rows.map(([k,n])=>`<li><img src="${swatch(k)}" alt=""><span>${partName(k)}</span><span class="n">${fmt(n)}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const top=state.Y; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const map=blockMap(), n=guide.layer, where=n===1?"floor":n===top?"roof":`layer ${n} of ${top}`;
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(map,n))}`;
+  $("gParts").innerHTML=`<h3>Whole reactor <small>· ${state.X}×${state.Z}×${state.Y}</small></h3>${partsList(tally(map))}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
 let timer=0;
 function schedule(){ clearTimeout(timer); $("status").textContent="Simulating…"; timer=setTimeout(run,60); share.render(); }
-function run(){ result=simulate(state,cfg); renderResults(result); rebuild3D(); }
+function run(){ result=simulate(state,cfg); renderResults(result); rebuild3D(); renderGuide(); }
 function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); drawCore(); renderLegend(); schedule(); }
 
 /* wiring */
@@ -840,7 +947,9 @@ $("search").oninput=renderSlots;
 document.querySelectorAll("[data-pattern]").forEach(b=>b.onclick=()=>{ applyPattern(b.dataset.pattern); drawCore(); renderLegend(); schedule(); });
 $("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
 $("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",modsOn); if(groups.mods) groups.mods.visible=modsOn; };
-$("tRebuild").onclick=()=>rebuild3D(true);
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+$("tFit").onclick=fit;
 addEventListener("resize",()=>{ if(result) drawChart(result); });
 
 /* design code (mdr1): the whole reactor as one string, used by share links.
