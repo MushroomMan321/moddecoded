@@ -83,6 +83,11 @@ Each calculator is one self-contained file: `site/tools/<mod>/<tool>/index.html`
 If you change a formula, say how you checked it: an in-game test (with mod version and pack) or the
 mod's public source. Wiki numbers aren't enough on their own.
 
+The turning 3D models on the front page are each calculator's default build, exported to
+`site/img/tools/3d/`. If you change a default build or its block textures, re-export them with
+`python scripts/export-previews.py` (needs Python Playwright and Chrome). A new calculator also needs
+an entry in that script's `TOOLS` list and a `data-model` card on `site/index.html`.
+
 ## Preview locally
 
 ```bash

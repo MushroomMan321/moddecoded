@@ -46,18 +46,23 @@ h2{font-family:var(--font-display);font-weight:400;font-size:26px;line-height:1;
 .tool .mod{grid-column:1/-1;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .tool .name{grid-column:1/-1;font-family:var(--font-display);font-size:30px;line-height:1.1}
 .tool p{grid-column:1/-1;margin:4px 0 0;color:var(--muted);max-width:62ch}
-/* tool cards: a still of the calculator's 3D view on the left */
+/* tool cards: the calculator's 3D build, turning; the still underneath shows until it loads (or for reduced motion) */
 .tool.has-img{grid-template-columns:128px minmax(0,1fr);padding:12px 16px 12px 12px}
-.tool.has-img img{grid-column:1;grid-row:1/span 3;display:block;width:128px;height:128px;border-radius:4px;background:#1B2226;transition:filter .15s}
+.tool.has-img .thumb{grid-column:1;grid-row:1/span 3;position:relative;display:block;width:128px;height:128px;border-radius:4px;overflow:hidden;background:radial-gradient(120% 120% at 30% 0%,#232C31,#12181B);transition:filter .15s}
+.tool.has-img .thumb.sky{background:linear-gradient(#0B1830,#2B4A70)}
+.thumb img,.thumb canvas{position:absolute;inset:0;display:block;width:100%;height:100%;transition:opacity .4s}
+.thumb canvas{opacity:0}
+.thumb.live canvas{opacity:1}
+.thumb.live img{opacity:0}
 .tool.has-img .mod{grid-column:2;margin-top:6px}
 .tool.has-img .name,.tool.has-img p{grid-column:2}
-.tool.has-img:hover img,.tool.has-img:focus-visible img{filter:brightness(1.15)}
+.tool.has-img:hover .thumb,.tool.has-img:focus-visible .thumb{filter:brightness(1.15)}
 @media (max-width:560px){
   .hero{padding:40px 16px 36px}
   .lede{font-size:17px}
   .pins{margin-top:20px}
   .tool.has-img{grid-template-columns:76px minmax(0,1fr);gap:2px 14px}
-  .tool.has-img img{grid-row:1/span 2;width:76px;height:76px}
+  .tool.has-img .thumb{grid-row:1/span 2;width:76px;height:76px}
   .tool.has-img .mod{margin-top:4px}
   .tool.has-img p{grid-column:1/-1;margin-top:10px}
 }
@@ -85,43 +90,43 @@ footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top
   <section aria-labelledby="tools">
     <h2 id="tools">Tools</h2>
     <a class="tool has-img" href="/tools/extreme-reactors/turbine-calculator/">
-      <img src="/img/tools/turbine.webp" width="128" height="128" alt="" decoding="async">
+      <span class="thumb" data-model="turbine"><img src="/img/tools/turbine.webp" width="128" height="128" alt="" decoding="async"></span>
       <span class="mod">Extreme Reactors · <span class="nw">1.21.1-2.4.28</span></span>
       <span class="name">Turbine Calculator</span>
       <p>Pick coils from a JEI-style list, set the steam flow and casing size, and watch the turbine build in 3D. RPM and RF/t come straight from TurbineLogic.</p>
     </a>
     <a class="tool has-img" href="/tools/extreme-reactors/reactor-calculator/">
-      <img src="/img/tools/reactor.webp" width="128" height="128" alt="" decoding="async">
+      <span class="thumb" data-model="reactor"><img src="/img/tools/reactor.webp" width="128" height="128" alt="" decoding="async"></span>
       <span class="mod">Extreme Reactors · <span class="nw">1.21.1-2.4.28</span></span>
       <span class="name">Reactor Calculator</span>
       <p>Paint fuel rods and coolant blocks, choose passive or active cooling, and the reactor is simulated tick by tick until it settles: RF/t, steam, temperatures and fuel burn.</p>
     </a>
     <a class="tool has-img" href="/tools/mekanism/fission-reactor-calculator/">
-      <img src="/img/tools/fission.webp" width="128" height="128" alt="" loading="lazy" decoding="async">
+      <span class="thumb" data-model="fission"><img src="/img/tools/fission.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
       <span class="mod">Mekanism · <span class="nw">1.21.1-10.7.19</span></span>
       <span class="name">Fission Reactor Calculator</span>
       <p>Lay out fuel assemblies, set the burn rate, and see reactor temperature, max safe burn, steam, and how many industrial turbines you need, with ATM10 and Aeronautics presets.</p>
     </a>
     <a class="tool has-img" href="/tools/mekanism/dynamic-tank-calculator/">
-      <img src="/img/tools/tank.webp" width="128" height="128" alt="" loading="lazy" decoding="async">
+      <span class="thumb" data-model="tank"><img src="/img/tools/tank.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
       <span class="mod">Mekanism · <span class="nw">1.21.1-10.7.19</span></span>
       <span class="name">Dynamic Tank Calculator</span>
       <p>Fluid and chemical capacity for any size, the smallest tank that holds what you need, fill time and comparator levels. Download it as a schematic.</p>
     </a>
     <a class="tool has-img" href="/tools/create-aeronautics/airship-calculator/">
-      <img src="/img/tools/airship.webp" width="128" height="128" alt="" loading="lazy" decoding="async">
+      <span class="thumb sky" data-model="airship"><img src="/img/tools/airship.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
       <span class="mod">Create Aeronautics 1.3.2 · Create Propulsion</span>
       <span class="name">Airship Calculator</span>
       <p>Will it fly? Add up block weight, balloon volume, burners, levitite, propellers and thrusters to see lift, the altitude it settles at and its top speed.</p>
     </a>
     <a class="tool has-img" href="/tools/ryzer-gen/fission-station-calculator/">
-      <img src="/img/tools/station.webp" width="128" height="128" alt="" loading="lazy" decoding="async">
+      <span class="thumb" data-model="station"><img src="/img/tools/station.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
       <span class="mod">Ryzer Gen · <span class="nw">1.21.1-0.1.2-alpha</span></span>
       <span class="name">Fission Station Calculator</span>
       <p>Plan the 5×5 core channel by channel and watch it in the station, drawn from the mod's own model. Power, core temperature, water and intake pumps, rod life, and a schematic to build it.</p>
     </a>
     <a class="tool has-img" href="/tools/applied-energistics-2/crafting-cpu-calculator/">
-      <img src="/img/tools/cpu.webp" width="128" height="128" alt="" loading="lazy" decoding="async">
+      <span class="thumb" data-model="cpu"><img src="/img/tools/cpu.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
       <span class="mod">Applied Energistics 2 · <span class="nw">19.2.17</span> · MEGA Cells</span>
       <span class="name">Crafting CPU Calculator</span>
       <p>Type the bytes and co-processors a job needs and get the smallest CPU that has them: storage, crafting speed, power and materials. Download it as a schematic.</p>
@@ -157,5 +162,96 @@ footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top
 
   <footer>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</footer>
 </main>
+<script>
+/* Tool cards: each calculator's default build, exported by scripts/export-previews.py, turning in 3D.
+   One WebGL renderer draws every visible card in turn and is copied into the card's own canvas.
+   The stills stay for reduced motion, no WebGL, or until a model has loaded. */
+(() => {
+const thumbs=[...document.querySelectorAll(".thumb[data-model]")];
+if(!thumbs.length||matchMedia("(prefers-reduced-motion: reduce)").matches||!("IntersectionObserver" in window)) return;
+
+let renderer=null, running=false, last=0, rpx=0;
+const cards=thumbs.map(el=>({el,name:el.dataset.model,state:"idle",visible:false,hover:false}));
+const io=new IntersectionObserver(es=>{ for(const e of es){ const c=cards.find(c=>c.el===e.target); c.visible=e.isIntersecting; if(c.visible) load(c); } kick(); },{rootMargin:"200px"});
+
+function boot(){
+  const s=document.createElement("script"); s.src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+  s.onload=()=>{ try{ renderer=new THREE.WebGLRenderer({antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ return; }
+    for(const c of cards){ io.observe(c.el); const a=c.el.closest("a");
+      a.addEventListener("pointerenter",()=>c.hover=true); a.addEventListener("pointerleave",()=>c.hover=false);
+      a.addEventListener("focus",()=>c.hover=true); a.addEventListener("blur",()=>c.hover=false); } };
+  document.head.appendChild(s);
+}
+if(document.readyState==="complete") boot(); else addEventListener("load",boot,{once:true});
+
+async function load(c){
+  if(c.state!=="idle") return; c.state="loading";
+  try{ c.view=await build(await (await fetch(`/img/tools/3d/${c.name}.json`)).json());
+    c.canvas=document.createElement("canvas"); c.canvas.setAttribute("aria-hidden","true"); c.ctx=c.canvas.getContext("2d");
+    c.el.appendChild(c.canvas); c.state="ready"; kick(); }
+  catch(e){ c.state="failed"; }
+}
+
+async function build(M){
+  const scene=new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95));
+  const sun=new THREE.DirectionalLight(0xFFFFFF,0.75); sun.position.set(9,16,7); scene.add(sun);
+  const pivot=new THREE.Group(), body=new THREE.Group(); pivot.add(body); scene.add(pivot);
+  const tex=await Promise.all(M.tex.map(async url=>{ const img=new Image(); img.src=url; await img.decode();
+    const t=new THREE.Texture(img); t.magFilter=t.minFilter=THREE.NearestFilter; t.needsUpdate=true; return t; }));
+  const mats=M.mats.map(m=>new THREE[m.k==="b"?"MeshBasicMaterial":"MeshLambertMaterial"](Object.assign(
+    {color:m.c,map:m.t>=0?tex[m.t]:null,transparent:!!m.tr,opacity:m.op??1,depthWrite:m.dw!==0,side:m.sd||0,vertexColors:!!m.vc,alphaTest:m.at||0},
+    m.k!=="b"&&m.em?{emissive:m.em}:{})));
+  const geos=M.geos.map(g=>{ if(g.t!=="Buf") return new THREE[g.t+"Geometry"](...g.p);
+    const b=new THREE.BufferGeometry(); for(const [k,a] of Object.entries(g.a)) b.setAttribute(k,new THREE.Float32BufferAttribute(a,k==="uv"?2:3));
+    if(g.i) b.setIndex(g.i); if(!g.a.normal) b.computeVertexNormals(); return b; });
+  // animated groups (the turbine rotor, the airship's propellers) keep their spin axis and speed
+  const spins=M.groups.map(gr=>{ const g=new THREE.Group(); new THREE.Matrix4().fromArray(gr.m).decompose(g.position,g.quaternion,g.scale); body.add(g);
+    return {g,q0:g.quaternion.clone(),axis:new THREE.Vector3(...gr.axis).normalize(),rate:gr.rate,a:0}; });
+  const box=new THREE.Box3(), m4=new THREE.Matrix4(), v=new THREE.Vector3(), pts=[];
+  const corners=b=>[0,1,2,3,4,5,6,7].map(i=>new THREE.Vector3(i&1?b.max.x:b.min.x,i&2?b.max.y:b.min.y,i&4?b.max.z:b.min.z));
+  for(const p of M.parts){
+    const P=p.p||[], X=p.x||[], n=P.length/3+X.length/12, mesh=new THREE.InstancedMesh(geos[p.g],mats[p.m],n);
+    const parent=p.grp!=null?spins[p.grp].g:body; parent.updateMatrix();
+    const geo=geos[p.g]; if(!geo.boundingBox) geo.computeBoundingBox(); const gc=corners(geo.boundingBox);
+    for(let i=0;i<n;i++){
+      if(i<P.length/3) m4.makeTranslation(P[3*i],P[3*i+1],P[3*i+2]);
+      else { const e=X.slice(12*(i-P.length/3),12*(i-P.length/3)+12); m4.fromArray([e[0],e[1],e[2],0,e[3],e[4],e[5],0,e[6],e[7],e[8],0,e[9],e[10],e[11],1]); }
+      mesh.setMatrixAt(i,m4);
+      if(p.c) mesh.setColorAt(i,new THREE.Color(p.c[i]));
+      m4.premultiply(parent.matrix); for(const c of gc){ v.copy(c).applyMatrix4(m4); pts.push(v.x,v.y,v.z); box.expandByPoint(v); }
+    }
+    mesh.renderOrder=p.ro||0; parent.add(mesh);
+  }
+  // centre the build on the turntable and frame its bounding cylinder for any angle
+  const ctr=box.getCenter(new THREE.Vector3()); body.position.copy(ctr).negate();
+  let rh=0; for(let i=0;i<pts.length;i+=3) rh=Math.max(rh,Math.hypot(pts[i]-ctr.x,pts[i+2]-ctr.z));
+  const R=Math.hypot(rh,(box.max.y-box.min.y)/2);
+  const camera=new THREE.PerspectiveCamera(30,1,0.1,1000), elev=Math.asin(Math.min(0.9,-M.cam.dir[1])), d=R/Math.sin(15*Math.PI/180)*0.94;
+  camera.position.set(0,Math.sin(elev)*d,Math.cos(elev)*d); camera.lookAt(0,0,0);
+  // start from the calculator's own camera angle, so the first frame matches the still
+  pivot.rotation.y=-Math.atan2(M.cam.pos[0]-ctr.x,M.cam.pos[2]-ctr.z);
+  return {scene,camera,pivot,spins,speed:0.4};
+}
+
+function kick(){ if(!running&&cards.some(c=>c.visible&&c.state==="ready")){ running=true; last=performance.now(); requestAnimationFrame(frame); } }
+function frame(t){
+  const dt=Math.min(0.05,(t-last)/1000); last=t; let any=false;
+  const dpr=Math.min(2,devicePixelRatio||1), qa=frame.q||(frame.q=new THREE.Quaternion());
+  for(const c of cards){
+    if(!c.visible||c.state!=="ready") continue; any=true;
+    const V=c.view, px=Math.round(c.el.clientWidth*dpr);
+    if(c.canvas.width!==px){ c.canvas.width=c.canvas.height=px; }
+    if(rpx!==px){ renderer.setSize(px,px,false); rpx=px; }
+    V.speed+=((c.hover?1.4:0.4)-V.speed)*Math.min(1,dt*4); V.pivot.rotation.y+=dt*V.speed;
+    for(const s of V.spins){ s.a+=dt*s.rate; s.g.quaternion.copy(s.q0).multiply(qa.setFromAxisAngle(s.axis,s.a)); }
+    renderer.render(V.scene,V.camera);
+    c.ctx.clearRect(0,0,px,px); c.ctx.drawImage(renderer.domElement,0,0);
+    c.el.classList.add("live");
+  }
+  if(any) requestAnimationFrame(frame); else running=false;
+}
+})();
+</script>
 </body>
 </html>
