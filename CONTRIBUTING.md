@@ -68,7 +68,7 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 
 ### Ryzer Gen: `config/ryzergen-common.toml`
 
-Defaults are for Ryzer Gen 0.1.1-alpha (MC 1.21.1).
+Defaults are for Ryzer Gen 0.1.2-alpha (MC 1.21.1).
 
 | Key | Default |
 |---|---|
