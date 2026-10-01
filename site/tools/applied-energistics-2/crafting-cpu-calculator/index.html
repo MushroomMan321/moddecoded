@@ -1,0 +1,658 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/applied-energistics-2/crafting-cpu-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>AE2 Crafting CPU Calculator</title>
+<meta name="description" content="AE2 crafting CPU calculator: storage bytes, co-processors, crafting speed, power and the materials for any CPU, with MEGA Cells blocks. Plan the smallest CPU for a job and download it as a .nbt schematic. From the AE2 19.2.17 source code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide-cols h3{font-size:14px;margin:0 0 6px}
+.guide-cols h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{font:600 13px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;max-width:100%}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.ask{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 10px;align-items:center}
+@media (max-width:460px){.ask{grid-template-columns:minmax(0,1fr)}}
+.ask label{font-size:14px;color:var(--muted)}
+.ask .pair{display:flex;gap:6px;align-items:center}
+.ask .pair .num{width:120px}
+/* block counts: swatch, name and stats, count */
+.blist{display:flex;flex-direction:column;gap:4px}
+.blist h3{font:600 11.5px var(--font-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 2px}
+.brow{display:grid;grid-template-columns:18px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.brow{grid-template-columns:18px minmax(0,1fr) 72px}}
+.brow img{width:16px;height:16px;image-rendering:pixelated;border-radius:2px}
+.brow label{font-size:14px;min-width:0}
+.brow label small{display:block;font:500 11.5px var(--font-mono);color:var(--muted)}
+.spare{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:4px}
+.spare>span{font-size:14px;color:var(--muted)}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+details.mats summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+details.mats .guide-cols{margin-top:10px}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Applied Energistics 2 / Crafting CPU Calculator</nav>
+  <header class="top">
+    <h1>AE2 <span class="y">Crafting CPU Calculator</span></h1>
+    <span class="src">From the AE2 19.2.17 and MEGA Cells 4.11.0 source</span>
+  </header>
+  <p class="lede">Say how much storage and how many co-processors you need and get the smallest CPU that has them. Or pick the blocks yourself and see the storage, crafting speed, power and materials. Every number comes from AE2's <b>CraftingCPUCluster</b> and its multiblock check, and MEGA Cells' crafting blocks.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the crafting CPU"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
+        <div class="viewbar">
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols">
+          <div id="gLayer"></div>
+          <div id="gParts"></div>
+        </div>
+        <details open><summary>How it goes together</summary>
+          <ol>
+            <li>Fill the whole box with crafting blocks: <b>no air</b> and nothing else inside. Which block goes where doesn't matter.</li>
+            <li>At least one block must be <b>crafting storage</b>, or the CPU won't form.</li>
+            <li>Leave a one-block gap between CPUs. Two boxes that meet face to face and line up become one bigger CPU; any other crafting block against a side stops the CPU forming.</li>
+            <li>Connect any one block to your network with a cable. The whole CPU uses one channel.</li>
+          </ol>
+        </details>
+      </div>
+      <div class="box">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+        <details class="mats">
+          <summary>Materials to craft it</summary>
+          <div class="guide-cols">
+            <div id="mParts"></div>
+            <div id="mRaw"></div>
+          </div>
+          <p class="hint" style="margin-top:8px">From the default recipes, which every ATM10 pack keeps. Every block starts as a Crafting Unit; MEGA blocks start as a MEGA Crafting Unit, which takes four.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Mods</h2>
+        <div class="seg" role="group" aria-label="Mods installed">
+          <button type="button" id="mAe2" aria-pressed="false">AE2 only</button>
+          <button type="button" id="mMega" aria-pressed="true">AE2 + MEGA Cells</button>
+        </div>
+        <p class="hint">MEGA Cells adds 1M to 256M crafting storage and a 4-thread accelerator. They mix with AE2's blocks in one CPU. Every ATM10 pack ships MEGA Cells 4.11.0 with AE2 19.2.17.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Plan from what you need</h2>
+        <div class="ask">
+          <label for="aBytes">Storage</label>
+          <span class="pair"><input class="num" id="aBytes" type="number" min="1" step="any" value="4"><select id="aUnit" aria-label="Storage unit"><option value="1024">k bytes</option><option value="1048576" selected>M bytes</option></select></span>
+          <label for="aThreads">Co-processors</label>
+          <span class="pair"><input class="num" id="aThreads" type="number" min="0" step="1" value="16"></span>
+          <label for="aTier">Biggest storage</label>
+          <select id="aTier" aria-label="Biggest crafting storage you can make"></select>
+          <label for="aAcc" id="aAccL">Co-processor block</label>
+          <select id="aAcc"><option value="acc">Co-Processing Unit (1 thread)</option><option value="macc">MEGA Accelerator (4 threads)</option></select>
+        </div>
+        <div class="btns"><button class="btn" type="button" id="aGo">Plan the CPU</button></div>
+        <p class="hint" id="aMsg" role="status">The crafting confirmation screen shows the bytes a job needs. Pick the biggest storage block you can craft right now.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Blocks</h2>
+        <div class="blist" id="blist"></div>
+        <div class="spare"><span id="fLabel">Fill spare space with</span>
+          <div class="seg" role="group" aria-labelledby="fLabel">
+            <button type="button" id="fUnit" aria-pressed="true">Crafting Units</button>
+            <button type="button" id="fAcc" aria-pressed="false">Co-processors</button>
+          </div></div>
+        <p class="hint">The CPU must be a solid box, so any space your blocks don't fill gets this block. Crafting Units are cheapest; Co-Processing Units make the leftover space add speed.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Shape</h2>
+        <div class="seg" role="group" aria-label="Shape">
+          <button type="button" id="sAuto" aria-pressed="true">Smallest box</button>
+          <button type="button" id="sFixed" aria-pressed="false">Set the size</button>
+        </div>
+        <div class="row"><label for="L">Width</label><input type="range" id="L" min="1" max="17"><input class="num" id="LN" type="number" min="1" max="17" aria-label="CPU width"></div>
+        <div class="row"><label for="W">Depth</label><input type="range" id="W" min="1" max="17"><input class="num" id="WN" type="number" min="1" max="17" aria-label="CPU depth"></div>
+        <div class="row"><label for="H">Height</label><input type="range" id="H" min="1" max="17"><input class="num" id="HN" type="number" min="1" max="17" aria-label="CPU height"></div>
+        <p class="hint" id="shapeHint"></p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact CPU. Paste a design code above to load it.</p>
+      </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <div class="row"><label for="xVer">Minecraft</label><select id="xVer" aria-label="Minecraft version"></select><span></span></div>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>17 blocks a side, not 16</h3>
+        <p>The size check compares the far corner to the near one, so a CPU can span 17 blocks each way. It must be a solid box of crafting blocks with at least one storage block in it. In-game, a 17×17×17 forms and an 18-wide box doesn't.</p>
+<pre>max − min ≤ 16   on every axis
+every block: a crafting block
+at least one: storage bytes &gt; 0</pre>
+        <span class="ref">CraftingCPUCalculator.checkMultiblockScale · verifyInternalStructure</span>
+      </div>
+      <div class="fact">
+        <h3>Touching CPUs merge or fail</h3>
+        <p>AE2 grows the box outward from each block, then checks the layer just outside all six sides. Two CPUs that line up face to face read as one bigger box and merge into a single CPU. Anything else touching a side stops both forming. Only corners and edges touching diagonally leave two CPUs. We checked all three cases in-game.</p>
+<pre>for each side of the box:
+  any crafting block in the next layer out?
+    → don't form</pre>
+        <span class="ref">MBCalculator.verifyUnownedRegion</span>
+      </div>
+      <div class="fact">
+        <h3>Co-processors: patterns per 4 ticks</h3>
+        <p>Each tick the CPU may send out as many patterns as it has co-processors plus one, minus what it sent in the last three ticks. That caps it at five times that number per second, if enough providers are free to take them. In-game, 0, 3, 7 and 15 co-processors sent 5.1, 20.2, 40.7 and 79.0 patterns a second.</p>
+<pre>ops    = coProcessors + 1 − (sent in last 3 ticks)
+max/s  = 5 × (coProcessors + 1)</pre>
+        <span class="ref">CraftingCpuLogic.tickCraftingLogic</span>
+      </div>
+      <div class="fact">
+        <h3>What a job's bytes are</h3>
+        <p>Crafting storage counts every item a job asks for at each step of the recipe tree, one byte each (fluids: one per bucket), plus one per craft and eight per tree node. The confirmation screen shows the total.</p>
+<pre>bytes = Σ items requested (1 each)
+      + Σ crafts (1 each)
+      + 8 × recipe tree nodes</pre>
+        <span class="ref">ICraftingSimulationState.addStackBytes · CraftingCalculation</span>
+      </div>
+      <div class="fact">
+        <h3>One channel, 1 AE/t a block</h3>
+        <p>The whole CPU is one multiblock node for channels, however big it is. Every block still draws the default idle power, and each pattern sent costs 1 AE per input item.</p>
+<pre>channels   = 1
+idle power = blocks × 1 AE/t   (2 FE/t)
+per push   = 1 AE per item, per 125 mB fluid</pre>
+        <span class="ref">GridFlags.MULTIBLOCK · ManagedGridNode · CraftingCpuHelper.calculatePatternPower</span>
+      </div>
+      <div class="fact">
+        <h3>MEGA blocks mix in</h3>
+        <p>MEGA Cells' crafting blocks use AE2's own block entity, so one CPU can hold both. Its accelerator counts as four co-processors in one block; AE2's counts as one.</p>
+<pre>ae2 co-processor      = 1 thread
+MEGA accelerator      = 4 threads
+MEGA 256M storage     = 1024 × AE2 256k</pre>
+        <span class="ref">MEGACraftingUnitType · CraftingCPUCluster.addBlockEntity</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/share.js"></script>
+<script src="/data/schematic.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const K=1024, M=K*K, G=M*K;
+// bytes the way AE2 names its tiers: 1k = 1,024, 1M = 1,048,576
+const short=b=>b>=G?+(b/G).toFixed(2)+"G":b>=M?+(b/M).toFixed(2)+"M":b>=K?+(b/K).toFixed(2)+"k":String(b);
+
+/* ================= blocks (AE2 19.2.17 CraftingUnitType, MEGA Cells 4.11.0 MEGACraftingUnitType) ================= */
+// bytes = getStorageBytes(), th = getAcceleratorThreads(); comp = the part added to a (MEGA) crafting unit to make it
+const TYPES={
+  unit: {name:"Crafting Unit", id:"ae2:crafting_unit"},
+  acc:  {name:"Crafting Co-Processing Unit", short:"Co-Processing Unit", th:1, id:"ae2:crafting_accelerator", comp:"Engineering Processor"},
+  mon:  {name:"Crafting Monitor", id:"ae2:crafting_monitor", comp:"Storage Monitor"},
+  s1k:  {name:"1k Crafting Storage", bytes:K, id:"ae2:1k_crafting_storage", tint:"#C8743F", comp:"1k ME Storage Component"},
+  s4k:  {name:"4k Crafting Storage", bytes:4*K, id:"ae2:4k_crafting_storage", tint:"#D8C04A", comp:"4k ME Storage Component"},
+  s16k: {name:"16k Crafting Storage", bytes:16*K, id:"ae2:16k_crafting_storage", tint:"#62B86C", comp:"16k ME Storage Component"},
+  s64k: {name:"64k Crafting Storage", bytes:64*K, id:"ae2:64k_crafting_storage", tint:"#4BA2D8", comp:"64k ME Storage Component"},
+  s256k:{name:"256k Crafting Storage", bytes:256*K, id:"ae2:256k_crafting_storage", tint:"#A36AD8", comp:"256k ME Storage Component"},
+  macc: {name:"MEGA Crafting Accelerator", short:"MEGA Accelerator", th:4, mega:true, id:"megacells:mega_crafting_accelerator", comp:"Engineering Processor"},
+  s1m:  {name:"1M Crafting Storage", bytes:M, mega:true, id:"megacells:1m_crafting_storage", tint:"#E0564F", comp:"1M MEGA Storage Component"},
+  s4m:  {name:"4M Crafting Storage", bytes:4*M, mega:true, id:"megacells:4m_crafting_storage", tint:"#E89A3C", comp:"4M MEGA Storage Component"},
+  s16m: {name:"16M Crafting Storage", bytes:16*M, mega:true, id:"megacells:16m_crafting_storage", tint:"#52C7A4", comp:"16M MEGA Storage Component"},
+  s64m: {name:"64M Crafting Storage", bytes:64*M, mega:true, id:"megacells:64m_crafting_storage", tint:"#5E82E8", comp:"64M MEGA Storage Component"},
+  s256m:{name:"256M Crafting Storage", bytes:256*M, mega:true, id:"megacells:256m_crafting_storage", tint:"#D65CB6", comp:"256M MEGA Storage Component"},
+};
+const STORE=["s1k","s4k","s16k","s64k","s256k","s1m","s4m","s16m","s64m","s256m"];
+const COUNTED=[...STORE,"acc","macc","mon"];
+const FILL_ORDER=[...STORE].reverse().concat(["macc","acc"]);   // bottom-up: biggest storage first, then co-processors
+const ORDER=["mon",...[...STORE].reverse(),"macc","acc","unit"];  // parts-list order
+const MAX=17, MAXV=MAX*MAX*MAX;
+for(const k in TYPES){ const t=TYPES[k]; t.bytes=t.bytes||0; t.th=t.th||0; t.mega=!!t.mega; }
+
+/* ================= state and model ================= */
+// n: how many of each block the user asked for; the box's spare space gets the filler (unit or acc)
+const zero=()=>Object.fromEntries(COUNTED.map(k=>[k,0]));
+const state={mega:true, n:{...zero(), s256k:8, acc:18, mon:1}, L:3, W:3, H:3, auto:true, fill:"unit"};
+const usable=k=>state.mega||!TYPES[k].mega;
+const listed=()=>COUNTED.reduce((s,k)=>s+(usable(k)?state.n[k]:0),0);
+
+// the most compact box that holds n blocks with room for the monitors on its front: fewest spare blocks,
+// weighed against surface area so a prime count doesn't give a 1×1×n rod. Height is the smallest side.
+function fitBox(n,mon){ let best=null; n=Math.max(1,n);
+  for(let H=1;H<=MAX;H++)for(let W=H;W<=MAX;W++)for(let L=W;L<=MAX;L++){ const v=L*W*H; if(v<n||L*H<mon) continue;
+    const score=v+0.25*2*(L*W+W*H+L*H); if(!best||score<best.score||score===best.score&&v<best.v) best={L,W,H,v,score}; }
+  return best; }
+
+// block map: "x,y,z" (x across, y up, z toward the front) -> type key
+function blockMap(){
+  const {L,W,H}=state, map=new Map(), eye=Math.min(1,H-1), cx=(L-1)/2;
+  // monitors on the front face, eye-level row first, from the middle outward
+  const front=[]; for(let y=0;y<H;y++)for(let x=0;x<L;x++) front.push([x,y,Math.abs(y-eye)*100+Math.abs(x-cx)]);
+  front.sort((a,b)=>a[2]-b[2]);
+  const monWant=usable("mon")?state.n.mon:0, mons=Math.min(monWant,front.length);
+  for(let i=0;i<mons;i++) map.set(`${front[i][0]},${front[i][1]},${W-1}`,"mon");
+  const queue=[]; for(const k of FILL_ORDER) if(usable(k)) for(let i=0;i<state.n[k];i++) queue.push(k);
+  let qi=0;
+  for(let y=0;y<H;y++)for(let z=0;z<W;z++)for(let x=0;x<L;x++){ const key=`${x},${y},${z}`; if(map.has(key)) continue;
+    map.set(key,qi<queue.length?queue[qi++]:state.fill); }
+  return {map, overflow:queue.length-qi, monOver:monWant-mons};
+}
+function tally(map,layer){ const c={}; for(const [key,k] of map){ if(layer!=null&&+key.split(",")[1]!==layer-1) continue; c[k]=(c[k]||0)+1; } return c; }
+function model(){
+  const B=blockMap(), c=tally(B.map); let bytes=0, threads=0;
+  for(const k in c){ bytes+=TYPES[k].bytes*c[k]; threads+=TYPES[k].th*c[k]; }
+  const v=state.L*state.W*state.H, spare=v-(listed()-B.overflow-B.monOver);
+  return {...B, c, bytes, threads, v, spare, pushes:5*(threads+1), idleAE:v};
+}
+// materials, one level down: each block is a (MEGA) crafting unit plus its part; a MEGA unit is 4 crafting units plus parts
+function materials(c){
+  const parts={}, add=(k,v)=>{ if(v) parts[k]=(parts[k]||0)+v; };
+  let units=0, megaUnits=0;
+  for(const k in c){ const t=TYPES[k], n=c[k]; if(t.mega) megaUnits+=n; else units+=n; if(t.comp) add(t.comp,n); }
+  const allUnits=units+4*megaUnits;
+  const first=[["Crafting Unit",allUnits],["MEGA Crafting Unit",megaUnits],...Object.entries(parts)].filter(r=>r[1]);
+  const raw=[["Iron Ingot",4*allUnits],["Calculation Processor",2*allUnits],["Logic Processor",allUnits+2*megaUnits],
+    ["Fluix Glass Cable",2*allUnits],["Fluix Smart Cable",2*megaUnits],["Accumulation Processor",megaUnits]].filter(r=>r[1]);
+  return {first,raw,allUnits,megaUnits};
+}
+
+/* plan: fewest blocks for the bytes (all of the biggest tier, the last one the smallest tier that covers the rest),
+   the co-processors in the chosen block, then the smallest box */
+function plan(){
+  const need=Math.ceil(+$("aBytes").value*+$("aUnit").value), threads=Math.max(0,Math.round(+$("aThreads").value||0)), top=$("aTier").value;
+  const accK=state.mega?$("aAcc").value:"acc";
+  if(!(need>0)){ $("aMsg").textContent="Type how much storage the job needs."; return; }
+  const tiers=STORE.filter(k=>usable(k)&&TYPES[k].bytes<=TYPES[top].bytes), T=TYPES[top].bytes;
+  const n=Math.ceil(need/T), rest=need-(n-1)*T, last=tiers.find(k=>TYPES[k].bytes>=rest);
+  const counts=zero(); counts[top]+=n-1; counts[last]+=1;
+  counts[accK]=accK==="macc"?Math.ceil(threads/4):threads; counts.mon=state.n.mon;
+  const total=COUNTED.reduce((s,k)=>s+counts[k],0);
+  if(total>MAXV){ $("aMsg").textContent=`That takes ${fmt(total)} blocks, more than the biggest CPU (17×17×17 = ${fmt(MAXV)}). Use a bigger storage block, or split it over several CPUs.`; return; }
+  state.n=counts; state.auto=true; update();
+  const s=[`${fmt(n)} storage block${n>1?"s":""}`]; if(counts[accK]) s.push(`${fmt(counts[accK])} ${TYPES[accK].short}${counts[accK]>1?"s":""}`);
+  $("aMsg").textContent=`${s.join(" and ")}: ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors in a ${state.L}×${state.W}×${state.H} CPU.`;
+}
+
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+// a crafting block: metal frame (darker, gold-trimmed for MEGA) around a dark core that each type decorates
+function frame(key,mega,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(mega?"#4A4E58":"#7E8590");
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.28); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.55); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16);
+  if(mega){ g.fillStyle="#C9A43A"; g.fillRect(1,1,2,1); g.fillRect(1,1,1,2); g.fillRect(13,14,2,1); g.fillRect(14,13,1,2); }
+  g.fillStyle="#1C2026"; g.fillRect(3,3,10,10); if(deco) deco(g); }); }
+const T={
+  unit:()=>frame("unit",false,g=>{ g.fillStyle="#2C323A"; g.fillRect(4,4,8,8); g.fillStyle="#7B63D6"; g.fillRect(7,7,2,2); }),
+  acc:()=>frame("acc",false,g=>{ g.fillStyle="#7B63D6"; for(let i=4;i<12;i+=3){ g.fillRect(4,i,8,1); g.fillRect(i,4,1,8); } g.fillStyle="#C9B8FF"; g.fillRect(7,7,2,2); }),
+  macc:()=>frame("macc",true,g=>{ g.fillStyle="#B85AD6"; for(let i=4;i<12;i+=2){ g.fillRect(4,i,8,1); } g.fillStyle="#F0C8FF"; g.fillRect(6,6,4,4); }),
+  mon:()=>frame("mon",false,g=>{ g.fillStyle="#0E1A1C"; g.fillRect(3,3,10,10); g.fillStyle="#3FD8CC"; g.fillRect(4,5,6,1); g.fillRect(4,7,8,1); g.fillRect(4,9,4,1); g.fillStyle="#1F7E78"; g.fillRect(4,11,7,1); }),
+};
+for(const k of STORE){ const t=TYPES[k]; T[k]=()=>frame(k,t.mega,g=>{ const c=hexRgb(t.tint);
+  g.fillStyle=shade(c,0.55); g.fillRect(4,4,8,8); g.fillStyle=shade(c,1); g.fillRect(5,5,6,6); g.fillStyle=shade(c,1.35); g.fillRect(5,5,6,1); g.fillRect(5,5,1,6);
+  g.fillStyle="#1C2026"; g.fillRect(7,6,2,4); }); }
+const swatch=k=>swatch[k]||(swatch[k]=T[k]().toDataURL());
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, groups={}, buildStart=0, buildTop=0, buildBottom=0;
+const matCache={}, anims=[];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  const m=new THREE.MeshLambertMaterial({map:t,clippingPlanes:[clip]});
+  if(k!=="mon") return matCache[k]=m;
+  // the monitor shows its screen on the front only
+  const side=mat("unit"); return matCache[k]=[side,side,side,side,m,side]; }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame3d);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms. goal eases the camera to a new framing.
+const orbit={theta:0.5,phi:1.1,radius:30,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(200,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(200,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+const framing=()=>({x:0,y:0,z:0,r:Math.max(state.L,state.W,state.H)*2.4+5});
+let lastT=performance.now();
+function frame3d(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=place.y+guide.layer+0.001;
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=buildBottom+(buildTop-buildBottom)*(1-Math.pow(1-p,3)); }
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=true;
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); } else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"&&a.mesh.parent) a.mesh.parent.remove(a.mesh); anims.splice(i,1); } }
+  renderer.render(scene,camera); requestAnimationFrame(frame3d);
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0, place={x:0,y:0,z:0};
+const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+place.x+0.5,y+place.y+0.5,z+place.z]; };
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), g=groups.cpu=new THREE.Group();
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); mesh.setMatrixAt(i,m4); }); g.add(mesh); }
+  root.add(g);
+}
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(map){
+  if(!renderer) return;
+  const {L,W,H}=state, shape=`${L}|${W}|${H}`;
+  place={x:-L/2, y:-H/2, z:-W/2+0.5}; clearSwaps();
+  if(!shownMap||shape!==shownShape){ buildInstanced(map); buildBottom=-H/2-0.5; buildTop=H/2+0.6; buildStart=performance.now();
+    // re-frame the camera; jump there on first load
+    orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; if(!shownShape){ orbit.radius=orbit.goal.r; orbit.goal=null; }
+    shownMap=map; shownShape=shape; return; }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  shownMap=map; if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>2500){ buildInstanced(map); return; }
+  buildInstanced(map,new Set(added.map(a=>a[0])));
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now();
+  const mk=(k,key)=>{ const m=new THREE.Mesh(CUBE(),mat(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); return m; };
+  for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y}); }
+  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
+  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y}); }
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+
+/* ================= UI ================= */
+let R=null;
+// block count rows, grouped by mod; MEGA rows hide when MEGA Cells is off
+function buildBlockList(){
+  const groupsDef=[["AE2",["s1k","s4k","s16k","s64k","s256k","acc","mon"]],["MEGA Cells",["s1m","s4m","s16m","s64m","s256m","macc"]]];
+  const out=$("blist");
+  for(const [title,keys] of groupsDef){ const h=document.createElement("h3"); h.textContent=title; if(title!=="AE2") h.dataset.mega="1"; out.append(h);
+    for(const k of keys){ const t=TYPES[k], row=document.createElement("div"); row.className="brow"; if(t.mega) row.dataset.mega="1";
+      const img=document.createElement("img"); img.src=swatch(k); img.alt="";
+      const lab=document.createElement("label"); lab.htmlFor="n-"+k; lab.textContent=t.short||t.name;
+      const sm=document.createElement("small"); sm.textContent=t.bytes?`${short(t.bytes)} bytes`:t.th?`${t.th} thread${t.th>1?"s":""}`:"shows the running job"; lab.append(sm);
+      const i=document.createElement("input"); i.className="num"; i.type="number"; i.min="0"; i.max=String(MAXV); i.step="1"; i.id="n-"+k;
+      i.onchange=()=>{ state.n[k]=Math.max(0,Math.min(MAXV,Math.round(+i.value||0))); update(); };
+      row.append(img,lab,i); out.append(row); } }
+}
+function buildTierSelect(){
+  const s=$("aTier"), keep=s.value; s.textContent="";
+  for(const k of STORE) if(usable(k)){ const o=document.createElement("option"); o.value=k; o.textContent=TYPES[k].name; s.append(o); }
+  s.value=[...s.options].some(o=>o.value===keep)?keep:state.mega?"s256m":"s256k";
+  $("aAcc").hidden=$("aAccL").hidden=!state.mega;
+}
+function syncInputs(){
+  for(const k of COUNTED) if(document.activeElement!==$("n-"+k)) $("n-"+k).value=state.n[k];
+  for(const el of document.querySelectorAll("[data-mega]")) el.hidden=!state.mega;
+  $("mAe2").setAttribute("aria-pressed",!state.mega); $("mMega").setAttribute("aria-pressed",state.mega);
+  $("fUnit").setAttribute("aria-pressed",state.fill==="unit"); $("fAcc").setAttribute("aria-pressed",state.fill==="acc");
+  $("sAuto").setAttribute("aria-pressed",state.auto); $("sFixed").setAttribute("aria-pressed",!state.auto);
+  for(const id of ["L","W","H"]){ $(id).value=state[id]; $(id+"N").value=state[id]; }
+  $("shapeHint").textContent=state.auto
+    ?"The most compact box that holds your blocks, with the fewest spare ones. Move a slider to set the size yourself."
+    :"1 to 17 blocks each way. Spare space fills with the block chosen above; blocks that don't fit are left out.";
+}
+function renderResults(){
+  const {L,W,H}=state, fillName=state.fill==="unit"?"Crafting Units":"Co-Processing Units";
+  $("hudMain").innerHTML=`${short(R.bytes)} <small>bytes</small>`;
+  $("hudSub").textContent=`${L}×${W}×${H} · ${fmt(R.threads)} co-processor${R.threads===1?"":"s"} · ${fmt(R.v)} blocks`;
+  const cells=[
+    ["Crafting storage",`${short(R.bytes)} <small>bytes · ${fmt(R.bytes)}</small>`,"hero"],
+    ["Co-processors",`${fmt(R.threads)} <small>threads</small>`],
+    ["Patterns sent",`${fmt(R.pushes)} <small>per second, at most</small>`],
+    ["Size",`${L}×${W}×${H} <small>${fmt(R.v)} blocks</small>`],
+    ["Spare space",`${fmt(Math.max(0,R.spare))} <small>${fillName}</small>`],
+    ["Idle power",`${fmt(R.idleAE)} <small>AE/t · ${fmt(R.idleAE*2)} FE/t</small>`],
+    ["Channels",`1 <small>for the whole CPU</small>`],
+  ];
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(!R.bytes) n.push(["bad","No crafting storage, so the CPU won't form. Add at least one storage block."]);
+  if(R.overflow>0) n.push(["bad",`${fmt(R.overflow)} of your blocks don't fit in ${L}×${W}×${H} and are left out. Make it bigger or switch to Smallest box.`]);
+  if(R.monOver>0) n.push(["warn",`Only ${fmt(R.c.mon||0)} monitor${(R.c.mon||0)===1?"":"s"} fit on the front face; the rest are left out.`]);
+  if(listed()>MAXV) n.push(["bad",`You've listed ${fmt(listed())} blocks. The biggest CPU, 17×17×17, holds ${fmt(MAXV)}.`]);
+  if(state.auto&&R.spare>0&&state.fill==="unit") n.push(["good",`${fmt(R.spare)} spare space${R.spare>1?"s are":" is"} filled with Crafting Units to make a solid box. Pick Co-processors for spare space and they add ${fmt(R.spare)} threads instead.`]);
+  n.push(["good","Leave a one-block gap around it. Another CPU against a side either merges with it into one CPU (if the two line up into a bigger box) or stops both forming."]);
+  if(R.threads>=8) n.push(["warn",`${fmt(R.pushes)} patterns a second only happens if pattern providers and machines are free to take them. Past that, extra co-processors wait.`]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  const m=materials(R.c), list=rows=>`<ul class="parts">${rows.map(([k,v])=>`<li><span>${k}</span><span class="n">${fmt(v)}</span></li>`).join("")}</ul>`;
+  $("mParts").innerHTML=`<h3>Parts</h3>${list(m.first)}`;
+  $("mRaw").innerHTML=`<h3>For ${fmt(m.allUnits)} Crafting Unit${m.allUnits===1?"":"s"}${m.megaUnits?` and ${fmt(m.megaUnits)} MEGA`:""}</h3>${list(m.raw)}`;
+}
+/* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
+const partsList=c=>`<ul class="parts">${ORDER.filter(k=>c[k]).map(k=>`<li><img src="${swatch(k)}" alt=""><span>${TYPES[k].name}</span><span class="n">${fmt(c[k])}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const top=state.H; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const n=guide.layer, where=top===1?"the only layer":n===1?"bottom":n===top?"top":`layer ${n} of ${top}`;
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(R.map,n))}`;
+  $("gParts").innerHTML=`<h3>Whole CPU</h3>${partsList(R.c)}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
+/* schematic export (/data/schematic.js writes and downloads the file). Monitors face south (+z), the front in the 3D view. */
+function buildStructure(dataVersion){
+  const {L,W,H}=state, palette=[], pidx={}, blocks=[];
+  const pal=k=>pidx[k]??(pidx[k]=palette.push(k==="mon"?{Name:TYPES.mon.id,Properties:{facing:"south",spin:"0"}}:{Name:TYPES[k].id})-1);
+  for(let y=0;y<H;y++)for(let x=0;x<L;x++)for(let z=0;z<W;z++) blocks.push({pos:[x,y,z],state:pal(R.map.get(`${x},${y},${z}`))});
+  return {DataVersion:dataVersion,size:[L,H,W],palette,blocks,entities:[]};
+}
+function renderExport(){
+  $("xGo").disabled=!mdSchematic.canGzip;
+  if(!mdSchematic.canGzip){ $("xHint").textContent="This browser can't compress files. Try a current Chrome, Firefox, Edge or Safari."; return; }
+  const mega=Object.keys(R.c).some(k=>TYPES[k].mega);
+  $("xHint").textContent=`Contains the ${state.L}×${state.W}×${state.H} CPU: ${fmt(R.v)} blocks, monitors facing south.${mega?" It uses MEGA Cells blocks, so the world needs MEGA Cells (1.19.2 or newer).":""}`;
+}
+async function downloadNbt(){
+  const [ver,dv]=mdSchematic.dataVersion($("xVer")), {L,W,H}=state;
+  await mdSchematic.download(buildStructure(dv),`ae2-crafting-cpu-${L}x${W}x${H}-${short(R.bytes)}-mc${ver}.nbt`);
+}
+mdSchematic.versionPicker($("xVer"),"ae2-cpu-mc");
+$("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
+
+/* design code (mdc1): the whole design as one string, used by share links.
+   mdc1.mods.L.W.H.shape.fill.mon.acc.macc.s1k.s4k.s16k.s64k.s256k.s1m.s4m.s16m.s64m.s256m
+   mods is e (AE2 only) or m (with MEGA Cells); shape is a (smallest box) or f (fixed L×W×H);
+   fill is u (Crafting Units) or c (Co-Processing Units); the rest are block counts as the user set them. */
+const CODE_KEYS=["mon","acc","macc",...STORE];
+function encodeDesign(){ return ["mdc1",state.mega?"m":"e",state.L,state.W,state.H,state.auto?"a":"f",state.fill==="unit"?"u":"c",...CODE_KEYS.map(k=>state.n[k])].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==7+CODE_KEYS.length||p[0]!=="mdc1"||!/^[em]$/.test(p[1])||!/^[af]$/.test(p[5])||!/^[uc]$/.test(p[6])) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={mega:p[1]==="m",L:int(2,1,MAX),W:int(3,1,MAX),H:int(4,1,MAX),auto:p[5]==="a",fill:p[6]==="u"?"unit":"acc",n:{}};
+  CODE_KEYS.forEach((k,i)=>{ d.n[k]=int(7+i,0,MAXV); });
+  return [d.L,d.W,d.H,...Object.values(d.n)].some(v=>Number.isNaN(v))?null:d;
+}
+const share=mdShare({prefix:"mdc1", isPreset:()=>false, encode:encodeDesign, decode:decodeDesign, preset:()=>"default",
+  apply:d=>{ Object.assign(state,d,{n:{...zero(),...d.n}}); buildTierSelect(); update(); }});
+
+const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
+function update(){
+  if(!state.mega) for(const k of COUNTED) if(TYPES[k].mega) state.n[k]=0;
+  if(state.auto){ const b=fitBox(listed(),usable("mon")?state.n.mon:0)||{L:MAX,W:MAX,H:MAX}; Object.assign(state,{L:b.L,W:b.W,H:b.H}); }
+  state.L=clampI(state.L,1,MAX); state.W=clampI(state.W,1,MAX); state.H=clampI(state.H,1,MAX);
+  R=model();
+  syncInputs(); renderResults(); rebuild3D(R.map); renderGuide(); renderExport(); share.render();
+}
+
+/* wiring */
+buildBlockList();
+$("mAe2").onclick=()=>{ state.mega=false; buildTierSelect(); update(); };
+$("mMega").onclick=()=>{ state.mega=true; buildTierSelect(); update(); };
+$("fUnit").onclick=()=>{ state.fill="unit"; update(); }; $("fAcc").onclick=()=>{ state.fill="acc"; update(); };
+$("sAuto").onclick=()=>{ state.auto=true; update(); }; $("sFixed").onclick=()=>{ state.auto=false; update(); };
+for(const id of ["L","W","H"]){ const f=v=>{ state[id]=+v; state.auto=false; update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); }
+$("aGo").onclick=plan; for(const id of ["aBytes","aThreads"]) $(id).onkeydown=e=>{ if(e.key==="Enter") plan(); };
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+
+// start: a 3×3×3 CPU with 8 × 256k storage, 18 co-processors and a monitor; a design in the link replaces it
+if(share.atLoad.design){ const d=share.atLoad.design; Object.assign(state,d,{n:{...zero(),...d.n}}); }
+buildTierSelect(); initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>
