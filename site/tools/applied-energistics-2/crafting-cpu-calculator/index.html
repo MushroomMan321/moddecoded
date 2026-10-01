@@ -197,9 +197,9 @@ details.mats .guide-cols{margin-top:10px}
         <h2>Plan from what you need</h2>
         <div class="ask">
           <label for="aBytes">Storage</label>
-          <span class="pair"><input class="num" id="aBytes" type="number" min="1" step="any" value="4"><select id="aUnit" aria-label="Storage unit"><option value="1024">k bytes</option><option value="1048576" selected>M bytes</option></select></span>
+          <span class="pair"><input class="num" id="aBytes" type="number" min="1" step="any" value="2"><select id="aUnit" aria-label="Storage unit"><option value="1024">k bytes</option><option value="1048576" selected>M bytes</option></select></span>
           <label for="aThreads">Co-processors</label>
-          <span class="pair"><input class="num" id="aThreads" type="number" min="0" step="1" value="16"></span>
+          <span class="pair"><input class="num" id="aThreads" type="number" min="0" step="1" value="18"></span>
           <label for="aTier">Biggest storage</label>
           <select id="aTier" aria-label="Biggest crafting storage you can make"></select>
           <label for="aAcc" id="aAccL">Co-processor block</label>
@@ -538,7 +538,7 @@ function buildBlockList(){
 function buildTierSelect(){
   const s=$("aTier"), keep=s.value; s.textContent="";
   for(const k of STORE) if(usable(k)){ const o=document.createElement("option"); o.value=k; o.textContent=TYPES[k].name; s.append(o); }
-  s.value=[...s.options].some(o=>o.value===keep)?keep:state.mega?"s256m":"s256k";
+  s.value=[...s.options].some(o=>o.value===keep)?keep:"s256k";
   $("aAcc").hidden=$("aAccL").hidden=!state.mega;
 }
 function syncInputs(){
@@ -649,7 +649,8 @@ $("aGo").onclick=plan; for(const id of ["aBytes","aThreads"]) $(id).onkeydown=e=
 $("tGuide").onclick=()=>setGuide(!guide.on);
 $("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
 
-// start: a 3×3×3 CPU with 8 × 256k storage, 18 co-processors and a monitor; a design in the link replaces it
+// start: a 3×3×3 CPU with 8 × 256k storage, 18 co-processors and a monitor, which is what the planner's
+// default inputs (2M bytes, 18 co-processors, 256k blocks) give; a design in the link replaces it
 if(share.atLoad.design){ const d=share.atLoad.design; Object.assign(state,d,{n:{...zero(),...d.n}}); }
 buildTierSelect(); initGL(); update(); share.live();
 })();
