@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Ryzer Gen Fission Station Calculator</title>
-<meta name="description" content="Ryzer Gen fission station core planner: lay out fuel, graphite, control rods and coolant on the 5×5 core and see power, core temperature, turbine efficiency, water and intake pumps, rod life and the cable fitting you need, from the Ryzer Gen 0.1.1-alpha source.">
+<meta name="description" content="Ryzer Gen fission station core planner: lay out fuel, graphite, control rods and coolant on the 5×5 core and see power, core temperature, turbine efficiency, water and intake pumps, rod life and the cable fitting you need, from the Ryzer Gen 0.1.2-alpha source.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
@@ -146,7 +146,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Ryzer Gen / Fission Station Calculator</nav>
   <header class="top">
     <h1>Ryzer Gen <span class="y">Fission Station Calculator</span></h1>
-    <span class="src">Formulas from the <a href="https://github.com/MultiRyzer/ryzer-gen/tree/9afa898">Ryzer Gen 0.1.1-alpha source</a></span>
+    <span class="src">Formulas from the <a href="https://github.com/MultiRyzer/ryzer-gen/tree/25445bd">Ryzer Gen 0.1.2-alpha source</a></span>
   </header>
   <p class="lede">Plan the fission station's 5×5 core channel by channel, the way the control screen does, and watch it in the station, drawn from the mod's own model. See the power it settles at, the core temperature, how much water it drinks and how long the rods last. The heat sums are <b>StationReactor</b>'s; the station is then run <b>tick by tick</b> as <b>StationRunner</b> does, so warm-up, SCRAM cycles and meltdowns show up too.</p>
 
@@ -256,10 +256,11 @@ turbine  = 25% + 15% × load   (20% in overdrive)</pre>
         <span class="ref">StationReactor.capacity · settledTemperature · efficiency</span>
       </div>
       <div class="fact">
-        <h3>"Too hot" on the screen isn't always too hot</h3>
-        <p>The control screen calls a core too hot if any rod has no coolant beside it, or any one channel is over its capacity, and plans 0 FE/t. The running station is kinder: that heat warms the core, and every working channel then carries it off. So the core only overheats if the total heat is more than all the working channels carry together. This page shows what the station does, and flags when the screen disagrees. It looks unintended, so a later version may close it.</p>
-<pre>removed = min(working × capacity × ramp(°C),
-              heat − uncooled + stored heat)
+        <h3>Coolant is local: "too hot" means too hot</h3>
+        <p>The control screen calls a core too hot if any rod has no coolant beside it, or any one channel is over its capacity, and plans 0 FE/t. The running station agrees: that heat stays in the core, and no other channel carries it off, so the core climbs until it SCRAMs, or melts down in overdrive. In 0.1.1 the spare channels quietly took it, so such a core ran fine; this page's simulation turned that up, and 0.1.2 closed it.</p>
+<pre>removed = min(working × capacity × ramp(°C), reach)
+reach   = heat − uncooled         too hot
+        = heat + stored heat      otherwise
 stored  = (°C − 20) × 20,000</pre>
         <span class="ref">StationRunner.tick</span>
       </div>
@@ -294,13 +295,14 @@ tilt    = 10 s grace + flux_tilt_seconds (300)</pre>
       </div>
       <div class="fact">
         <h3>SCRAM at 900°C, restart below 400°C</h3>
-        <p>With the safeties on, a core that can't shed its heat climbs to 900°C, drops its rods and cools to 400°C before it starts again. While it cools, every coolant channel keeps boiling water at full load, and the turbine keeps turning. So an overloaded core loses little: it averages close to what its coolant makes at full load. This page simulates the cycles and shows the average.</p>
+        <p>With the safeties on, a core that can't shed its heat climbs to 900°C, drops its rods and cools to 400°C before it starts again. A SCRAM trips the turbine too: while the core cools, its steam goes round the turbine and it makes no power. So an overloaded core pays for every SCRAM. This page simulates a full cycle and shows the average.</p>
 <pre>+ (heat − removed) ÷ 20,000 °C per tick
-SCRAM ≥ 900°C · restart &lt; 400°C</pre>
+SCRAM ≥ 900°C · restart &lt; 400°C
+power while SCRAMmed = 0</pre>
         <span class="ref">StationRunner.tick</span>
       </div>
     </div>
-    <p class="credit">Station model and textures from <a href="https://github.com/MultiRyzer/ryzer-gen">Ryzer Gen</a> by Ryzer (MIT). Checked in-game on 28 September 2026 with Ryzer Gen 0.1.1-alpha on an ATM10: Aeronautics server: the numbers matched to the FE/t for five cores (safeties on and off), a full SCRAM cycle and the cable limits. If your station doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
+    <p class="credit">Station model and textures from <a href="https://github.com/MultiRyzer/ryzer-gen">Ryzer Gen</a> by Ryzer (MIT). Checked in-game on 1 October 2026 with Ryzer Gen 0.1.2-alpha on an ATM10: Aeronautics server: the output matched to the FE/t, a full SCRAM cycle to the FE, and "too hot" cores' temperatures at every reading on the way to a SCRAM or meltdown, safeties on and off. The cable limits were checked with 0.1.1, and that code hasn't changed. If your station doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
   </section>
 </div>
 
@@ -350,7 +352,7 @@ const TYPES={
 const TOOL_ORDER=["U","X","M","R","C","T","E"];
 const isFuel=k=>k==="U"||k==="X";
 
-/* ================= model (Ryzer Gen 0.1.1-alpha, StationReactor + StationRunner) ================= */
+/* ================= model (Ryzer Gen 0.1.2-alpha, StationReactor + StationRunner) ================= */
 const G=5, N=25;
 const NB=Array.from({length:N},(_,i)=>{ const x=i%G, z=(i/G)|0, o=[]; if(x>0)o.push(i-1); if(x<G-1)o.push(i+1); if(z>0)o.push(i-G); if(z<G-1)o.push(i+G); return o; });
 const URANIUM_HEAT=1000, MOX_HEAT=2000, URANIUM_LIFE=36000, MOX_LIFE=144000, COOLANT_CAPACITY=3000;
@@ -394,25 +396,44 @@ function screen(a){
   if(a.od) best*=OVERDRIVE_HEAT*eff(BEST_T,true)/eff(BEST_T,false);
   return {lf,T,steady,out,rodMin,best,rating:a.rods?Math.min(1,out/best):0};
 }
-// StationRunner.tick, with water always supplied and every fuel channel kept full
+// StationRunner.tick, with water always supplied and every fuel channel kept full.
+// Coolant is local: while a core makes heat its layout can't route (the screen's "too hot"), its
+// coolant carries only what is routed to it, so the core climbs until it SCRAMs or melts down.
 function simulate(a,od){
-  const W=a.working>0?a.working:a.cool, holds=a.gen>0&&W>0&&a.gen<=W*a.cap*(1+1e-9);
-  const Tset=holds?150+450*a.gen/(W*a.cap):NaN, steadyOut=holds?a.gen*eff(Tset,od):0;
+  const routed=a.stranded<=0.5, holds=a.gen>0&&a.working>0&&routed;
+  const Tset=holds?150+450*Math.min(1,a.gen/(a.working*a.cap)):NaN, steadyOut=holds?a.gen*eff(Tset,od):0;
   const r={holds,Tset,steadyOut,warm:null,scram:null,melt:null,avg:0,peak:AMBIENT,onFrac:1};
   if(a.gen<=0) return r;
-  let T=AMBIENT, scram=false, sum=0, n=0, on=0;
-  const LIMIT=20*3600*4;
-  for(let t=0;t<LIMIT;t++){
+  let T=AMBIENT, scram=false, sum=0, n=0, on=0, t=0;
+  const LIMIT=20*86400*90, stop=od?MELTDOWN_T:SCRAM_T;
+  while(t<LIMIT){
     if(scram&&T<RESET_T) scram=false;
     const gen=scram?0:a.gen, stored=(T-AMBIENT)*HEAT_CAPACITY, carry=gen>0?Math.max(0,gen-a.stranded):0;
-    const working=gen>0&&a.working>0?a.working:a.cool;
-    const removed=Math.max(0,Math.min(working*a.cap*ramp(T),carry+stored));
+    const reach=gen>0&&!routed?carry:carry+stored;
+    const working=gen>0&&a.working>0?a.working:a.cool, potential=working*a.cap*ramp(T);
+    // Once the coolant carries all it can reach, an unroutable core climbs at a steady rate:
+    // step over that in chunks, stopping a few ticks short of the SCRAM or meltdown.
+    if(gen>0&&!routed&&potential>=carry){
+      const rate=(gen-carry)/HEAT_CAPACITY, kink=T<600?Math.floor((600-T)/rate):Infinity;   // the turbine tops out at 600°C
+      const k=Math.min(1200,kink,Math.floor((stop-T)/rate)-2);
+      if(k>1){
+        const out=carry*eff(T+rate*(k+1)/2,od);
+        T+=rate*k; t+=k; r.peak=Math.max(r.peak,T);
+        if(r.scram!=null){ sum+=out*k; n+=k; on+=k; }
+        continue;
+      }
+    }
+    const removed=Math.max(0,Math.min(potential,reach));
     T+=(gen-removed)/HEAT_CAPACITY; if(gen<=0) T-=(T-AMBIENT)*0.0005; T=Math.max(AMBIENT,T); r.peak=Math.max(r.peak,T);
-    if(!od&&T>=SCRAM_T&&!scram){ scram=true; if(r.scram==null) r.scram=t; }
+    const wasScram=scram;
+    if(!od&&T>=SCRAM_T&&!scram) scram=true;
     if(od&&T>=MELTDOWN_T){ r.melt=t; return r; }
-    const out=removed*eff(T,od);
-    if(holds){ if(out>=0.99*steadyOut){ r.warm=t; return r; } continue; }
-    if(r.scram!=null){ sum+=out; n++; if(gen>0) on++; if(n>=20*1800) break; }
+    // a SCRAM trips the turbine: no power while the core cools
+    const out=scram?0:removed*eff(T,od);
+    if(holds){ if(out>=0.99*steadyOut){ r.warm=t; return r; } t++; continue; }
+    if(scram&&!wasScram){ if(r.scram==null) r.scram=t; else break; }   // average over one full cycle
+    if(r.scram!=null){ sum+=out; n++; if(gen>0) on++; }
+    t++;
   }
   if(n){ r.avg=sum/n; r.onFrac=on/n; }
   return r;
@@ -514,7 +535,7 @@ function renderResults(){
   else cellsOut.push(["Power out",`${fmt(r.avg)} <small>FE/t average, cycling through SCRAMs</small>`,"hero"]);
   if(a.rods){
     cellsOut.push(["Core temperature",r.holds?`${fmt(r.Tset)}°C <small>settled</small>`:od?`→ 1,000°C <small>no SCRAM</small>`:`400–900°C <small>SCRAM, restart, SCRAM</small>`]);
-    cellsOut.push(["Turbine efficiency",r.holds?`${fmt(eff(r.Tset,od)*100,1)}% <small>of ${fmt(a.gen)} FE/t heat</small>`:`${fmt((od?45:40))}% <small>at full load</small>`]);
+    cellsOut.push(["Turbine efficiency",r.holds?`${fmt(eff(r.Tset,od)*100,1)}% <small>of ${fmt(a.gen)} FE/t heat</small>`:`up to ${fmt((od?45:40))}% <small>${od?"while it lasts":"none while SCRAMmed"}</small>`]);
     cellsOut.push(["Coolant load",`${fmt(a.gen/Math.max(1e-9,(a.working||a.cool)*a.cap)*100)}% <small>${a.working} of ${a.cool} channels working</small>`]);
     cellsOut.push(["Screen rating",s.steady?`${fmt(s.rating*100)}% <small>vs the ${kfe(s.best)} FE/t reference</small>`:`0% <small>screen says too hot</small>`]);
     cellsOut.push(["Rods last",`${fmt(s.rodMin)} <small>min on average</small>`]);
@@ -523,7 +544,7 @@ function renderResults(){
     if(burning) cellsOut.push(["Ingots per hour",`${fmt(rodsU*2+rodsX,1)} <small>uranium · ${fmt(rodsU+rodsX,1)} steel${rodsX?` · ${fmt(rodsX,1)} plutonium`:""}</small>`]);
     cellsOut.push(["Water",r.holds?`${fmt(water)} <small>mB/t · ${fmt(water*20/1000,1)} B/s</small>`:`— <small>boils all it gets</small>`]);
     cellsOut.push(["Intake pumps",r.holds?`${fmt(pumps)} <small>at ${fmt(cfg.pumpRate)} mB/t each</small>`:`— <small>fix the core first</small>`]);
-    const peakOut=r.holds?r.steadyOut:Math.min(a.gen,(a.working||a.cool)*a.cap)*eff(600,od), fit=fitNeed(peakOut);
+    const peakOut=r.holds?r.steadyOut:Math.max(0,a.gen-a.stranded)*eff(600,od), fit=fitNeed(peakOut);
     cellsOut.push(["Energy port cable",fit?`${fit[0]} <small>${fmt(cfg.energyRate*fit[1])} FE/t on that side</small>`:`— <small>over ${fmt(cfg.energyRate*1024)} FE/t</small>`]);
     cellsOut.push(["Warm-up",r.holds?`${dur(r.warm)} <small>to 99% output</small>`:r.scram!=null?`${dur(r.scram)} <small>to the first SCRAM</small>`:r.melt!=null?`${dur(r.melt)} <small>to meltdown</small>`:"—"]);
     if(targets.length) cellsOut.push(["Tritium breeding",`${fmt(Math.min(...targets),1)} <small>min per target rod${targets.length>1?`, fastest of ${targets.length}`:""}</small>`]);
@@ -533,14 +554,11 @@ function renderResults(){
 
   const n=[];
   if(a.rods&&!a.cool) n.push(["bad","No coolant channels: the heat has nowhere to go."]);
-  if(a.rods&&r.holds&&!s.steady){
-    const why=[a.uncooledRods?`${a.uncooledRods} rod${a.uncooledRods>1?"s have":" has"} no coolant beside ${a.uncooledRods>1?"them":"it"}`:"",a.overloaded?`${a.overloaded} coolant channel${a.overloaded>1?"s are":" is"} over capacity`:""].filter(Boolean).join(" and ");
-    n.push(["warn",`The control screen will say "Too hot: add coolant" (${why}) and rate this core 0%. The running station pools its coolant, so it still settles at ${fmt(r.Tset)}°C and makes ${fmt(r.steadyOut)} FE/t. Found in the 0.1.1-alpha code; it may change in a later version.`]); }
   if(a.rods&&!r.holds&&a.cool){
-    const over=a.gen-(a.working||a.cool)*a.cap;
-    if(od) n.push(["bad",`The core makes ${fmt(over)} FE/t more heat than its coolant can carry. With the safeties off nothing stops it: it ${r.melt!=null?`melts down after ${dur(r.melt)}`:"keeps heating"}. Unless <code>fission_station.meltdowns</code> is off, that leaves a crater and destroys the station.`]);
-    else { const ceiling=(a.working||a.cool)*a.cap*eff(600,false);
-      n.push(["warn",`The core makes ${fmt(over)} FE/t more heat than its coolant can carry, so it SCRAMs at 900°C after ${dur(r.scram)}, cools to 400°C and starts again, over and over. The coolant keeps boiling water while the core cools, so it still averages ${fmt(r.avg)} FE/t, ${fmt(r.avg/ceiling*100)}% of what this coolant makes at full load. The fission runs ${fmt(r.onFrac*100)}% of the time, and the announcer calls every SCRAM.`]); } }
+    const why=[a.uncooledRods?`${a.uncooledRods} rod${a.uncooledRods>1?"s have":" has"} no coolant beside ${a.uncooledRods>1?"them":"it"}`:"",a.overloaded?`${a.overloaded} coolant channel${a.overloaded>1?"s are":" is"} over capacity`:""].filter(Boolean).join(" and ");
+    const lead=`The control screen says "Too hot: add coolant" (${why}), and it's right: ${fmt(a.stranded)} FE/t of heat has no coolant to go to, and the other channels don't take it.`;
+    if(od) n.push(["bad",`${lead} With the safeties off nothing stops it: it ${r.melt!=null?`melts down after ${dur(r.melt)}`:"keeps heating"}. Unless <code>fission_station.meltdowns</code> is off, that leaves a crater and destroys the station.`]);
+    else n.push(["warn",`${lead} The core climbs to 900°C and SCRAMs after ${dur(r.scram)}. While it cools to 400°C the turbine is tripped and makes nothing, then it starts again, over and over. It averages ${fmt(r.avg)} FE/t, running ${fmt(r.onFrac*100)}% of the time, and the announcer calls every SCRAM.`]); }
   if(a.rods&&r.holds&&a.gen/((a.working||a.cool)*a.cap)<0.6) n.push(["warn",`The coolant only works at ${fmt(a.gen/((a.working||a.cool)*a.cap)*100)}%, so the core settles cool and the turbine runs at ${fmt(eff(r.Tset,od)*100)}%. More fuel or graphite, or fewer coolant channels, gets closer to 40%.`]);
   if(a.rods&&r.holds){
     const fit=fitNeed(r.steadyOut);
