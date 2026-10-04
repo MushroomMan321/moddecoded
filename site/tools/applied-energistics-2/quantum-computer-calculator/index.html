@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/applied-energistics-2/quantum-computer-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Advanced AE Quantum Computer Calculator</title>
+<meta name="description" content="Advanced AE Quantum Computer calculator: crafting storage, co-processor threads, parallel jobs, power and materials for any Quantum Computer, with ATM10's config. Plan the smallest one for a job and download it as a .nbt schematic. From the Advanced AE 1.6.12 source code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.src a{color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.lede a{color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide-cols h3{font-size:14px;margin:0 0 6px}
+.guide-cols h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px;background:#0F1417}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,select:focus-visible,.atm-list button:focus-visible,input[type=checkbox]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{font:600 13px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;max-width:100%}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.hint b{color:var(--ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.ask{display:grid;grid-template-columns:150px minmax(0,1fr);gap:8px 10px;align-items:center}
+@media (max-width:460px){.ask{grid-template-columns:minmax(0,1fr)}}
+.ask label{font-size:14px;color:var(--muted)}
+.ask .pair{display:flex;gap:6px;align-items:center}
+.ask .pair .num{width:120px}
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px}
+.checks label{display:flex;align-items:center;gap:6px;color:var(--ink)}
+.checks input{accent-color:var(--accent);width:16px;height:16px}
+/* block counts: swatch, name and stats, count */
+.blist{display:flex;flex-direction:column;gap:4px}
+.brow{display:grid;grid-template-columns:18px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.brow{grid-template-columns:18px minmax(0,1fr) 72px}}
+.brow img{width:16px;height:16px;image-rendering:pixelated;border-radius:2px;background:#0F1417}
+.brow label{font-size:14px;min-width:0}
+.brow label small{display:block;font:500 11.5px var(--font-mono);color:var(--muted)}
+.brow .fixed{font:600 14px var(--font-mono);text-align:right;padding-right:7px;color:var(--muted)}
+.spare{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;margin-top:4px}
+.spare>span{font-size:14px;color:var(--muted)}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.notes li code{font-size:12px}
+details.mats summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+details.mats .guide-cols{margin-top:10px}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+.credit{font-size:12.5px;color:var(--muted);margin:0}
+.credit a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Applied Energistics 2 / Quantum Computer Calculator</nav>
+  <header class="top">
+    <h1>Advanced AE <span class="y">Quantum Computer Calculator</span></h1>
+    <span class="src">From the <a href="https://github.com/pedroksl/AdvancedAE/tree/c322dad">Advanced AE 1.6.12 source</a></span>
+  </header>
+  <p class="lede">Say how much storage and how many co-processors you need and get the smallest Quantum Computer that has them, with your pack's config. Or pick the blocks yourself and see the storage, threads, parallel jobs, power and materials. Every number comes from Advanced AE's <b>AdvCraftingCPUCluster</b> and its multiblock check. For AE2's own CPU, see the <a href="/tools/applied-energistics-2/crafting-cpu-calculator/">crafting CPU calculator</a>.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the Quantum Computer"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
+        <div class="viewbar">
+          <button id="tGlass" aria-pressed="true" type="button">Glass</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Glass hides the shell to show what's inside.</p>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols">
+          <div id="gLayer"></div>
+          <div id="gParts"></div>
+        </div>
+        <details open><summary>How it goes together</summary>
+          <ol id="gSteps"></ol>
+        </details>
+      </div>
+      <div class="box">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+        <details class="mats">
+          <summary>Materials to craft it</summary>
+          <div class="guide-cols">
+            <div id="mParts"></div>
+            <div id="mRaw"></div>
+          </div>
+          <p class="hint" style="margin-top:8px" id="mHint"></p>
+        </details>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/advanced_ae-common.toml</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Plan from what you need</h2>
+        <div class="ask">
+          <label for="aBytes">Storage</label>
+          <span class="pair"><input class="num" id="aBytes" type="number" min="0" step="any" value="4"><select id="aUnit" aria-label="Storage unit"><option value="1048576">M bytes</option><option value="1073741824" selected>G bytes</option></select></span>
+          <label for="aThreads">Co-processors</label>
+          <span class="pair"><input class="num" id="aThreads" type="number" min="0" step="1" value="256"></span>
+          <label for="aTier">Storage block</label>
+          <select id="aTier"><option value="s256" selected>256M Quantum Computer Storage</option><option value="s128">128M Quantum Computer Storage</option></select>
+          <span class="ask-l" style="font-size:14px;color:var(--muted)">Can use</span>
+          <span class="checks"><label><input type="checkbox" id="aDE" checked> Data Entangler</label><label><input type="checkbox" id="aMT" checked> Multi-Threader</label></span>
+        </div>
+        <div class="btns"><button class="btn" type="button" id="aGo">Plan the Quantum Computer</button></div>
+        <p class="hint" id="aMsg" role="status">The crafting confirmation screen shows the bytes a job needs.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Blocks inside</h2>
+        <div class="blist" id="blist"></div>
+        <div class="spare"><span id="fLabel">Fill spare space with</span>
+          <div class="seg" role="group" aria-labelledby="fLabel">
+            <button type="button" id="fUnit" aria-pressed="true">Crafting Units</button>
+            <button type="button" id="fAcc" aria-pressed="false">Accelerators</button>
+          </div></div>
+        <p class="hint">The inside must be full, so any space your blocks don't fill gets this block. Quantum Crafting Units are cheapest; Accelerators make the leftover space add threads. The shell is always Structural Glass.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Shape</h2>
+        <div class="seg" role="group" aria-label="Shape">
+          <button type="button" id="sAuto" aria-pressed="true">Smallest box</button>
+          <button type="button" id="sFixed" aria-pressed="false">Set the size</button>
+          <button type="button" id="sLone" aria-pressed="false">Lone core</button>
+        </div>
+        <div id="sizeRows">
+          <div class="row"><label for="L">Width</label><input type="range" id="L" min="3" max="7"><input class="num" id="LN" type="number" min="3" max="7" aria-label="Width"></div>
+          <div class="row"><label for="W">Depth</label><input type="range" id="W" min="3" max="7"><input class="num" id="WN" type="number" min="3" max="7" aria-label="Depth"></div>
+          <div class="row"><label for="H">Height</label><input type="range" id="H" min="3" max="7"><input class="num" id="HN" type="number" min="3" max="7" aria-label="Height"></div>
+        </div>
+        <p class="hint" id="shapeHint"></p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact Quantum Computer, with the config picked above. Paste a design code above to load it.</p>
+      </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block. Minecraft 1.21.1. No block has a facing, so it can be placed turned any way.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Glass outside, one core inside</h3>
+        <p>Every block on the outside, edges and corners included, must be Structural Glass, and glass can't go inside. The inside must be full: exactly one core, at most one Data Entangler and one Multi-Threader (the config allows two), and any mix of the rest. So the smallest Quantum Computer is 3×3×3, and fitting all three special blocks takes 3×3×5. In-game, a second core, entangler or multi-threader, glass or air inside, a unit or core on the shell, and an AE2 crafting unit inside each stopped it forming.</p>
+<pre>shell:  quantum_structure only
+inside: 1 core
+        ≤ maxDataEntanglers, ≤ maxMultiThreaders
+        units, 128M, 256M, accelerators
+no air, no AE2 crafting blocks</pre>
+        <span class="ref">AdvCraftingCPUCalculator.verifyInternalStructure</span>
+      </div>
+      <div class="fact">
+        <h3>Max size is blocks a side</h3>
+        <p>The size check lets the far corner sit maxSize − 1 past the near one, so the default 7 means up to 7×7×7, and each side can differ. That's 125 blocks inside at most. AE2's own CPU goes to 17 a side. In-game on ATM10's config, a 7×7×7 forms and an 8×7×7 doesn't.</p>
+<pre>max − min ≤ quantumComputerMaxSize − 1
+inside = (X − 2) × (Y − 2) × (Z − 2)</pre>
+        <span class="ref">AdvCraftingCPUCalculator.checkMultiblockScale</span>
+      </div>
+      <div class="fact">
+        <h3>Multipliers add, they don't stack</h3>
+        <p>The core and every accelerator give the same threads. A Multi-Threader multiplies the total, a Data Entangler multiplies the storage. With two of either, their multipliers are added: two ×6 entanglers make ×12, not ×36. ATM10, ATM10: Aeronautics and All the Mons raise the threads to 12 and both multipliers to 6.</p>
+<pre>bytes   = Σ storage × (E·entangler× or 1)
+threads = (1 + accelerators) × threads
+          × (T·multiThreader× or 1)</pre>
+        <span class="ref">AdvCraftingCPUCluster.addBlockEntity</span>
+      </div>
+      <div class="fact">
+        <h3>Every job gets every thread</h3>
+        <p>An AE2 CPU runs one job at a time. A Quantum Computer runs as many as its bytes hold: each job reserves only its own bytes, and each one gets the full thread count and its own push budget. Two jobs push twice as fast as one. In-game, a lone core on ATM10's config sent 3.24 patterns a tick (65 a second, 12 threads), and two jobs on it at once sent 3.26 a tick each.</p>
+<pre>job fits if bytes ≤ free storage
+per job: ops = threads + 1 − (sent in last 3 ticks)
+         max/s = 5 × (threads + 1)</pre>
+        <span class="ref">AdvCraftingCPUCluster.submitJob · AdvCraftingCPULogic.tickCraftingLogic</span>
+      </div>
+      <div class="fact">
+        <h3>It's picked before any AE2 CPU</h3>
+        <p>When a job is placed automatically, any Quantum Computer with room for it wins over every AE2 CPU, whatever their speed. Among Quantum Computers, the one with the most threads goes first. In-game, both jobs went to a 12-thread lone core while a 24-co-processor AE2 CPU on the same network sat idle.</p>
+<pre>QC with free bytes ≥ job? → QC
+else → AE2's own choice</pre>
+        <span class="ref">MixinCraftingService.onSubmitJob</span>
+      </div>
+      <div class="fact">
+        <h3>A lone core is a whole computer</h3>
+        <p>A single Quantum Computer Core with no other Quantum Computer block beside it forms on its own: 256M of storage and one block's threads, for 1 AE/t. A formed core only takes cables from above or below.</p>
+<pre>if (min.equals(max)) return true;
+core sides: UP, DOWN</pre>
+        <span class="ref">AdvCraftingCPUCalculator · AdvCraftingBlockEntity.getGridConnectableSides</span>
+      </div>
+      <div class="fact">
+        <h3>Touching computers don't merge</h3>
+        <p>Like AE2, it checks the layer just outside the box. Any Quantum Computer block against a face stops it forming. Two that line up don't merge as AE2 CPUs do, because the merged box would have glass and two cores inside. An AE2 CPU may touch it: they don't count each other. We checked all three cases in-game.</p>
+<pre>for each side of the box:
+  any Quantum Computer block in the next layer out?
+    → don't form</pre>
+        <span class="ref">MBCalculator.verifyUnownedRegion</span>
+      </div>
+      <div class="fact">
+        <h3>One channel, 1 AE/t a block</h3>
+        <p>The whole Quantum Computer is one multiblock node, so it takes one channel however big it is. Every block draws the default 1 AE/t, glass included, so a 7×7×7 draws 343 AE/t. Each pattern sent costs 1 AE per input item.</p>
+<pre>channels   = 1
+idle power = blocks × 1 AE/t   (2 FE/t)</pre>
+        <span class="ref">GridFlags.MULTIBLOCK · AENetworkedBlockEntity</span>
+      </div>
+    </div>
+    <p class="credit" id="credit">Block stats, rules and recipes from the Advanced AE 1.6.12 source and jar. ATM10, ATM10: Aeronautics, All the Mons and ATM10 Lite ship 1.6.12 and ATM10 To The Sky ships 1.6.10, which has the same Quantum Computer code. Checked in-game on 1 October 2026 on an ATM10: Aeronautics server (Advanced AE 1.6.12, ATM10's config): this page's schematics form, including the 7×7×7 and a lone core, and the formation rules, the 12 threads a block, parallel jobs and job choice matched. The Data Entangler and Multi-Threader multipliers are from the source: checking them in-game takes a job hundreds of megabytes big, or hundreds of assemblers. If your Quantum Computer doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script src="/data/schematic.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const K=1024, M=K*K, G=M*K, T=G*K;
+// bytes the way AE2 names its tiers: 1M = 1,048,576
+const short=b=>b>=T?+(b/T).toFixed(2)+"T":b>=G?+(b/G).toFixed(2)+"G":b>=M?+(b/M).toFixed(2)+"M":b>=K?+(b/K).toFixed(2)+"k":String(b);
+
+/* ================= config (config/advanced_ae-common.toml, section "quantum computer") ================= */
+const DEFAULTS={maxSize:7, threads:8, maxMT:1, maxDE:1, mtMult:4, deMult:4};
+const Q="quantum computer.";
+const CFG_FIELDS=[["maxSize",Q+"quantumComputerMaxSize"],["threads",Q+"quantumComputerAcceleratorThreads"],["maxMT",Q+"quantumComputerMaxMultiThreaders"],
+  ["maxDE",Q+"quantumComputermaxDataEntanglers"],["mtMult",Q+"quantumComputerMultiThreaderMultiplication"],["deMult",Q+"quantumComputerDataEntanglerMultiplication"]];
+// the ranges AAEConfig allows
+const CFG_RANGE={maxSize:[5,12], threads:[4,16], maxMT:[1,2], maxDE:[1,2], mtMult:[2,8], deMult:[2,8]};
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("advanced_ae", DEFAULTS, CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("aae-qc-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+
+/* ================= blocks (Advanced AE 1.6.12 AAECraftingUnitType) ================= */
+// storage in bytes (getStorageBytes), acc = gives the configured threads, mult = which multiplier it adds.
+// mat = what one block takes from the recipes ATM packs use (ExtendedAE installed):
+// crafting unit, singularity, shattered singularity, concurrent processor, quantum storage component
+const TYPES={
+  glass:{name:"Quantum Computer Structural Glass", short:"Structural Glass", id:"advanced_ae:quantum_structure"},
+  core: {name:"Quantum Computer Core", short:"Core", id:"advanced_ae:quantum_core", bytes:256*M, acc:true, mat:[5,9,15,9,8]},
+  de:   {name:"Quantum Data Entangler", short:"Data Entangler", id:"advanced_ae:data_entangler", mult:"de", mat:[15,19,50,19,32]},
+  mt:   {name:"Quantum Computer Multi-Threader", short:"Multi-Threader", id:"advanced_ae:quantum_multi_threader", mult:"mt", mat:[10,14,39,38,8]},
+  s256: {name:"256M Quantum Computer Storage", short:"256M Storage", id:"advanced_ae:quantum_storage_256", bytes:256*M, mat:[3,3,9,3,8]},
+  s128: {name:"128M Quantum Computer Storage", short:"128M Storage", id:"advanced_ae:quantum_storage_128", bytes:128*M, mat:[1,1,4,1,4]},
+  acc:  {name:"Quantum Computer Accelerator", short:"Accelerator", id:"advanced_ae:quantum_accelerator", acc:true, mat:[1,1,4,5,0]},
+  unit: {name:"Quantum Crafting Unit", short:"Crafting Unit", id:"advanced_ae:quantum_unit", mat:[1,1,0,1,0]},
+};
+const MAT_NAMES=["Crafting Unit","Singularity","Shattered Singularity","Concurrent Processor","Quantum Storage Component"];
+const COUNTED=["de","mt","s256","s128","acc"];          // what the user sets; the core is always one
+const PLACE=["core","de","mt","s256","s128","acc"];     // inside, from the middle outward
+const ORDER=["core","de","mt","s256","s128","acc","unit","glass"];   // parts-list order
+for(const k in TYPES){ const t=TYPES[k]; t.bytes=t.bytes||0; }
+
+/* ================= state and model ================= */
+// shape: auto (smallest box), fixed (L×W×H) or lone (a core on its own)
+const zero=()=>Object.fromEntries(COUNTED.map(k=>[k,0]));
+const state={n:zero(), shape:"auto", L:3, W:3, H:3, fill:"unit", glass:true};
+const limit=k=>k==="de"?cfg.maxDE:k==="mt"?cfg.maxMT:Infinity;
+const inside=()=>1+COUNTED.reduce((s,k)=>s+state.n[k],0);   // blocks asked for inside, core included
+const MAXI=()=>(cfg.maxSize-2)**3;
+
+// the smallest box whose inside holds n blocks: fewest blocks overall, then the most cube-like. Height is the smallest side.
+function fitBox(n){ let best=null; const S=cfg.maxSize;
+  for(let H=3;H<=S;H++)for(let W=H;W<=S;W++)for(let L=W;L<=S;L++){ if((L-2)*(W-2)*(H-2)<n) continue;
+    const v=L*W*H, score=v+0.01*(L*W+W*H+L*H); if(!best||score<best.score) best={L,W,H,v,score}; }
+  return best; }
+
+// block map: "x,y,z" (x across, y up, z toward the front) -> type key
+function blockMap(){
+  const {L,W,H}=state, map=new Map();
+  if(state.shape==="lone"){ map.set("0,0,0","core"); return {map, overflow:inside()-1}; }
+  const cx=(L-1)/2, cy=(H-1)/2, cz=(W-1)/2, inner=[];
+  for(let y=0;y<H;y++)for(let z=0;z<W;z++)for(let x=0;x<L;x++){
+    if(x===0||y===0||z===0||x===L-1||y===H-1||z===W-1) map.set(`${x},${y},${z}`,"glass");
+    else inner.push([x,y,z,(x-cx)**2+(y-cy)**2+(z-cz)**2]); }
+  inner.sort((a,b)=>a[3]-b[3]||a[1]-b[1]||a[2]-b[2]||a[0]-b[0]);
+  const queue=["core"]; for(const k of PLACE.slice(1)) for(let i=0;i<state.n[k];i++) queue.push(k);
+  inner.forEach(([x,y,z],i)=>map.set(`${x},${y},${z}`,i<queue.length?queue[i]:state.fill));
+  return {map, overflow:Math.max(0,queue.length-inner.length)};
+}
+function tally(map,layer){ const c={}; for(const [key,k] of map){ if(layer!=null&&+key.split(",")[1]!==layer-1) continue; c[k]=(c[k]||0)+1; } return c; }
+function stats(c){
+  let storage=0, accs=0; for(const k in c){ storage+=TYPES[k].bytes*c[k]; if(TYPES[k].acc) accs+=c[k]; }
+  const E=c.de||0, Tm=c.mt||0;
+  const bytes=storage*(E>0?E*cfg.deMult:1), threads=accs*cfg.threads*(Tm>0?Tm*cfg.mtMult:1);
+  return {bytes, threads};
+}
+function model(){
+  const B=blockMap(), c=tally(B.map), s=stats(c), v=state.shape==="lone"?1:state.L*state.W*state.H;
+  const room=state.shape==="lone"?1:(state.L-2)*(state.W-2)*(state.H-2);
+  return {...B, c, ...s, v, spare:Math.max(0,room-inside()), pushes:5*(s.threads+1), idleAE:v};
+}
+// materials: blocks flattened through their recipes (ExtendedAE variants, which every ATM pack uses)
+function materials(c){
+  const m=[0,0,0,0,0]; for(const k in c) if(TYPES[k].mat) TYPES[k].mat.forEach((v,i)=>m[i]+=v*c[k]);
+  const glass=c.glass||0;
+  return {raw:[...MAT_NAMES.map((n,i)=>[n,m[i]]),["Quartz Glass",4*glass],["Sky Stone Block",4*glass]].filter(r=>r[1]), shattered:m[2], sing:m[1]};
+}
+
+/* plan: for each number of entanglers and multi-threaders allowed, the fewest storage blocks and accelerators that
+   cover the request, then the smallest box; keep the smallest result (ties: fewer singularities). A core alone wins if it's enough. */
+function plan(){
+  const need=Math.ceil(Math.max(0,+$("aBytes").value||0)*+$("aUnit").value), want=Math.max(0,Math.round(+$("aThreads").value||0));
+  const top=$("aTier").value, B=TYPES[top].bytes, maxE=$("aDE").checked?cfg.maxDE:0, maxT=$("aMT").checked?cfg.maxMT:0;
+  if(need<=256*M&&want<=cfg.threads){ state.n=zero(); state.shape="lone"; update();
+    $("aMsg").textContent=`A lone core is enough: ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors in one block, for 1 AE/t. Cable it from above or below.`; return; }
+  let best=null;
+  for(let e=0;e<=maxE;e++){
+    const base=Math.ceil(need/(e?e*cfg.deMult:1)), extra=Math.max(0,base-256*M);
+    let n256=0, n128=0;
+    if(top==="s256"){ n256=Math.floor(extra/B); const rest=extra-n256*B; if(rest>0){ if(rest<=128*M) n128=1; else n256++; } }
+    else n128=Math.ceil(extra/B);
+    for(let t=0;t<=maxT;t++){
+      const acc=Math.max(0,Math.ceil(want/(cfg.threads*(t?t*cfg.mtMult:1)))-1), n={de:e,mt:t,s256:n256,s128:n128,acc}, count=1+e+t+n256+n128+acc;
+      const box=fitBox(count); if(!box) continue;
+      const sing=COUNTED.reduce((s,k)=>s+TYPES[k].mat[1]*n[k],0)+TYPES.unit.mat[1]*((box.L-2)*(box.W-2)*(box.H-2)-count);
+      if(!best||box.v<best.box.v||box.v===best.box.v&&sing<best.sing) best={n,box,sing,count};
+    } }
+  if(!best){ const S=cfg.maxSize; $("aMsg").textContent=`That doesn't fit in one Quantum Computer: the biggest, ${S}×${S}×${S}, holds ${fmt(MAXI())} blocks inside.${maxE<cfg.maxDE||maxT<cfg.maxMT?" Allow the Data Entangler and Multi-Threader, or":""} Split the job, or use several.`; return; }
+  state.n=best.n; state.shape="auto"; state.fill="unit"; update();
+  const parts=[]; for(const k of ["de","mt","s256","s128","acc"]) if(best.n[k]) parts.push(`${fmt(best.n[k])} × ${TYPES[k].short}`);
+  $("aMsg").textContent=`The core${parts.length?" plus "+parts.join(", "):""}: ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors in a ${state.L}×${state.W}×${state.H}.`;
+}
+
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+// a quantum block: a dark violet frame around a core that each type decorates
+function frame(key,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb("#40395A");
+  for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.35); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.55); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16);
+  g.fillStyle="#7C5CE0"; g.fillRect(1,1,2,1); g.fillRect(1,1,1,2); g.fillRect(13,14,2,1); g.fillRect(14,13,1,2);
+  g.fillStyle="#15121E"; g.fillRect(3,3,10,10); if(deco) deco(g); }); }
+const TX={
+  glass:()=>tex("glass",g=>{ g.fillStyle="rgba(150,130,235,0.08)"; g.fillRect(0,0,16,16);
+    g.fillStyle="rgba(205,190,255,0.6)"; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16);
+    g.fillStyle="rgba(205,190,255,0.35)"; g.fillRect(3,3,3,1); g.fillRect(3,3,1,3); g.fillRect(10,12,3,1); g.fillRect(12,10,1,3); }),
+  core:()=>frame("core",g=>{ g.fillStyle="#3B2A7A"; g.fillRect(4,4,8,8); g.fillStyle="#B57BFF"; g.fillRect(5,5,6,6); g.fillStyle="#F2E6FF"; g.fillRect(7,7,2,2);
+    g.fillStyle="#E0C8FF"; g.fillRect(7,4,2,1); g.fillRect(7,11,2,1); g.fillRect(4,7,1,2); g.fillRect(11,7,1,2); }),
+  de:()=>frame("de",g=>{ g.fillStyle="#1F5E58"; g.fillRect(4,4,8,8); g.fillStyle="#46E0C8"; for(let i=0;i<8;i++){ g.fillRect(4+i,4+((i*3)%8),1,1); g.fillRect(11-i,4+((i*5)%8),1,1); } g.fillStyle="#C8FFF4"; g.fillRect(7,7,2,2); }),
+  mt:()=>frame("mt",g=>{ g.fillStyle="#5E1F3A"; g.fillRect(4,4,8,8); g.fillStyle="#F06A9C"; g.fillRect(5,5,1,6); g.fillRect(7,5,2,6); g.fillRect(10,5,1,6); g.fillStyle="#FFD0E2"; g.fillRect(7,4,2,1); }),
+  acc:()=>frame("acc",g=>{ g.fillStyle="#E0B03F"; for(let i=4;i<12;i+=3){ g.fillRect(4,i,8,1); g.fillRect(i,4,1,8); } g.fillStyle="#FFF0C0"; g.fillRect(7,7,2,2); }),
+  unit:()=>frame("unit",g=>{ g.fillStyle="#2A2440"; g.fillRect(4,4,8,8); g.fillStyle="#7C5CE0"; g.fillRect(7,7,2,2); }),
+};
+for(const [k,tint] of [["s128","#4FA3E0"],["s256","#A35FE0"]]) TX[k]=()=>frame(k,g=>{ const c=hexRgb(tint);
+  g.fillStyle=shade(c,0.55); g.fillRect(4,4,8,8); g.fillStyle=shade(c,1); g.fillRect(5,5,6,6); g.fillStyle=shade(c,1.35); g.fillRect(5,5,6,1); g.fillRect(5,5,1,6);
+  g.fillStyle="#15121E"; g.fillRect(7,6,2,4); if(k==="s256"){ g.fillRect(6,6,1,4); g.fillRect(9,6,1,4); } });
+const swatch=k=>swatch[k]||(swatch[k]=TX[k]().toDataURL());
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, groups={}, buildStart=0, buildTop=0, buildBottom=0;
+const matCache={}, anims=[];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(TX[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  return matCache[k]=k==="glass"?new THREE.MeshLambertMaterial({map:t,clippingPlanes:[clip],transparent:true,depthWrite:false})
+    :new THREE.MeshLambertMaterial({map:t,clippingPlanes:[clip]}); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame3d);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms. goal eases the camera to a new framing.
+const orbit={theta:0.5,phi:1.1,radius:20,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(120,Math.max(2,orbit.goal.r*f)); else orbit.radius=Math.min(120,Math.max(2,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+const dims=()=>state.shape==="lone"?{L:1,W:1,H:1}:{L:state.L,W:state.W,H:state.H};
+const framing=()=>{ const d=dims(); return {x:0,y:0,z:0,r:Math.max(d.L,d.W,d.H)*2.4+4}; };
+let lastT=performance.now();
+function frame3d(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=place.y+guide.layer+0.001;
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=buildBottom+(buildTop-buildBottom)*(1-Math.pow(1-p,3)); }
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=true;
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); } else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"&&a.mesh.parent) a.mesh.parent.remove(a.mesh); anims.splice(i,1); } }
+  renderer.render(scene,camera); requestAnimationFrame(frame3d);
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0, place={x:0,y:0,z:0};
+const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+place.x+0.5,y+place.y+0.5,z+place.z]; };
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+const showsKey=k=>state.glass||k!=="glass";
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)||!showsKey(k)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), g=groups.qc=new THREE.Group();
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); mesh.setMatrixAt(i,m4); });
+    if(k==="glass") mesh.renderOrder=1; g.add(mesh); }
+  root.add(g);
+}
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(map,force){
+  if(!renderer) return;
+  const {L,W,H}=dims(), shape=`${L}|${W}|${H}`;
+  place={x:-L/2, y:-H/2, z:-W/2+0.5}; clearSwaps();
+  if(force||!shownMap||shape!==shownShape){ buildInstanced(map);
+    if(!force||shape!==shownShape){ buildBottom=-H/2-0.5; buildTop=H/2+0.6; buildStart=performance.now();
+      // re-frame the camera; jump there on first load
+      orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; if(!shownShape){ orbit.radius=orbit.goal.r; orbit.goal=null; } }
+    shownMap=map; shownShape=shape; return; }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ if(showsKey(k)) removed.push([key,k]); if(nk&&showsKey(nk)) added.push([key,nk]); } }
+  shownMap=map; if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>1500){ buildInstanced(map); return; }
+  buildInstanced(map,new Set(added.map(a=>a[0])));
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now();
+  const mk=(k,key)=>{ const m=new THREE.Mesh(CUBE(),mat(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); return m; };
+  for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y}); }
+  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
+  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y}); }
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+
+/* ================= UI ================= */
+let R=null;
+function buildBlockList(){
+  const out=$("blist");
+  const row=(k,sub,fixed)=>{ const t=TYPES[k], r=document.createElement("div"); r.className="brow";
+    const img=document.createElement("img"); img.src=swatch(k); img.alt="";
+    const lab=document.createElement("label"); lab.textContent=t.short; const sm=document.createElement("small"); sm.id="sub-"+k; sm.textContent=sub; lab.append(sm);
+    if(fixed){ const f=document.createElement("span"); f.className="fixed"; f.textContent=fixed; r.append(img,lab,f); out.append(r); return; }
+    lab.htmlFor="n-"+k;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.min="0"; i.step="1"; i.id="n-"+k;
+    i.onchange=()=>{ state.n[k]=Math.max(0,Math.min(limit(k),1728,Math.round(+i.value||0))); if(state.shape==="lone") state.shape="auto"; update(); };
+    r.append(img,lab,i); out.append(r); };
+  row("core","","1");
+  for(const k of ["de","mt","s256","s128","acc"]) row(k,"");
+}
+function blockSubs(){
+  $("sub-core").textContent=`256M bytes · ${cfg.threads} threads · exactly one`;
+  $("sub-de").textContent=`storage ×${cfg.deMult} · at most ${cfg.maxDE}`;
+  $("sub-mt").textContent=`threads ×${cfg.mtMult} · at most ${cfg.maxMT}`;
+  $("sub-s256").textContent="256M bytes"; $("sub-s128").textContent="128M bytes";
+  $("sub-acc").textContent=`${cfg.threads} threads`;
+}
+function syncInputs(){
+  for(const k of COUNTED){ const i=$("n-"+k); i.max=String(limit(k)===Infinity?1728:limit(k)); if(document.activeElement!==i) i.value=state.n[k]; }
+  $("fUnit").setAttribute("aria-pressed",state.fill==="unit"); $("fAcc").setAttribute("aria-pressed",state.fill==="acc");
+  for(const [id,s] of [["sAuto","auto"],["sFixed","fixed"],["sLone","lone"]]) $(id).setAttribute("aria-pressed",state.shape===s);
+  $("sizeRows").hidden=state.shape==="lone";
+  for(const id of ["L","W","H"]){ for(const el of [$(id),$(id+"N")]) el.max=String(cfg.maxSize); $(id).value=state[id]; $(id+"N").value=state[id]; }
+  $("shapeHint").textContent=state.shape==="auto"?"The smallest box whose inside holds your blocks. Move a slider to set the size yourself."
+    :state.shape==="fixed"?`3 to ${cfg.maxSize} blocks each way (quantumComputerMaxSize). Spare space inside fills with the block chosen above; blocks that don't fit are left out.`
+    :"Just the core, with no other Quantum Computer block touching it. The blocks above are ignored.";
+}
+function renderResults(){
+  const lone=state.shape==="lone", {L,W,H}=dims(), fillName=state.fill==="unit"?"Crafting Units":"Accelerators";
+  $("hudMain").innerHTML=`${short(R.bytes)} <small>bytes</small>`;
+  $("hudSub").textContent=`${lone?"lone core":`${L}×${W}×${H}`} · ${fmt(R.threads)} co-processors · ${fmt(R.v)} block${R.v===1?"":"s"}`;
+  const cells=[
+    ["Crafting storage",`${short(R.bytes)} <small>bytes · ${fmt(R.bytes)}</small>`,"hero"],
+    ["Co-processors",`${fmt(R.threads)} <small>threads, for every job</small>`],
+    ["Patterns sent",`${fmt(R.pushes)} <small>per second per job, at most</small>`],
+    ["Jobs at once",`any <small>while their bytes fit</small>`],
+    ["Size",lone?`1 <small>block, the core alone</small>`:`${L}×${W}×${H} <small>${fmt(R.v)} blocks</small>`],
+    ["Spare space",lone?`— <small>none</small>`:`${fmt(R.spare)} <small>${fillName}</small>`],
+    ["Idle power",`${fmt(R.idleAE)} <small>AE/t · ${fmt(R.idleAE*2)} FE/t</small>`],
+    ["Channels",`1 <small>for the whole computer</small>`],
+  ];
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(cfgPreset==="default") n.push(["warn","Mod defaults. ATM10, ATM10: Aeronautics and All the Mons give 12 threads a block and ×6 multipliers, so pick your pack under Server config."]);
+  if(R.overflow>0) n.push(["bad",lone?"A lone core can't hold other blocks. Pick Smallest box to use them."
+    :`${fmt(R.overflow)} of your blocks don't fit inside ${L}×${W}×${H}, which holds ${fmt((L-2)*(W-2)*(H-2))}, and are left out.${inside()>MAXI()?` The biggest, ${cfg.maxSize}×${cfg.maxSize}×${cfg.maxSize}, holds ${fmt(MAXI())}.`:" Make it bigger or pick Smallest box."}`]);
+  if(lone) n.push(["good","A formed core only takes cables from above or below, and needs nothing touching its other sides that belongs to another Quantum Computer."]);
+  else if(inside()===1&&!R.spare) n.push(["good",`This is just the core inside glass. A lone core gives the same ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors for 1 AE/t instead of ${fmt(R.idleAE)}, and needs no glass.`]);
+  if(!lone&&state.fill==="unit"&&R.spare>0) n.push(["good",`${fmt(R.spare)} spare space${R.spare>1?"s are":" is"} filled with Quantum Crafting Units. Fill with Accelerators and they add ${fmt(R.spare*cfg.threads*((R.c.mt||0)?(R.c.mt)*cfg.mtMult:1))} threads instead.`]);
+  if(!lone) n.push(["good","Leave a one-block gap to other Quantum Computers: two that touch face to face both fail, they don't merge. An AE2 crafting CPU may touch it."]);
+  n.push(["good","Jobs go to a Quantum Computer with room before any AE2 CPU, and several jobs can run on it at once, each with all the threads."]);
+  if(R.threads>=24) n.push(["warn",`${fmt(R.pushes)} patterns a second per job only happens if pattern providers and machines are free to take them. Past that, threads wait.`]);
+  // the same in AE2 crafting CPUs, with MEGA Cells' biggest blocks
+  const ae2=Math.ceil(R.bytes/(256*M))+Math.ceil(R.threads/4);
+  n.push(["good",`In AE2 crafting CPUs that's ${fmt(Math.ceil(R.bytes/(256*M)))} MEGA 256M storage and ${fmt(Math.ceil(R.threads/4))} MEGA accelerators, ${fmt(ae2)} blocks${ae2>4913?", more than the biggest AE2 CPU (17×17×17) holds":""}, and an AE2 CPU runs one job at a time.`]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}"><span>${t}</span></li>`).join("");
+  const m=materials(R.c), list=rows=>`<ul class="parts">${rows.map(([k,v])=>`<li><span>${k}</span><span class="n">${fmt(v)}</span></li>`).join("")}</ul>`;
+  $("mParts").innerHTML=`<h3>Blocks</h3>${partsList(R.c)}`;
+  $("mRaw").innerHTML=`<h3>Made from</h3>${list(m.raw)}`;
+  $("mHint").textContent=`From the ExtendedAE versions of the recipes, which every ATM pack uses. ${m.shattered?`The ${fmt(m.shattered)} Shattered Singularities take ${fmt(Math.ceil(m.shattered/2))} Reaction Chamber crafts (two each), each using one more Singularity. `:""}Structural Glass takes 4 Quartz Glass and 4 Sky Stone Blocks and makes one.`;
+}
+/* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
+const partsList=c=>`<ul class="parts">${ORDER.filter(k=>c[k]).map(k=>`<li><img src="${swatch(k)}" alt=""><span>${TYPES[k].name}</span><span class="n">${fmt(c[k])}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const top=dims().H; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  $("gSteps").innerHTML=state.shape==="lone"
+    ?"<li>Place the <b>Quantum Computer Core</b> on its own. No other Quantum Computer block may touch any of its sides.</li><li>Run a cable to its <b>top or bottom</b>: a formed core takes cables there only. It uses one channel.</li>"
+    :`<li>Build the outside, every face, edge and corner, from <b>Structural Glass</b> only.</li><li>Fill the inside completely: exactly <b>one core</b>, at most ${cfg.maxDE} Data Entangler${cfg.maxDE>1?"s":""} and ${cfg.maxMT} Multi-Threader${cfg.maxMT>1?"s":""}, and any mix of storage, accelerators and Quantum Crafting Units. <b>No air</b>. Where each goes inside doesn't matter.</li><li>Keep a one-block gap to other Quantum Computers. AE2 crafting CPUs may touch it.</li><li>Run a cable to any glass block. The whole computer uses one channel.</li>`;
+  if(!guide.on) return;
+  const n=guide.layer, where=top===1?"the only layer":n===1?"bottom":n===top?"top":`layer ${n} of ${top}`;
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(R.map,n))}`;
+  $("gParts").innerHTML=`<h3>Whole computer</h3>${partsList(R.c)}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
+/* schematic export (/data/schematic.js gzips and downloads it). No Quantum Computer block has a facing. */
+function buildStructure(){
+  const {L,W,H}=dims(), palette=[], pidx={}, blocks=[];
+  const pal=k=>pidx[k]??(pidx[k]=palette.push({Name:TYPES[k].id})-1);
+  for(let y=0;y<H;y++)for(let x=0;x<L;x++)for(let z=0;z<W;z++) blocks.push({pos:[x,y,z],state:pal(R.map.get(`${x},${y},${z}`))});
+  return {DataVersion:3955,size:[L,H,W],palette,blocks,entities:[]};
+}
+function renderExport(){
+  $("xGo").disabled=!mdSchematic.canGzip;
+  if(!mdSchematic.canGzip){ $("xHint").textContent="This browser can't compress files. Try a current Chrome, Firefox, Edge or Safari."; return; }
+  const {L,W,H}=dims();
+  $("xHint").textContent=state.shape==="lone"?"Contains the lone core: one block.":`Contains the ${L}×${W}×${H} Quantum Computer: ${fmt(R.v)} blocks, ${fmt(R.c.glass||0)} of them Structural Glass.`;
+}
+$("xGo").onclick=()=>{ const {L,W,H}=dims();
+  mdSchematic.download(buildStructure(),`advanced-ae-quantum-computer-${state.shape==="lone"?"core":`${L}x${W}x${H}`}-${short(R.bytes)}.nbt`)
+    .catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; }); };
+
+/* ================= config UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  const same=cfgPreset!=="default"&&CFG_FIELDS.every(([k])=>cfg[k]===DEFAULTS[k]);
+  $("cfgHint").innerHTML=`<b>${cfg.threads}</b> threads a block · multi-threader <b>×${cfg.mtMult}</b> · entangler <b>×${cfg.deMult}</b> · up to <b>${cfg.maxSize}</b> a side${same?" · same as the mod defaults":""}`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,key] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=key;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="1"; [i.min,i.max]=CFG_RANGE[k].map(String);
+    i.onchange=()=>{ const v=Math.round(+i.value), [a,b]=CFG_RANGE[k]; if(!(v>=a&&v<=b)){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("aae-qc-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+
+/* design code (mdq1): mdq1.shape.L.W.H.fill.de.mt.s256.s128.acc
+   shape is a (smallest box), f (fixed L×W×H) or l (lone core); fill is u (Quantum Crafting Units) or a (Accelerators);
+   the rest are block counts as the user set them. The pack preset travels next to it in the link (#atm10&d=...). */
+const SHAPES={a:"auto",f:"fixed",l:"lone"};
+function encodeDesign(){ return ["mdq1",state.shape[0],state.L,state.W,state.H,state.fill==="unit"?"u":"a",...COUNTED.map(k=>state.n[k])].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==6+COUNTED.length||p[0]!=="mdq1"||!SHAPES[p[1]]||!/^[ua]$/.test(p[5])) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={shape:SHAPES[p[1]],L:int(2,3,12),W:int(3,3,12),H:int(4,3,12),fill:p[5]==="u"?"unit":"acc",n:{}};
+  COUNTED.forEach((k,i)=>{ d.n[k]=int(6+i,0,1728); });
+  return [d.L,d.W,d.H,...Object.values(d.n)].some(v=>Number.isNaN(v))?null:d;
+}
+const share=mdShare({prefix:"mdq1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d,{n:{...zero(),...d.n}}); update(); }, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
+function update(){
+  for(const k of ["de","mt"]) state.n[k]=Math.min(state.n[k],limit(k));
+  if(state.shape==="auto"){ const b=fitBox(Math.min(inside(),MAXI()))||{L:cfg.maxSize,W:cfg.maxSize,H:cfg.maxSize}; Object.assign(state,{L:b.L,W:b.W,H:b.H}); }
+  for(const id of ["L","W","H"]) state[id]=clampI(state[id],3,cfg.maxSize);
+  R=model();
+  renderCfg(); blockSubs(); syncInputs(); renderResults(); rebuild3D(R.map); renderGuide(); renderExport(); share.render();
+}
+
+/* wiring */
+buildBlockList();
+$("fUnit").onclick=()=>{ state.fill="unit"; update(); }; $("fAcc").onclick=()=>{ state.fill="acc"; update(); };
+$("sAuto").onclick=()=>{ state.shape="auto"; update(); }; $("sFixed").onclick=()=>{ state.shape="fixed"; update(); }; $("sLone").onclick=()=>{ state.shape="lone"; update(); };
+for(const id of ["L","W","H"]){ const f=v=>{ state[id]=+v; state.shape="fixed"; update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); }
+$("aGo").onclick=plan; for(const id of ["aBytes","aThreads"]) $(id).onkeydown=e=>{ if(e.key==="Enter") plan(); };
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("tGlass").onclick=()=>{ state.glass=!state.glass; $("tGlass").setAttribute("aria-pressed",state.glass); if(R) rebuild3D(R.map,true); };
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+
+// start: what the planner's default inputs (4G bytes, 256 co-processors, 256M storage) give with the current config;
+// a design in the link replaces it
+initGL();
+if(share.atLoad.design){ const d=share.atLoad.design; Object.assign(state,d,{n:{...zero(),...d.n}}); update(); } else plan();
+share.live();
+})();
+</script>
+</body>
+</html>

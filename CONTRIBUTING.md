@@ -77,6 +77,20 @@ Defaults are for Ryzer Gen 0.1.2-alpha (MC 1.21.1).
 | `water.pump_rate` | 100 |
 | `cables.energy_rate` | 1000 |
 
+### Advanced AE: `config/advanced_ae-common.toml`
+
+Defaults are for Advanced AE 1.6.12 (MC 1.21.1). The section name has a space, so keys are written
+`"quantum computer.<key>"`.
+
+| Key | Default |
+|---|---|
+| `quantum computer.quantumComputerMaxSize` | 7 |
+| `quantum computer.quantumComputerAcceleratorThreads` | 8 |
+| `quantum computer.quantumComputerMaxMultiThreaders` | 1 |
+| `quantum computer.quantumComputermaxDataEntanglers` | 1 |
+| `quantum computer.quantumComputerMultiThreaderMultiplication` | 4 |
+| `quantum computer.quantumComputerDataEntanglerMultiplication` | 4 |
+
 ## Changing a calculator
 
 Each calculator is one self-contained file: `site/tools/<mod>/<tool>/index.html`. There's no build step.
