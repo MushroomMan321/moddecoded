@@ -6,6 +6,7 @@
 //   extremereactors -> config/extremereactors/common.toml
 //   mekanism        -> config/Mekanism/generators.toml (general.*, boiler.* and dynamic_tank.* keys: config/Mekanism/general.toml)
 //   ryzergen        -> config/ryzergen-common.toml
+//   advanced_ae     -> config/advanced_ae-common.toml (its section is "quantum computer", with the space)
 // The keys each calculator reads are listed in its "Edit values" panel and in CONTRIBUTING.md.
 //
 //   id      URL-safe slug. It is also the deep link: /tools/.../turbine-calculator/#<id>
@@ -24,6 +25,9 @@ window.MD_PACKS = [
       mekanism: { config: {
         "fission_reactor.energyPerFissionFuel": 250000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400 } },
+      advanced_ae: { config: {
+        "quantum computer.quantumComputerAcceleratorThreads": 12, "quantum computer.quantumComputerMultiThreaderMultiplication": 6,
+        "quantum computer.quantumComputerDataEntanglerMultiplication": 6 } },
     },
   },
   {
@@ -38,6 +42,9 @@ window.MD_PACKS = [
       mekanism: { config: {
         "fission_reactor.energyPerFissionFuel": 8000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400 } },
+      advanced_ae: { config: {
+        "quantum computer.quantumComputerAcceleratorThreads": 12, "quantum computer.quantumComputerMultiThreaderMultiplication": 6,
+        "quantum computer.quantumComputerDataEntanglerMultiplication": 6 } },
     },
   },
   {
@@ -50,6 +57,7 @@ window.MD_PACKS = [
       mekanism: { config: {
         "fission_reactor.energyPerFissionFuel": 2800000, "fission_reactor.casingHeatCapacity": 4000,
         "fission_reactor.surfaceAreaTarget": 1.8, "turbine.ventChemicalFlow": 43478.262, "turbine.condenserRate": 128000 } },
+      advanced_ae: { config: {}, note: "mod defaults" },
     },
   },
   {
@@ -62,6 +70,9 @@ window.MD_PACKS = [
       mekanism: { config: {
         "fission_reactor.energyPerFissionFuel": 250000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400 } },
+      advanced_ae: { config: {
+        "quantum computer.quantumComputerAcceleratorThreads": 12, "quantum computer.quantumComputerMultiThreaderMultiplication": 6,
+        "quantum computer.quantumComputerDataEntanglerMultiplication": 6 } },
     },
   },
   {
@@ -69,6 +80,7 @@ window.MD_PACKS = [
     source: { repo: "https://github.com/AllTheMods/ATM-10-L", commit: "6186086", checked: "2026-09-25" },
     mods: {
       mekanism: { config: {}, note: "mod defaults" },
+      advanced_ae: { config: {}, note: "mod defaults" },
     },
   },
   {
