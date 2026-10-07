@@ -11,6 +11,7 @@ your server.
 | [Extreme Reactors turbine](https://moddecoded.com/tools/extreme-reactors/turbine-calculator/) | 2.4.28 (MC 1.21.1) |
 | [Extreme Reactors reactor](https://moddecoded.com/tools/extreme-reactors/reactor-calculator/) | 2.4.28 (MC 1.21.1) |
 | [Mekanism fission reactor + turbine](https://moddecoded.com/tools/mekanism/fission-reactor-calculator/) | 10.7.19 (MC 1.21.1) |
+| [Mekanism fusion reactor + turbine](https://moddecoded.com/tools/mekanism/fusion-reactor-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Mekanism dynamic tank](https://moddecoded.com/tools/mekanism/dynamic-tank-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Create Aeronautics airship](https://moddecoded.com/tools/create-aeronautics/airship-calculator/) | 1.3.2 |
 | [Ryzer Gen fission station](https://moddecoded.com/tools/ryzer-gen/fission-station-calculator/) | 0.1.2-alpha (MC 1.21.1) |

@@ -28,6 +28,8 @@ TOOLS = {
     "turbine": "/tools/extreme-reactors/turbine-calculator/",
     "reactor": "/tools/extreme-reactors/reactor-calculator/",
     "fission": "/tools/mekanism/fission-reactor-calculator/",
+    # air-cooled, so the card shows the reactor and its lasers rather than a turbine three times its size
+    "fusion": "/tools/mekanism/fusion-reactor-calculator/#d=mdz1.a.98.5.17.17.18.14.28.4.345.0",
     "tank": "/tools/mekanism/dynamic-tank-calculator/",
     "airship": "/tools/create-aeronautics/airship-calculator/",
     "cpu": "/tools/applied-energistics-2/crafting-cpu-calculator/",
