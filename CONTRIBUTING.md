@@ -47,7 +47,7 @@ Keys are written `section.key`, exactly as they appear in the .toml file.
 ### Mekanism: `config/Mekanism/generators.toml` (and `general.toml`)
 
 Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some different key names
-(`turbineBladesPerCoil`, `turbineVentGasFlow`, `gasPerTank`); write them under the 10.7 names below.
+(`turbineBladesPerCoil`, `turbineVentGasFlow`, `gasPerTank`, `energyPerFusionFuel`); write them under the 10.7 names below.
 
 | Key | File | Default |
 |---|---|---|
@@ -55,6 +55,10 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `fission_reactor.casingHeatCapacity` | generators.toml | 1000 |
 | `fission_reactor.surfaceAreaTarget` | generators.toml | 4 |
 | `fission_reactor.burnPerAssembly` | generators.toml | 1 |
+| `fusion_reactor.fuelEnergy` | generators.toml | 10000000 |
+| `fusion_reactor.thermocoupleEfficiency` | generators.toml | 0.05 |
+| `fusion_reactor.casingThermalConductivity` | generators.toml | 0.1 |
+| `fusion_reactor.waterHeatingRatio` | generators.toml | 0.3 |
 | `turbine.bladesPerCoil` | generators.toml | 4 |
 | `turbine.ventChemicalFlow` | generators.toml | 32000 |
 | `turbine.disperserChemicalFlow` | generators.toml | 1280 |

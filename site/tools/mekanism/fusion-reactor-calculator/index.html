@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/mekanism/fusion-reactor-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Mekanism Fusion Reactor Calculator</title>
+<meta name="description" content="Mekanism fusion reactor calculator: FE/t, steam, turbines needed, plasma and case temperature, lowest stable injection rate and the 400M FE laser shot that ignites it, from the Mekanism 10.7.19 source code, with config presets for ATM10 and other All the Mods packs.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.viewbar .grp{display:flex}
+.viewbar .grp button{border-radius:0}.viewbar .grp button:first-child{border-radius:4px 0 0 4px}.viewbar .grp button:last-child{border-radius:0 4px 4px 0}
+.viewbar .grp button+button{border-left:0}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide-cols h3{font-size:14px;margin:0 0 6px}
+.guide-cols h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{font:600 13px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;max-width:100%}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.chart{width:100%;height:170px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px var(--font-mono);color:var(--muted);margin-top:-4px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Mekanism / Fusion Reactor Calculator</nav>
+  <header class="top">
+    <h1>Mekanism <span class="y">Fusion Reactor Calculator</span></h1>
+    <span class="src">Formulas from the Mekanism 1.21.1-10.7.19.85 source</span>
+  </header>
+  <p class="lede">Pick air or water cooling and an injection rate, and see the power, steam, plasma and case temperature, how many industrial turbines the steam needs, and the laser shot that lights it. Every number comes from Mekanism's <b>FusionReactorMultiblockData</b> and <b>TurbineMultiblockData</b>.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the fusion reactor with its laser rig, and one industrial turbine when water-cooled"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
+        <div class="viewbar">
+          <div class="grp" role="group" aria-label="Camera focus" id="focusGrp">
+            <button id="fr" type="button" aria-pressed="true">Reactor</button>
+            <button id="ft" type="button" aria-pressed="false">Turbine</button>
+            <button id="fb" type="button" aria-pressed="false">Both</button>
+          </div>
+          <button id="tCasing" aria-pressed="true" type="button">Casing</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on. Anything shown as glass can be frame instead.</p>
+        <div class="guide-cols" id="gLayer"></div>
+        <details open><summary>Full parts list</summary><div class="guide-cols" id="gParts"></div></details>
+        <details open><summary>How it goes together</summary>
+          <div class="guide-cols">
+            <div><h3>Fusion reactor</h3><ol>
+              <li>It is always 5×5×5 with the corners and edges cut away. On each face, the ring of 8 around the middle plus must be <b>Fusion Reactor Frame</b>. The middle plus of 5 can be frame, <b>Reactor Glass</b>, ports, a logic adapter or the laser focus matrix. The 3×3×3 inside stays air.</li>
+              <li>The <b>Fusion Reactor Controller</b> goes in the centre of the top face, and nowhere else.</li>
+              <li>Put a <b>Laser Focus Matrix</b> where your laser can reach it, and at least two <b>Fusion Reactor Ports</b>. Sneak-right-click a port with a Configurator to switch it between input and output.</li>
+              <li>Pipe deuterium and tritium (or D-T fuel) into an input port, and water too if it's water-cooled. Power and steam leave through an output port.</li>
+            </ol></div>
+            <div><h3>Lighting it</h3><ol>
+              <li>Fill a <b>Hohlraum</b> with 10 mB of D-T fuel (a Chemical Infuser makes D-T fuel from deuterium and tritium) and put it in the controller.</li>
+              <li>Set the injection rate on the controller's Fuel tab.</li>
+              <li>Point a <b>Laser Amplifier</b> at the focus matrix and feed it with <b>Lasers</b>, one per side. Set its minimum threshold to <span class="ign">400M FE</span> so it fires everything in one shot.</li>
+              <li>When the amplifier fires, the plasma jumps to 100 million K, the hohlraum is used up and the reaction runs on its own. Keep out of the core while it burns.</li>
+            </ol></div>
+            <div id="guideTurbine"><h3>Industrial turbine</h3><ol>
+              <li>Edges are <b>Turbine Casing</b>. Faces can be casing, <b>Structural Glass</b>, <b>Turbine Valves</b> or <b>Turbine Vents</b>. Width and depth must be odd.</li>
+              <li>Stack <b>Turbine Rotors</b> up the center column from the floor, then right-click each rotor with <b>Turbine Blades</b> (two per rotor at most).</li>
+              <li>Put the <b>Rotational Complex</b> on top of the rotors and fill the rest of that layer, wall to wall, with <b>Pressure Dispersers</b>.</li>
+              <li>The first <b>Electromagnetic Coil</b> goes directly on top of the complex; every other coil must touch a coil. <b>Saturating Condensers</b> go anywhere above the dispersers.</li>
+              <li>Steam goes in and power comes out through the valves. With condensers, the vents output water you can pipe back to the reactor.</li>
+            </ol></div>
+          </div>
+        </details>
+      </div>
+      <div class="box" id="turbSize">
+        <h2>Turbine size</h2>
+        <div class="row"><label for="tL">Width</label><input type="range" id="tL" min="5" max="17" step="2"><input class="num" id="tLN" type="number" min="5" max="17" step="2" aria-label="Turbine width"></div>
+        <div class="row"><label for="tW">Depth</label><input type="range" id="tW" min="5" max="17" step="2"><input class="num" id="tWN" type="number" min="5" max="17" step="2" aria-label="Turbine depth"></div>
+        <div class="row"><label for="tH">Height</label><input type="range" id="tH" min="5" max="18"><input class="num" id="tHN" type="number" min="5" max="18" aria-label="Turbine height"></div>
+        <p class="hint">Width and depth must be odd, from 5 to 17. Height 5 to 18.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/Mekanism/generators.toml and general.toml</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Fusion reactor</h2>
+        <div class="seg" role="group" aria-label="Cooling">
+          <button type="button" id="cWater" aria-pressed="true">Water → steam → turbines</button>
+          <button type="button" id="cAir" aria-pressed="false">Air (thermocouples only)</button>
+        </div>
+        <div class="row"><label for="inj">Injection rate</label><input type="range" id="inj" min="2" max="98" step="2"><input class="num" id="injN" type="number" min="2" max="98" step="2" aria-label="Injection rate in mB of D-T fuel per tick"></div>
+        <div class="btns"><button class="btn" type="button" id="injMin">Set to lowest stable</button><button class="btn" type="button" id="injMax">Set to max (98)</button></div>
+        <p class="hint">The injection rate is how much D-T fuel it burns per tick: half deuterium, half tritium. The controller only takes even numbers up to 98.</p>
+        <div class="row"><label for="las">Lasers</label><input type="range" id="las" min="1" max="5"><input class="num" id="lasN" type="number" min="1" max="5" aria-label="Lasers feeding the amplifier"></div>
+        <p class="hint">Lasers charging the amplifier. A beam stops at the first block it hits, so each laser needs its own side of the amplifier: five per amplifier at most.</p>
+      </div>
+
+      <div class="sect" id="turbSect">
+        <h2>Industrial turbine</h2>
+        <div class="row"><label for="rot">Rotor height</label><input type="range" id="rot" min="1" max="14"><input class="num" id="rotN" type="number" min="1" max="14" aria-label="Rotor shaft blocks"></div>
+        <div class="row"><label for="bl">Blades</label><input type="range" id="bl" min="1" max="28"><input class="num" id="blN" type="number" min="1" max="28" aria-label="Turbine blades"></div>
+        <div class="row"><label for="co">Coils</label><input type="range" id="co" min="1" max="50"><input class="num" id="coN" type="number" min="1" aria-label="Electromagnetic coils"></div>
+        <div class="row"><label for="ve">Vents</label><input type="range" id="ve" min="1" max="100"><input class="num" id="veN" type="number" min="1" aria-label="Turbine vents"></div>
+        <div class="row"><label for="cn">Condensers</label><input type="range" id="cn" min="0" max="50"><input class="num" id="cnN" type="number" min="0" aria-label="Saturating condensers"></div>
+        <div class="btns"><button class="btn" type="button" id="tAuto">Best turbine for this size</button></div>
+        <p class="hint" id="turbHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <canvas class="chart" id="chart" aria-label="Power across injection rates, water-cooled and air-cooled"></canvas>
+        <div class="legend"><span><i style="background:var(--steam)"></i>water-cooled + turbines</span><span><i style="background:var(--heat)"></i>air-cooled</span></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">Steady state after warm-up, assuming pipes keep up with fuel, water, steam and power.</p>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor and turbine. Paste a design code above to load it.</p>
+      </div>
+      <div class="box" id="export">
+        <h2>Build it in Minecraft</h2>
+        <div class="row"><label for="xVer">Minecraft</label><select id="xVer" aria-label="Minecraft version"></select><span></span></div>
+        <div class="row"><label for="xWhat">Include</label><select id="xWhat"><option value="both">Reactor and turbine</option><option value="r">Reactor only</option><option value="t">Turbine only</option></select><span></span></div>
+        <div class="btns"><button class="btn" type="button" id="xGo">Download .nbt schematic</button></div>
+        <p class="hint" id="xHint"></p>
+        <p class="hint">Put the file in <code>.minecraft/schematics</code> to load it with Create's Schematic Table or Litematica, or in <code>saves/&lt;world&gt;/generated/minecraft/structures</code> to load it with a structure block. A survival Schematicannon may leave the rotors bare; if so, right-click each rotor with two turbine blades.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>It lights from one 400M FE shot, not a trickle</h3>
+        <p>Laser energy heats the cold plasma by energy ÷ 10 K, and burning starts at 100 million K. The plasma also leaks 0.2% of its lead over the case every tick, so a steady beam levels off far below that. A Laser Amplifier has to release 1 GJ (400M FE) at once.</p>
+<pre>not burning: T += energy / 100 × 10
+burns when:  T ≥ 100,000,000 K
+needed ≈ 10 × (1e8 − 300) J = 1 GJ</pre>
+        <span class="ref">FusionReactorMultiblockData.addTemperatureFromEnergyInput</span>
+      </div>
+      <div class="fact">
+        <h3>Water cooling roughly triples the power</h3>
+        <p>All the fuel's heat leaves through the case. Water takes a <code>k/(k+c)</code> share as steam, worth 20% back through a turbine; the rest goes to the air, and thermocouples keep only 5% of that.</p>
+<pre>heat/t  = fuelEnergy × injection
+passive = 0.05 × c/(k+c) × heat
+steam   = 0.2 × k/(k+c) × heat / 10   mB/t</pre>
+        <span class="ref">FusionReactorMultiblockData.transferHeat</span>
+      </div>
+      <div class="fact">
+        <h3>It can't melt down</h3>
+        <p>There is no damage counter. Run out of water or back up the steam and that heat goes to the air instead, so the reactor just falls back toward its air-cooled output. The only danger is the core: anything inside the 3×3×3 takes 50,000 damage while it burns.</p>
+<pre>water short → caseWaterHeat = 0
+kill(): entity.hurt(FUSION, 50_000)</pre>
+        <span class="ref">FusionReactorMultiblockData.tick · kill</span>
+      </div>
+      <div class="fact">
+        <h3>Too low an injection rate and it goes out</h3>
+        <p>Each tick it burns the plasma's lead over 100 million K, capped by the fuel injected. If the plasma it settles at is under 100 million K plus the injection rate, burning stops. With mod defaults the lowest stable rate is 2.</p>
+<pre>burned = min(T − 1e8, fuel)
+plasma = case + 5 × heat/t</pre>
+        <span class="ref">burnFuel · getMinInjectionRate</span>
+      </div>
+      <div class="fact">
+        <h3>ATM10: Aeronautics can't keep it lit</h3>
+        <p>The pack sets <code>fuelEnergy</code> to 100,000, a hundredth of the default. Even at 98 mB/t the plasma settles around 78 million K, under the 100 million it needs, so the reaction dies soon after ignition.</p>
+<pre>lowest stable rate: 126 (air), 152 (water)
+max injection:      98</pre>
+        <span class="ref">ATM-10-a config/Mekanism/generators.toml</span>
+      </div>
+      <div class="fact">
+        <h3>Water cooling doesn't work at 2 mB/t</h3>
+        <p>The reactor's water and steam tanks are sized from the injection rate, but only when the rate changes. A reactor starts at 2 and is set back to 2 after every reload, so at 2 they hold nothing and it runs air-cooled. We saw this in-game: water piped in at 2 never entered. Use 4 or more.</p>
+<pre>maxWater = rate × waterPerInjection   // only in setInjectionRate,
+maxSteam = rate × steamPerInjection   // when the rate changes</pre>
+        <span class="ref">FusionReactorMultiblockData.setInjectionRate · FusionReactorCache.apply</span>
+      </div>
+      <div class="fact">
+        <h3>Full power takes a few minutes</h3>
+        <p>The case holds almost no heat, but the plasma holds 100 J per K, so the reactor warms with a time constant of 100 × (5 + 1/(k+c)) ticks: 75 s air-cooled and 37.5 s water-cooled with defaults, and about three of those to reach 95%.</p>
+<pre>τ = 100 × (5 + 1/(k + c)) ticks</pre>
+        <span class="ref">plasmaHeatCapacity 100 · caseHeatCapacity 1</span>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script src="/data/schematic.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=(v)=>!Number.isFinite(v)?"—":v===0?"0":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10?2:0);
+const mins=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"; };
+
+/* ================= config (generators.toml / general.toml) ================= */
+const DEFAULTS = {fuelEnergy:10000000, thermocoupleEfficiency:0.05, casingThermalConductivity:0.1, waterHeatingRatio:0.3,
+  bladesPerCoil:4, ventChemicalFlow:32000, disperserChemicalFlow:1280, condenserRate:64000, chemicalPerTank:64000, maxEnergyPerSteam:10, feConversionRate:2.5};
+const CFG_FIELDS=[["fuelEnergy","fusion_reactor.fuelEnergy"],["thermocoupleEfficiency","fusion_reactor.thermocoupleEfficiency"],["casingThermalConductivity","fusion_reactor.casingThermalConductivity"],["waterHeatingRatio","fusion_reactor.waterHeatingRatio"],
+  ["bladesPerCoil","turbine.bladesPerCoil"],["ventChemicalFlow","turbine.ventChemicalFlow"],["disperserChemicalFlow","turbine.disperserChemicalFlow"],["condenserRate","turbine.condenserRate"],["chemicalPerTank","turbine.chemicalPerTank"],
+  ["maxEnergyPerSteam","general.maxEnergyPerSteam"],["feConversionRate","general.feConversionRate"]];
+const ZERO_OK=new Set(["thermocoupleEfficiency","waterHeatingRatio"]);   // the mod allows 0 for these two
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("mekanism", DEFAULTS, CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("mek-fusion-cfg")||"null"); if(s&&mdPackPresets.legacy[s.preset]) s.preset=mdPackPresets.legacy[s.preset];
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+
+/* ================= state ================= */
+const state={cool:"water",inj:98,lasers:5,tL:17,tW:17,tH:18,rotor:14,blades:28,coils:4,vents:345,cond:0};
+const water=()=>state.cool==="water";
+
+/* ================= model (Mekanism 10.7.19.85, FusionReactorMultiblockData) ================= */
+const BURN_T=1e8, PLASMA_C=100, PLASMA_CASE=0.2, STEAM_EFF=0.2, AMB=300, MAX_INJ=98;
+const LASER_JT=10000;                      // usage.laser: J a Laser fires per tick
+const IGNITE_J=10*(BURN_T+3-AMB);          // one amplifier shot from cold plasma; +3 K so the first burns outrun the plasma's loss
+// lowest even injection rate whose steady plasma stays at or above 100 MK (getMinInjectionRate); Infinity if none
+function minInjection(k){ const c=cfg.casingThermalConductivity, E=cfg.fuelEnergy, d=E*(PLASMA_CASE+k+c)-PLASMA_CASE*(k+c);
+  return d>0?2*Math.ceil(BURN_T*PLASMA_CASE*(k+c)/d/2):Infinity; }
+// At injection rate 2 the reactor's water and steam tanks hold nothing: setInjectionRate only sizes them when the rate
+// changes, a reactor starts at 2, and FusionReactorCache re-applies 2 after every reload. So it runs air-cooled.
+// Seen in-game 2026-10-07: water piped in at 2 mB/t never entered and output stayed at the air-cooled figure.
+const NO_TANKS_RATE=2;
+// steady state at injection rate r: all of the fuel's heat leaves through the case
+function steady(r,isWater){ const blocked=isWater&&r===NO_TANKS_RATE, k=isWater&&!blocked?cfg.waterHeatingRatio:0, c=cfg.casingThermalConductivity, H=cfg.fuelEnergy*r;
+  const caseT=AMB+H/(k+c), plasmaT=caseT+H/PLASMA_CASE, minLit=minInjection(isWater?cfg.waterHeatingRatio:0), lit=r>=minInjection(k);
+  // lowest rate to suggest: stays lit, and for water cooling also above the tankless rate 2
+  const min=isWater?Math.max(NO_TANKS_RATE+2,minLit):minLit;
+  return {k,c,H,caseT,plasmaT,min,minLit,lit,blocked,
+    passiveJ: lit ? cfg.thermocoupleEfficiency*c*(caseT-AMB) : 0,
+    steam: lit ? STEAM_EFF*k*(caseT-AMB)/cfg.maxEnergyPerSteam : 0,
+    tau: PLASMA_C*(1/PLASMA_CASE+1/(k+c))}; }
+function reactorModel(){ const s=steady(state.inj,water());
+  return {...s, inj:state.inj, igniteFE:IGNITE_J/cfg.feConversionRate, chargeTicks:IGNITE_J/(LASER_JT*state.lasers), laserFE:LASER_JT*state.lasers/cfg.feConversionRate}; }
+function turbineLimits(){ const {tL,tW,tH}=state;
+  let maxRot=0; for(let r=1;r<=14;r++){ if(tH<r+4) break; if(Math.floor((Math.min(tL,tW)-3)/2)<Math.floor((r+2)/4)) break; maxRot=r; }
+  return {maxRot}; }
+function turbineModel(){
+  const {tL,tW,tH}=state, lim=turbineLimits(), rotor=Math.min(state.rotor,lim.maxRot);
+  const blades=Math.min(state.blades,2*rotor);
+  const aboveCells=(tL-2)*(tW-2)*(tH-3-rotor);               // interior layers above the rotational complex
+  const coils=Math.min(state.coils,Math.max(1,aboveCells)), cond=Math.min(state.cond,Math.max(0,aboveCells-coils));
+  const maxVents=(tL-2)*(tW-2)+2*((tL-2)+(tW-2))*(tH-2-rotor);
+  const vents=Math.min(state.vents,maxVents);
+  const dispersers=(tL-2)*(tW-2)-1, lowerVolume=tL*tW*rotor;
+  const mult=(cfg.maxEnergyPerSteam/28)*Math.min(blades,coils*cfg.bladesPerCoil);
+  const maxFlow=Math.min(lowerVolume*dispersers*cfg.disperserChemicalFlow, vents*cfg.ventChemicalFlow);
+  const steamCap=lowerVolume*cfg.chemicalPerTank;
+  const intake=Math.min(maxFlow,steamCap);                     // steady input it can actually swallow
+  return {rotor,blades,coils,cond,vents,maxVents,dispersers,lowerVolume,mult,maxFlow,steamCap,intake,aboveCells,maxRot:lim.maxRot,
+    water:Math.min(intake,cond*cfg.condenserRate), valid:lim.maxRot>=1};
+}
+
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plate(key,color,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b); }); }
+const T={
+  frame:()=>plate("frame","#3D4249",(g)=>{ g.fillStyle="#C9782E"; g.fillRect(2,2,12,1); g.fillRect(2,13,12,1); g.fillRect(2,2,1,12); g.fillRect(13,2,1,12); g.fillStyle="#262A2F"; g.fillRect(5,5,6,6); }),
+  glass:()=>tex("glass",g=>{ g.clearRect(0,0,16,16); g.fillStyle="rgba(170,205,225,0.9)"; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); }),
+  port:()=>plate("port","#3D4249",(g)=>{ g.fillStyle="#1A1E21"; g.fillRect(4,4,8,8); g.fillStyle="#3A7BD5"; g.fillRect(5,5,6,6); }),
+  controller:()=>plate("controller","#3D4249",(g)=>{ g.fillStyle="#101417"; g.fillRect(3,3,10,8); g.fillStyle="#4FD6C8"; g.fillRect(4,4,8,1); g.fillRect(4,6,5,1); g.fillRect(4,8,7,1); g.fillStyle="#C9782E"; g.fillRect(3,12,10,1); }),
+  matrix:()=>plate("matrix","#3D4249",(g)=>{ g.fillStyle="#5A1E2A"; g.fillRect(3,3,10,10); g.fillStyle="#E8455F"; g.fillRect(5,5,6,6); g.fillStyle="#FFB3C0"; g.fillRect(7,7,2,2); }),
+  amp:()=>plate("amp","#8A9099",(g)=>{ g.fillStyle="#2A2E33"; g.fillRect(3,3,10,10); g.fillStyle="#D63A3A"; g.fillRect(5,5,6,6); g.fillStyle="#FF9A9A"; g.fillRect(7,7,2,2); }),
+  laser:()=>plate("laser","#9AA0A8",(g)=>{ g.fillStyle="#2A2E33"; g.fillRect(5,5,6,6); g.fillStyle="#E04040"; g.fillRect(6,6,4,4); }),
+  tcasing:()=>plate("tcasing","#6B6F76",(g)=>{ g.fillStyle="#3A3E44"; g.fillRect(3,7,10,2); }),
+  valve:()=>plate("valve","#6B6F76",(g)=>{ g.fillStyle="#1A1E21"; g.fillRect(4,4,8,8); g.fillStyle="#E9EEF2"; g.fillRect(5,5,6,6); g.fillStyle="#3A7BD5"; g.fillRect(7,7,2,2); }),
+  shaft:()=>plate("shaft","#B8C0C8"),
+  blade:()=>plate("blade","#D8DEE3"),
+  complex:()=>plate("complex","#2E3338",(g)=>{ g.fillStyle="#E2D03A"; g.fillRect(5,5,6,6); }),
+  disperser:()=>plate("disperser","#7A8088",(g)=>{ g.fillStyle="#2A2E33"; for(let i=2;i<14;i+=3) g.fillRect(i,2,1,12); }),
+  coil:()=>plate("coil","#C0703A",(g)=>{ g.fillStyle="#7A3E18"; for(let i=1;i<16;i+=3) g.fillRect(0,i,16,1); }),
+  condenser:()=>plate("condenser","#4F7FB0",(g)=>{ g.fillStyle="#A8C8E8"; g.fillRect(3,3,10,10); }),
+  vent:()=>plate("vent","#6B6F76",(g)=>{ g.fillStyle="#22262A"; for(let i=3;i<14;i+=3) g.fillRect(3,i,10,1); }),
+};
+
+/* ================= three.js: diffed block maps ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, groups={}, buildStart=0, buildTop=0, buildBottom=0, casingOn=true, plasma=null, beam=null;
+const matCache={}, anims=[];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  return matCache[k]=new THREE.MeshLambertMaterial(k==="glass"?{map:t,transparent:true,opacity:0.5,depthWrite:false,clippingPlanes:[clip]}:{map:t,clippingPlanes:[clip]}); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  // the burning plasma in the 3x3x3 core, and the amplifier's beam into the focus matrix (not blocks)
+  plasma=new THREE.Group();
+  plasma.add(new THREE.Mesh(new THREE.SphereGeometry(0.75,24,16),new THREE.MeshBasicMaterial({color:0xFFE2B0,clippingPlanes:[clip]})));
+  plasma.add(new THREE.Mesh(new THREE.SphereGeometry(1.2,24,16),new THREE.MeshBasicMaterial({color:0xFF5A8C,transparent:true,opacity:0.45,depthWrite:false,clippingPlanes:[clip]})));
+  root.add(plasma);
+  beam=new THREE.Mesh(new THREE.BoxGeometry(0.12,0.12,1),new THREE.MeshBasicMaterial({color:0xFF4A4A,transparent:true,opacity:0.55,clippingPlanes:[clip]})); root.add(beam);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms.
+// focus "r" / "t" / "both" frames one machine or both; panning drops the focus. goal eases the camera to a new framing.
+const orbit={theta:0.5,phi:1.12,radius:40,target:{x:0,y:0,z:0},focus:"r",goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(200,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(200,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } setFocus(null); }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+// The reactor part is 5 wide, 8 deep (the laser rig sits in front of it) and 5 tall.
+const RL=5, RW=8, RH=5;
+// where to look and how far back to stand to frame the reactor, the turbine or both (matches layoutOffsets)
+function framing(f){ const {tL,tW,tH}=state;
+  if(f==="r"||!water()) return {x:place.r.x+RL/2, y:place.r.y+RH/2, z:0, r:RW*1.5+4};
+  if(f==="t") return {x:place.t.x+tL/2, y:place.t.y+tH/2, z:0, r:Math.max(tL,tW,tH)*2.1+5};
+  return {x:0, y:0, z:0, r:(RL+tL+3)*1.45+Math.max(RH,tH)*0.9+6}; }
+function setFocus(f,go){ orbit.focus=f; for(const [id,k] of [["fr","r"],["ft","t"],["fb","both"]]) $(id).setAttribute("aria-pressed",f===k);
+  if(f&&go) orbit.goal={...framing(f),...(guide.on?{phi:0.8}:{})}; }
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=place.r.y+guide.layer+0.001;
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=buildBottom+(buildTop-buildBottom)*(1-Math.pow(1-p,3)); }
+  if(plasma.visible&&!reduce){ const s=1+0.06*Math.sin(t/180)+0.03*Math.sin(t/67); plasma.children[1].scale.setScalar(s); }
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=a.show();
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); } else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"&&a.mesh.parent) a.mesh.parent.remove(a.mesh); anims.splice(i,1); } }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+const SHELL=new Set(["frame","glass","port","controller","matrix","tcasing","valve","vent"]);
+// FusionReactorValidator.ALLOWED_GRID, read across each face: 0 anything, 1 frame, 2 frame or another reactor block
+const GRID=[[0,0,1,0,0],[0,1,2,1,0],[1,2,2,2,1],[0,1,2,1,0],[0,0,1,0,0]];
+function reactorCell(x,y,z){ const e=v=>v===0||v===4; if(!(e(x)||e(y)||e(z))) return 0;
+  const [a,b]=e(x)?[z,y]:e(z)?[x,y]:[x,z]; return GRID[a][b]; }
+// Laser rig in front (+z) of the reactor: the amplifier one block out from the focus matrix, lasers on its other five sides.
+// facing is the direction each one fires (Minecraft: north = -z).
+const AMP=[2,2,6], LASERS=[[2,2,7,"north"],[1,2,6,"east"],[3,2,6,"west"],[2,3,6,"down"],[2,1,6,"up"]];
+const FIXED={"2,4,2":"controller","2,2,4":"matrix","0,2,2":"port","4,2,2":"port"};
+function blockMap(R,Tb){
+  const map=new Map();
+  for(let y=0;y<5;y++)for(let x=0;x<5;x++)for(let z=0;z<5;z++){ const g=reactorCell(x,y,z); if(!g) continue;
+    map.set(`r${x},${y},${z}`, g===1?"frame":FIXED[`${x},${y},${z}`]||"glass"); }
+  map.set(`r${AMP.join(",")}`,"amp");
+  for(const [x,y,z] of LASERS.slice(0,state.lasers)) map.set(`r${x},${y},${z}`,"laser");
+  // turbine, placed beside the reactor
+  if(water()&&Tb.valid){
+    const {tL,tW,tH}=state, cx=(tL-1)/2, cz=(tW-1)/2, cy=Tb.rotor+1;
+    let ventsLeft=Tb.vents;
+    const topCells=[], sideCells=[];
+    for(let y=0;y<tH;y++)for(let x=0;x<tL;x++)for(let z=0;z<tW;z++){
+      const bx=x===0||x===tL-1, by=y===0||y===tH-1, bz=z===0||z===tW-1, n=bx+by+bz; if(!n) continue;
+      const key=`t${x},${y},${z}`; map.set(key,n>=2?"tcasing":"glass");
+      // turbine valves (steam in, power out) on the bottom wall layer of the camera-facing side
+      if(n===1&&y===1&&z===tW-1&&(x===Math.max(1,cx-2)||x===Math.min(tL-2,cx+2))) { map.set(key,"valve"); continue; }
+      if(n===1&&y===tH-1) topCells.push(key); else if(n===1&&y>=cy&&y<tH-1) sideCells.push(key);
+    }
+    for(const key of [...topCells,...sideCells]){ if(ventsLeft<=0) break; map.set(key,"vent"); ventsLeft--; }
+    for(let y=1;y<=Tb.rotor;y++){ map.set(`t${cx},${y},${cz}`,"shaft"); }
+    let b=Tb.blades; for(let y=1;y<=Tb.rotor&&b>0;y++){ for(const [dx,dz] of [[1,0],[-1,0]]){ if(b<=0) break; map.set(`t${cx+dx},${y},${cz+dz}`,"blade"); b--; } }
+    for(let x=1;x<tL-1;x++)for(let z=1;z<tW-1;z++) map.set(`t${x},${cy},${z}`, x===cx&&z===cz?"complex":"disperser");
+    // coils grow from the block above the complex outward; condensers fill after
+    const cells=[]; for(let y=cy+1;y<tH-1;y++)for(let x=1;x<tL-1;x++)for(let z=1;z<tW-1;z++) cells.push([x,y,z,Math.abs(x-cx)+Math.abs(z-cz)+(y-cy-1)*100]);
+    cells.sort((a,b)=>a[3]-b[3]);
+    let i=0; for(;i<Math.min(Tb.coils,cells.length);i++){ const [x,y,z]=cells[i]; map.set(`t${x},${y},${z}`,"coil"); }
+    for(let j=0;j<Tb.cond&&i<cells.length;j++,i++){ const [x,y,z]=cells[i]; map.set(`t${x},${y},${z}`,"condenser"); }
+  }
+  return map;
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0, place={};
+// turbine on the left, reactor on the right, so the default camera (front right) sees the reactor first
+function layoutOffsets(){ const {tL,tW,tH}=state, gap=3, wt=water(), total=wt?RL+gap+tL:RL, hh=wt?Math.max(RH,tH):RH;
+  place={ t:{x:-total/2, y:-hh/2, z:-tW/2+0.5}, r:{x:wt?-total/2+tL+gap:-total/2, y:-hh/2, z:-RW/2+0.5} }; }
+const posOf=key=>{ const s=key[0], [x,y,z]=key.slice(1).split(",").map(Number), o=place[s]; return [x+o.x+0.5,y+o.y+0.5,z+o.z]; };
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+const groupOf=k=>SHELL.has(k)?"shell":"core";
+const SCALE={blade:[1,0.15,0.7],shaft:[0.4,1,0.4],laser:[0.7,0.7,0.7]};
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4();
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); if(SCALE[k]) m4.scale(new THREE.Vector3(...SCALE[k])); mesh.setMatrixAt(i,m4); });
+    if(k==="glass") mesh.renderOrder=2; const g=groupOf(k); (groups[g]=groups[g]||new THREE.Group()).add(mesh); }
+  for(const k in groups) root.add(groups[k]); if(groups.shell) groups.shell.visible=casingOn;
+}
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function placeEffects(R){ const o=place.r;
+  plasma.position.set(o.x+2.5,o.y+2.5,o.z+2); plasma.visible=R.lit;
+  beam.position.set(o.x+2.5,o.y+2.5,o.z+5); }
+function rebuild3D(R,Tb){
+  if(!renderer) return;
+  const {tL,tW,tH}=state, shape=`${state.cool}|${tL}|${tW}|${tH}`, map=blockMap(R,Tb);
+  layoutOffsets(); clearSwaps(); placeEffects(R);
+  if(!shownMap||shape!==shownShape){ buildInstanced(map); const hh=(water()?Math.max(RH,tH):RH)/2; buildBottom=-hh-0.5; buildTop=hh+0.6; buildStart=performance.now();
+    // re-frame the camera on whatever it was focused on; jump there on first load
+    setFocus(orbit.focus||"r",true); if(!shownShape){ const g=orbit.goal; orbit.target={x:g.x,y:g.y,z:g.z}; orbit.radius=g.r; orbit.goal=null; }
+    shownMap=map; shownShape=shape; return; }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map; if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>2500){ buildInstanced(map); return; }
+  buildInstanced(map,new Set(added.map(a=>a[0])));
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now(), show=k=>()=>groupOf(k)==="shell"?casingOn:true;
+  const mk=(k,key)=>{ const m=new THREE.Mesh(CUBE(),mat(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); if(SCALE[k]) m.scale.set(...SCALE[k]); return m; };
+  for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y,show:show(k)}); }
+  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
+  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y,show:show(k)}); }
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+
+/* ================= UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  $("cfgHint").innerHTML=`Fusion <b>${big(cfg.fuelEnergy)}</b> J per mB fuel · thermocouples <b>${fmt(cfg.thermocoupleEfficiency*100,1)}%</b> · case <b>${+cfg.casingThermalConductivity.toFixed(3)}</b> to air, <b>${+cfg.waterHeatingRatio.toFixed(3)}</b> to water · ${cfg.feConversionRate} J = 1 FE`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="any"; i.min="0";
+    i.onchange=()=>{ const v=+i.value; if(!(v>0||(v===0&&ZERO_OK.has(k)&&i.value!==""))){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("mek-fusion-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+let R=null, Tb=null;
+function syncInputs(){
+  const set=(id,v,max,min)=>{ if(max!=null){ $(id).max=max; $(id+"N").max=max; } if(min!=null){ $(id).min=min; $(id+"N").min=min; } $(id).value=v; $(id+"N").value=v; };
+  set("inj",state.inj); set("las",state.lasers);
+  set("tL",state.tL); set("tW",state.tW); set("tH",state.tH);
+  set("rot",Tb.rotor,Math.max(1,Tb.maxRot)); set("bl",Tb.blades,Math.max(1,2*Tb.rotor)); set("co",Tb.coils,Math.max(1,Tb.aboveCells)); set("ve",Tb.vents,Math.max(1,Tb.maxVents)); set("cn",Tb.cond,Math.max(0,Tb.aboveCells-Tb.coils));
+  for(const [id,c] of [["cWater","water"],["cAir","air"]]) $(id).setAttribute("aria-pressed",state.cool===c);
+  const wt=water(); $("turbSect").hidden=!wt; $("turbSize").hidden=!wt; $("focusGrp").hidden=!wt; $("guideTurbine").hidden=!wt;
+  $("injMin").disabled=!Number.isFinite(R.min)||R.min>MAX_INJ;
+  $("turbHint").textContent=Tb.valid?`Up to ${Tb.maxRot} rotor blocks fit this casing (${2*Tb.rotor} blades max). ${fmt(Tb.dispersers)} pressure dispersers fill the layer above the rotor.`:"This casing is too small for a rotor: make it taller or wider.";
+  for(const el of document.querySelectorAll(".ign")) el.textContent=big(R.igniteFE)+" FE";
+}
+const turbinesNeeded=()=>water()&&Tb.valid&&Tb.intake>0?Math.ceil(R.steam/Tb.intake-1e-9):0;
+// power at injection rate r for either cooling, with enough of this turbine; used by the results and the chart
+const powerJ=(r,isWater)=>{ const s=steady(r,isWater); return s.passiveJ+(isWater?Tb.mult*s.steam:0); };
+function renderResults(){
+  const need=turbinesNeeded(), wt=water();
+  const turbJ=wt?Tb.mult*R.steam:0, totalJ=R.passiveJ+turbJ, FE=totalJ/cfg.feConversionRate;
+  // temperatures: millions of K below 1e9, billions above
+  const MK=v=>v>=1e9?fmt(v/1e9,2)+" billion K":fmt(v/1e6,1)+" million K", MKv=v=>v>=1e9?`${fmt(v/1e9,2)} <small>billion K</small>`:`${fmt(v/1e6,1)} <small>million K</small>`;
+  $("hudMain").innerHTML=R.lit?`${big(FE)} <small>FE/t</small>`:`Goes out`;
+  $("hudSub").textContent=R.lit?`${MK(R.plasmaT)} plasma · ${state.inj} mB/t fuel`+(wt?` · ${need} turbine${need===1?"":"s"}`:""):`plasma would settle at ${MK(R.plasmaT)}`;
+  const cells=[[wt?"Power (with enough turbines)":"Power",R.lit?`${big(FE)} <small>FE/t</small>`:`0 <small>FE/t · won't stay lit</small>`,"hero"]];
+  if(wt) cells.push(["From turbines",`${big(turbJ/cfg.feConversionRate)} <small>FE/t</small>`],["From thermocouples",`${big(R.passiveJ/cfg.feConversionRate)} <small>FE/t</small>`],
+    ["Steam",`${big(R.steam)} <small>mB/t · water in too</small>`],["Turbines needed",`${need} <small>× this turbine</small>`],["One turbine takes",`${big(Tb.intake)} <small>mB/t max</small>`],
+    ["Energy per mB steam",`${fmt(Tb.mult,3)} <small>J (${fmt(Tb.mult/cfg.feConversionRate,3)} FE)</small>`],
+    ["Air-cooled instead",`${big(steady(state.inj,false).lit?powerJ(state.inj,false)/cfg.feConversionRate:0)} <small>FE/t</small>`]);
+  else cells.push(["From thermocouples",`${big(R.passiveJ/cfg.feConversionRate)} <small>FE/t</small>`]);
+  cells.push(["Plasma",MKv(R.plasmaT)],["Case",MKv(R.caseT)],
+    ["Fuel burned",`${state.inj} <small>mB/t D-T · ${fmt(state.inj/2)} D + ${fmt(state.inj/2)} T</small>`],
+    [wt?"Lowest rate for water":"Lowest stable rate",Number.isFinite(R.min)&&R.min<=MAX_INJ?`${R.min} <small>mB/t</small>`:`none <small>above ${MAX_INJ}</small>`],
+    ["Ignition shot",`${big(R.igniteFE)} <small>FE in one go</small>`],
+    ["Charging it",`${mins(R.chargeTicks)} <small>with ${state.lasers} laser${state.lasers===1?"":"s"} · ${big(R.laserFE)} FE/t</small>`],
+    ["Warm-up to 95%",`${mins(3*R.tau)} <small>after ignition</small>`]);
+  if(!wt){ const wFE=steady(state.inj,true).lit?powerJ(state.inj,true)/cfg.feConversionRate:0;
+    cells.push(["Case heat to air",`${big(R.lit?R.H:0)} <small>J/t</small>`],["Water-cooled instead",`${big(wFE)} <small>FE/t with turbines</small>`]); }
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(!R.lit){
+    if(!Number.isFinite(R.minLit)||R.minLit>MAX_INJ) n.push(["bad",`With these config values no injection rate keeps it lit: the plasma settles at ${MK(R.plasmaT)} at ${state.inj} mB/t, under the 100 million K it needs, so it goes out soon after ignition.`]);
+    else n.push(["bad",`At ${state.inj} mB/t the plasma settles at ${MK(R.plasmaT)}, under 100 million K plus the injection rate, so burning stops. Inject at least ${R.minLit} mB/t.`]);
+  } else n.push(["good",`Stays lit: the plasma settles at ${MK(R.plasmaT)}. It can't melt down; nothing in the code damages the reactor.`]);
+  if(R.blocked) n.push(["bad",`At ${NO_TANKS_RATE} mB/t water cooling doesn't work: Mekanism only sizes the reactor's water and steam tanks when the injection rate changes, and a reactor starts (and reloads) at ${NO_TANKS_RATE}. It runs air-cooled, as shown. Set the rate to 4 or more.`]);
+  if(cfgPreset==="atm10-aeronautics") n.push(["warn","ATM10: Aeronautics cuts fusion fuel to 1/100 of the default energy, so no injection rate keeps a fusion reactor burning there."]);
+  if(R.lit&&wt&&!R.blocked){
+    const airFE=powerJ(state.inj,false)/cfg.feConversionRate;
+    if(FE>airFE) n.push(["good",`Water cooling with turbines makes ${fmt(FE/airFE,2)}× the ${big(airFE)} FE/t it would make air-cooled.`]);
+    else n.push(["warn",`Air cooling would make more here (${big(airFE)} FE/t): with these config values steam through this turbine is worth less than the thermocouples lose.`]);
+    n.push(["warn",`It needs ${big(R.steam)} mB/t of water piped in. Short of water or backed-up steam, that heat goes to the air instead and output drops toward the air-cooled figure.`]);
+    if(!Tb.valid) n.push(["bad","This turbine casing is too small for a rotor: make it taller or wider."]);
+    if(Tb.valid&&Tb.steamCap<Tb.maxFlow) n.push(["warn",`This turbine is tank-limited: its steam tank (${big(Tb.steamCap)} mB) is smaller than its max flow (${big(Tb.maxFlow)} mB/t), so it can only take ${big(Tb.intake)} mB/t. A taller rotor or larger casing raises the tank.`]);
+    if(Tb.valid&&Tb.blades>Tb.coils*cfg.bladesPerCoil) n.push(["warn",`Only ${Tb.coils*cfg.bladesPerCoil} of ${Tb.blades} blades are powered: each coil supports ${cfg.bladesPerCoil}. Add ${Math.ceil(Tb.blades/cfg.bladesPerCoil)-Tb.coils} more coil(s).`]);
+    if(Tb.valid&&Tb.cond>0&&Tb.water<Math.min(R.steam,Tb.intake)) n.push(["warn",`Condensers return ${big(Tb.water)} mB/t of water but each turbine uses ${big(Math.min(R.steam,Tb.intake))} mB/t of steam.`]);
+  }
+  if(R.lit&&R.passiveJ>1e9) n.push(["warn",`It makes more than its 1 GJ energy buffer each tick (${big(R.passiveJ)} J/t), so pull power out of an output port every tick or the extra is lost.`]);
+  n.push(["","Keep the 3×3×3 core empty: anything inside takes 50,000 damage while it burns."]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  drawChart();
+}
+function drawChart(){
+  const c=$("chart"), dpr=Math.min(2,devicePixelRatio||1), w=c.clientWidth, h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  if(!R) return;
+  const cs=getComputedStyle(document.documentElement), v=k=>cs.getPropertyValue(k).trim(), muted=v("--muted"), line=v("--line"), heat=v("--heat"), steamC=v("--steam"), bad=v("--bad"), ink=v("--ink"), mono=v("--font-mono");
+  const rates=[]; for(let r=2;r<=MAX_INJ;r+=2) rates.push(r);
+  const fe=(r,wt)=>powerJ(r,wt)/cfg.feConversionRate, show=[false].concat(Tb.valid?[true]:[]);
+  const yMax=Math.max(1,...rates.flatMap(r=>show.map(wt=>fe(r,wt))))*1.08, pad={l:52,r:12,t:12,b:22};
+  const X=r=>pad.l+(r-2)/(MAX_INJ-2)*(w-pad.l-pad.r), Y=p=>pad.t+(1-p/yMax)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.lineWidth=1;
+  // shade the rates that can't stay lit with the current cooling
+  if(R.minLit>2){ const x1=X(Math.min(MAX_INJ,R.minLit)); g.fillStyle="rgba(238,123,123,0.10)"; g.fillRect(pad.l,pad.t,x1-pad.l,h-pad.t-pad.b);
+    g.fillStyle=bad; const lbl="goes out"; g.fillText(lbl,Math.max(pad.l+4,Math.min(x1,w-pad.r)-g.measureText(lbl).width-4),pad.t+12); }
+  g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const p=yMax/1.08*f; g.beginPath(); g.moveTo(pad.l,Y(p)+.5); g.lineTo(w-pad.r,Y(p)+.5); g.stroke(); g.fillText(big(p),2,Y(p)+4); }
+  for(const r of [2,50,98]){ const lbl=r+" mB/t", tw=g.measureText(lbl).width; g.fillText(lbl,Math.min(w-pad.r-tw,Math.max(pad.l,X(r)-tw/2)),h-5); }
+  for(const wt of show){ g.beginPath(); let started=false;
+    for(const r of rates){ const p=steady(r,wt).lit?fe(r,wt):0; started?g.lineTo(X(r),Y(p)):g.moveTo(X(r),Y(p)); started=true; }
+    g.strokeStyle=wt?steamC:heat; g.lineWidth=2; g.stroke(); }
+  const x=X(state.inj), y=Y(R.lit?fe(state.inj,water()):0); g.fillStyle=ink; g.beginPath(); g.arc(x,y,4.5,0,7); g.fill();
+  const lbl=`${state.inj} mB/t · ${big(R.lit?fe(state.inj,water()):0)} FE/t`; g.font="600 11px "+mono; const tw=g.measureText(lbl).width; g.fillText(lbl,Math.min(w-pad.r-tw,Math.max(pad.l,x-tw/2)),Math.max(12,y-9));
+}
+/* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
+const NAMES={r:{frame:"Fusion Reactor Frame",glass:"Reactor Glass",port:"Fusion Reactor Port",controller:"Fusion Reactor Controller",matrix:"Laser Focus Matrix",amp:"Laser Amplifier",laser:"Laser"},
+  t:{tcasing:"Turbine Casing",glass:"Structural Glass",valve:"Turbine Valve",vent:"Turbine Vent",shaft:"Turbine Rotor",blade:"Turbine Blade",complex:"Rotational Complex",disperser:"Pressure Disperser",coil:"Electromagnetic Coil",condenser:"Saturating Condenser"}};
+const ORDER=["frame","tcasing","glass","port","controller","matrix","amp","laser","valve","vent","shaft","blade","complex","disperser","coil","condenser"];
+const swatch=k=>swatch[k]||(swatch[k]=T[k]().toDataURL());
+// blades are items clicked onto rotors; the block map draws each one as its own block, so the count is the blade count
+function tally(map,s,layer){ const c={}; for(const [key,k] of map){ if(key[0]!==s) continue; if(layer!=null&&+key.slice(1).split(",")[1]!==layer-1) continue; c[k]=(c[k]||0)+1; }
+  return ORDER.filter(k=>c[k]).map(k=>[k,c[k]]); }
+const partsList=rows=>`<ul class="parts">${rows.map(([k,n,s])=>`<li><img src="${swatch(k)}" alt=""><span>${NAMES[s][k]}${k==="blade"?" <small>(on the rotors)</small>":""}</span><span class="n">${fmt(n)}</span></li>`).join("")}</ul>`;
+function guideTop(){ return water()?Math.max(RH,state.tH):RH; }
+function renderGuide(){
+  const top=guideTop(); guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const map=blockMap(R,Tb), n=guide.layer;
+  const col=(s,title,h)=>{ if(s==="t"&&!Tb.valid) return `<div><h3>${title}</h3><p class="hint">This casing is too small for a rotor.</p></div>`;
+    if(n>h) return `<div><h3>${title} <small>· done, ${h} layers</small></h3></div>`;
+    const where=n===1?"floor":n===h?"roof":`layer ${n} of ${h}`;
+    return `<div><h3>${title} <small>· ${where}</small></h3>${partsList(tally(map,s,n).map(([k,c])=>[k,c,s]))}</div>`; };
+  $("gLayer").innerHTML=col("r","Reactor and lasers",RH)+(water()?col("t","Turbine",state.tH):"");
+  const all=(s,title)=>s==="t"&&(!Tb.valid||!water())?"":`<div><h3>${title}</h3>${partsList(tally(map,s).map(([k,c])=>[k,c,s]))}</div>`;
+  $("gParts").innerHTML=all("r","Reactor and lasers")+all("t","Turbine");
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
+/* schematic export (/data/schematic.js writes and downloads the file) */
+const MG="mekanismgenerators:";
+const BLOCK_IDS={frame:MG+"fusion_reactor_frame",port:MG+"fusion_reactor_port",controller:MG+"fusion_reactor_controller",matrix:MG+"laser_focus_matrix",
+  amp:"mekanism:laser_amplifier",laser:"mekanism:laser",
+  tcasing:MG+"turbine_casing",valve:MG+"turbine_valve",vent:MG+"turbine_vent",shaft:MG+"turbine_rotor",complex:MG+"rotational_complex",
+  disperser:"mekanism:pressure_disperser",coil:MG+"electromagnetic_coil",condenser:MG+"saturating_condenser"};
+const blockId=(s,k)=>k==="glass"?(s==="r"?MG+"reactor_glass":"mekanism:structural_glass"):BLOCK_IDS[k];
+const FACING={}; FACING[AMP.join(",")]="north"; for(const [x,y,z,f] of LASERS) FACING[`${x},${y},${z}`]=f;
+// machines sit side by side along x with a 3-block gap (turbine first), centered on each other in z, like the 3D view. Empty cells are written as air.
+function exportParts(what){ const p=[];
+  if(what!=="r"&&water()&&Tb.valid) p.push(["t",state.tL,state.tW,state.tH]); if(what!=="t") p.push(["r",RL,RW,RH]); return p; }
+function buildStructure(what,dataVersion){
+  const map=blockMap(R,Tb), parts=exportParts(what), gap=3, depth=Math.max(...parts.map(p=>p[2]));
+  const palette=[], pidx={}, blocks=[];
+  const pal=(name,props)=>{ const key=name+(props?JSON.stringify(props):""); return pidx[key]??(pidx[key]=palette.push(props?{Name:name,Properties:props}:{Name:name})-1); };
+  // blades are items installed on rotors, so they become a count on each rotor's block entity, not blocks
+  const blades={}; for(const [key,k] of map) if(k==="blade"){ const y=key.split(",")[1]; blades[y]=(blades[y]||0)+1; }
+  let ox=0;
+  for(const [s,l,w,h] of parts){ const oz=Math.floor((depth-w)/2);
+    for(let y=0;y<h;y++)for(let x=0;x<l;x++)for(let z=0;z<w;z++){
+      const k=map.get(`${s}${x},${y},${z}`), f=s==="r"&&(k==="amp"||k==="laser")?{facing:FACING[`${x},${y},${z}`]}:null;
+      const b={pos:[ox+x,y,oz+z],state:pal(k&&k!=="blade"?blockId(s,k):"minecraft:air",f)};
+      if(k==="shaft") b.nbt={id:BLOCK_IDS.shaft,blades:blades[y]||0};
+      blocks.push(b); }
+    ox+=l+gap; }
+  return {DataVersion:dataVersion,size:[ox-gap,Math.max(...parts.map(p=>p[3])),depth],palette,blocks,entities:[]};
+}
+const canGzip=mdSchematic.canGzip;
+function renderExport(){
+  const wt=water();
+  // air-cooled builds have no turbine: export the reactor only, and restore the earlier choice when water comes back
+  const xw=$("xWhat"); for(const o of xw.options) if(o.value!=="r") o.disabled=!wt;
+  if(!wt&&xw.value!=="r"){ xw.dataset.prev=xw.value; xw.value="r"; } else if(wt&&xw.dataset.prev){ xw.value=xw.dataset.prev; delete xw.dataset.prev; }
+  const what=$("xWhat").value, parts=exportParts(what), need=turbinesNeeded(), dims=([,l,w,h])=>`${l}×${w}×${h}`;
+  const r=parts.find(p=>p[0]==="r"), t=parts.find(p=>p[0]==="t");
+  $("xGo").disabled=!canGzip||!parts.length;
+  if(!canGzip){ $("xHint").textContent="This browser can't compress files. Try a current Chrome, Firefox, Edge or Safari."; return; }
+  if(!parts.length){ $("xHint").textContent="This turbine casing is too small for a rotor, so there's nothing to export."; return; }
+  const bits=[r&&`the fusion reactor with its laser amplifier and ${state.lasers} laser${state.lasers===1?"":"s"}`,t&&`one ${dims(t)} turbine`].filter(Boolean).join(" and ");
+  const notes=[];
+  if(t&&need>1) notes.push(`This reactor needs ${need} turbines; build the turbine ${need} times.`);
+  if(r&&what==="r"&&wt&&Tb.valid&&need) notes.push(`Its steam feeds ${need} turbine${need===1?"":"s"} of the size set above.`);
+  $("xHint").textContent=`Contains ${bits}. ${notes.join(" ")}`.trim();
+}
+async function downloadNbt(){
+  const [ver,dv]=mdSchematic.dataVersion($("xVer")), what=$("xWhat").value, {tL,tW,tH}=state;
+  const name=["mekanism",what!=="t"&&"fusion",what!=="r"&&water()&&`turbine-${tL}x${tW}x${tH}`,`mc${ver}`].filter(Boolean).join("-")+".nbt";
+  await mdSchematic.download(buildStructure(what,dv),name);
+}
+mdSchematic.versionPicker($("xVer"),"mek-fusion-mc");
+$("xWhat").onchange=renderExport;
+$("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't build the file. Reload the page and try again."; });
+
+/* design code (mdz1): the whole design as one string, used by share links.
+   mdz1.cooling.injection.lasers.tL.tW.tH.rotor.blades.coils.vents.cond
+   cooling is w (water) or a (air). Turbine counts are the effective (clamped) values. */
+function encodeDesign(){ return ["mdz1",water()?"w":"a",state.inj,state.lasers,state.tL,state.tW,state.tH,Tb.rotor,Tb.blades,Tb.coils,Tb.vents,Tb.cond].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==12||p[0]!=="mdz1"||!/^[wa]$/.test(p[1])) return null;
+  const int=(i,a,b)=>{ const v=/^-?\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={cool:p[1]==="w"?"water":"air",inj:int(2,2,MAX_INJ),lasers:int(3,1,5),tL:int(4,5,17),tW:int(5,5,17),tH:int(6,5,18),rotor:int(7,1,14),blades:int(8,0,28),
+    coils:int(9,1,9999),vents:int(10,1,9999),cond:int(11,0,9999)};
+  if(Object.values(d).some(v=>Number.isNaN(v))||d.inj%2||d.tL%2===0||d.tW%2===0) return null;
+  return d;
+}
+const share=mdShare({prefix:"mdz1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d); update(); }, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+function autoTurbine(){ const lim=turbineLimits(); state.rotor=lim.maxRot; state.blades=2*lim.maxRot; state.coils=Math.ceil(state.blades/cfg.bladesPerCoil);
+  const t=turbineModel(); state.vents=t.maxVents; state.cond=Math.max(0,Math.min(t.aboveCells-state.coils,Math.ceil(t.intake/cfg.condenserRate))); }
+function update(){
+  state.inj=2*Math.round(clampI(state.inj,2,MAX_INJ)/2); state.lasers=clampI(state.lasers,1,5);
+  state.tL=odd(clampI(state.tL,5,17)); state.tW=odd(clampI(state.tW,5,17)); state.tH=clampI(state.tH,5,18);
+  R=reactorModel(); Tb=turbineModel();
+  renderCfg(); syncInputs(); renderResults(); rebuild3D(R,Tb); renderGuide(); renderExport(); share.render();
+}
+const clampI=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||a)));
+const odd=v=>v%2?v:v-1;
+
+/* wiring */
+// Preset row: Mod defaults · Modpack ▾ · Custom. "Modpack" opens the pack list; picking a pack closes it and relabels the button.
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+const bind=(id,key,after)=>{ const f=v=>{ state[key]=+v; if(after) after(); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
+bind("inj","inj"); bind("las","lasers"); bind("tL","tL"); bind("tW","tW"); bind("tH","tH");
+bind("rot","rotor"); bind("bl","blades"); bind("co","coils"); bind("ve","vents"); bind("cn","cond");
+$("cWater").onclick=()=>{ state.cool="water"; update(); }; $("cAir").onclick=()=>{ state.cool="air"; update(); };
+$("injMin").onclick=()=>{ if(R.min<=MAX_INJ){ state.inj=R.min; update(); } };
+$("injMax").onclick=()=>{ state.inj=MAX_INJ; update(); };
+$("tAuto").onclick=()=>{ autoTurbine(); update(); };
+$("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+$("fr").onclick=()=>setFocus("r",true); $("ft").onclick=()=>setFocus("t",true); $("fb").onclick=()=>setFocus("both",true);
+addEventListener("resize",drawChart);
+
+// start: water-cooled at 98 mB/t, five lasers, the best 17x17x18 turbine
+// a design in the link replaces the default one
+autoTurbine(); if(share.atLoad.design) Object.assign(state,share.atLoad.design);
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>
