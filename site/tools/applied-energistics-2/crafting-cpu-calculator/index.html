@@ -135,7 +135,7 @@ details.mats .guide-cols{margin-top:10px}
     <h1>AE2 <span class="y">Crafting CPU Calculator</span></h1>
     <span class="src">From the AE2 19.2.17 and MEGA Cells 4.11.0 source</span>
   </header>
-  <p class="lede">Say how much storage and how many co-processors you need and get the smallest CPU that has them. Or pick the blocks yourself and see the storage, crafting speed, power and materials. Every number comes from AE2's <b>CraftingCPUCluster</b> and its multiblock check, and MEGA Cells' crafting blocks.</p>
+  <p class="lede">Say how much storage and how many co-processors you need and get the smallest CPU that has them. Or pick the blocks yourself and see the storage, crafting speed, power and materials. Add your Molecular Assemblers to see which one sets the speed, the CPU or the assemblers. Every number comes from AE2's <b>CraftingCPUCluster</b>, its multiblock check and the Molecular Assembler, and MEGA Cells' crafting blocks.</p>
 
   <div class="grid">
     <section class="stage" aria-label="3D preview">
@@ -198,6 +198,10 @@ details.mats .guide-cols{margin-top:10px}
         <div class="ask">
           <label for="aBytes">Storage</label>
           <span class="pair"><input class="num" id="aBytes" type="number" min="1" step="any" value="2"><select id="aUnit" aria-label="Storage unit"><option value="1024">k bytes</option><option value="1048576" selected>M bytes</option></select></span>
+          <label for="kAsm">Molecular Assemblers</label>
+          <span class="pair"><input class="num" id="kAsm" type="number" min="0" step="1" value="8"></span>
+          <label for="kCards">Speed cards in each</label>
+          <select id="kCards"><option value="0">0</option><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option><option value="5" selected>5</option></select>
           <label for="aThreads">Co-processors</label>
           <span class="pair"><input class="num" id="aThreads" type="number" min="0" step="1" value="18"></span>
           <label for="aTier">Biggest storage</label>
@@ -207,6 +211,7 @@ details.mats .guide-cols{margin-top:10px}
         </div>
         <div class="btns"><button class="btn" type="button" id="aGo">Plan the CPU</button></div>
         <p class="hint" id="aMsg" role="status">The crafting confirmation screen shows the bytes a job needs. Pick the biggest storage block you can craft right now.</p>
+        <p class="hint">Assemblers are the ones next to your pattern providers. Each works on one craft at a time, so together they cap a crafting job's speed whatever the CPU has. Changing them sets co-processors to the most that still help, about 2 per five-card assembler (4 assemblers: 7). 0 leaves them out; for processing patterns, the machines' own speed is the cap instead.</p>
       </div>
 
       <div class="sect">
@@ -269,10 +274,18 @@ at least one: storage bytes &gt; 0</pre>
       </div>
       <div class="fact">
         <h3>Co-processors: patterns per 4 ticks</h3>
-        <p>Each tick the CPU may send out as many patterns as it has co-processors plus one, minus what it sent in the last three ticks. That caps it at five times that number per second, if enough providers are free to take them. In-game, 0, 3, 7 and 15 co-processors sent 5.1, 20.2, 40.7 and 79.0 patterns a second.</p>
+        <p>Each tick the CPU may send out as many patterns as it has co-processors plus one, minus what it sent in the last three ticks. That caps it at five times that number per second, if enough assemblers or machines are free to take them (see the next card). In-game, 0, 3, 7 and 15 co-processors sent 5.1, 20.2, 40.7 and 79.0 patterns a second.</p>
 <pre>ops    = coProcessors + 1 − (sent in last 3 ticks)
 max/s  = 5 × (coProcessors + 1)</pre>
         <span class="ref">CraftingCpuLogic.tickCraftingLogic</span>
+      </div>
+      <div class="fact">
+        <h3>Assemblers set the pace</h3>
+        <p>A Molecular Assembler takes one craft at a time and finishes it when its progress reaches 100. It adds 10 a tick, or 50 with five speed cards, so five cards finish a craft every 2 ticks: 10 crafts a second. A job goes at whichever is slower, the CPU's patterns or the assemblers' crafts. In-game, a CPU with 492 co-processors crafted 10.1, 20.0, 40.3, 60.0 and 80.7 a second with 1, 2, 4, 6 and 8 assemblers, and a CPU with 15 co-processors matched it at 8.</p>
+<pre>progress/tick = 10 13 17 20 25 50   (0–5 speed cards)
+crafts/s      = 20 / ceil(100 / progress)
+speed         = min(5 × (co-proc + 1), assemblers × crafts/s)</pre>
+        <span class="ref">MolecularAssemblerBlockEntity.tickingRequest</span>
       </div>
       <div class="fact">
         <h3>What a job's bytes are</h3>
@@ -342,7 +355,11 @@ for(const k in TYPES){ const t=TYPES[k]; t.bytes=t.bytes||0; t.th=t.th||0; t.meg
 /* ================= state and model ================= */
 // n: how many of each block the user asked for; the box's spare space gets the filler (unit or acc)
 const zero=()=>Object.fromEntries(COUNTED.map(k=>[k,0]));
-const state={mega:true, n:{...zero(), s256k:8, acc:18, mon:1}, L:3, W:3, H:3, auto:true, fill:"unit"};
+const state={mega:true, n:{...zero(), s256k:8, acc:18, mon:1}, L:3, W:3, H:3, auto:true, fill:"unit", asm:8, cards:5};
+// MolecularAssemblerBlockEntity.tickingRequest: progress a tick for 0–5 speed cards; a craft finishes at 100 and the
+// leftover is dropped, so a craft takes ceil(100 / progress) ticks. Five cards: 2 ticks, 10 crafts/s (checked in-game).
+const ASM_PROGRESS=[10,13,17,20,25,50];
+const asmRate=cards=>20/Math.ceil(100/ASM_PROGRESS[cards]);
 const usable=k=>state.mega||!TYPES[k].mega;
 const listed=()=>COUNTED.reduce((s,k)=>s+(usable(k)?state.n[k]:0),0);
 
@@ -372,7 +389,15 @@ function model(){
   const B=blockMap(), c=tally(B.map); let bytes=0, threads=0;
   for(const k in c){ bytes+=TYPES[k].bytes*c[k]; threads+=TYPES[k].th*c[k]; }
   const v=state.L*state.W*state.H, spare=v-(listed()-B.overflow-B.monOver);
-  return {...B, c, bytes, threads, v, spare, pushes:5*(threads+1), idleAE:v};
+  const pushes=5*(threads+1), rate=asmRate(state.cards), asmCap=state.asm*rate;
+  return {...B, c, bytes, threads, v, spare, pushes, idleAE:v, rate, asmCap,
+    speed:state.asm?Math.min(pushes,asmCap):pushes,
+    balance:Math.max(0,Math.ceil(asmCap/5)-1)};   // fewest co-processors that keep every assembler busy
+}
+// co-processor blocks past what the assemblers can use, MEGA accelerators first (whole blocks only)
+function idleCoProcessors(c,extra){
+  const macc=Math.min(c.macc||0,Math.floor(extra/4)), acc=Math.min(c.acc||0,extra-4*macc);
+  return {macc,acc};
 }
 // materials, one level down: each block is a (MEGA) crafting unit plus its part; a MEGA unit is 4 crafting units plus parts
 function materials(c){
@@ -400,7 +425,8 @@ function plan(){
   if(total>MAXV){ $("aMsg").textContent=`That takes ${fmt(total)} blocks, more than the biggest CPU (17×17×17 = ${fmt(MAXV)}). Use a bigger storage block, or split it over several CPUs.`; return; }
   state.n=counts; state.auto=true; update();
   const s=[`${fmt(n)} storage block${n>1?"s":""}`]; if(counts[accK]) s.push(`${fmt(counts[accK])} ${TYPES[accK].short}${counts[accK]>1?"s":""}`);
-  $("aMsg").textContent=`${s.join(" and ")}: ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors in a ${state.L}×${state.W}×${state.H} CPU.`;
+  $("aMsg").textContent=`${s.join(" and ")}: ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors in a ${state.L}×${state.W}×${state.H} CPU`
+    +(state.asm?`, crafting ${fmt(R.speed,R.speed%1?1:0)} a second with your ${fmt(state.asm)} assembler${state.asm===1?"":"s"}.`:".");
 }
 
 /* ================= textures ================= */
@@ -475,6 +501,7 @@ function frame3d(t){
   if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
     for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
     if(left<0.01) orbit.goal=null; }
+  if(root.position.lengthSq()>1e-6) root.position.multiplyScalar(reduce?0:Math.exp(-dt*7)); else root.position.set(0,0,0);
   const o=orbit.target;
   camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
   if(guide.on) clip.constant=place.y+guide.layer+0.001;
@@ -483,9 +510,11 @@ function frame3d(t){
     const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=true;
     if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); } else a.mesh.scale.setScalar(Math.max(0.001,1-q));
     if(q>=1){ if(a.kind==="out"&&a.mesh.parent) a.mesh.parent.remove(a.mesh); anims.splice(i,1); } }
+  // swaps done: fold the animated blocks back into the instanced meshes (here, not on a timer, so it follows the frames)
+  if(swapGroup&&!anims.length){ buildInstanced(shownMap); clearSwaps(); }
   renderer.render(scene,camera); requestAnimationFrame(frame3d);
 }
-let shownMap=null, shownShape="", swapGroup=null, settleTimer=0, place={x:0,y:0,z:0};
+let shownMap=null, shownShape="", swapGroup=null, place={x:0,y:0,z:0};
 const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+place.x+0.5,y+place.y+0.5,z+place.z]; };
 const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
 function buildInstanced(map,skip){
@@ -496,28 +525,32 @@ function buildInstanced(map,skip){
     keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); mesh.setMatrixAt(i,m4); }); g.add(mesh); }
   root.add(g);
 }
-function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function clearSwaps(){ anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
 function rebuild3D(map){
   if(!renderer) return;
-  const {L,W,H}=state, shape=`${L}|${W}|${H}`;
+  const {L,W,H}=state, shape=`${L}|${W}|${H}`, old=place;
   place={x:-L/2, y:-H/2, z:-W/2+0.5}; clearSwaps();
-  if(!shownMap||shape!==shownShape){ buildInstanced(map); buildBottom=-H/2-0.5; buildTop=H/2+0.6; buildStart=performance.now();
-    // re-frame the camera; jump there on first load
-    orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; if(!shownShape){ orbit.radius=orbit.goal.r; orbit.goal=null; }
+  if(shape!==shownShape) orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})};   // ease the camera to the new size
+  if(!shownMap){ buildInstanced(map); buildBottom=-H/2-0.5; buildTop=H/2+0.6; buildStart=performance.now();
+    orbit.radius=orbit.goal.r; orbit.goal=null;   // first load: jump there, and build up from the floor
     shownMap=map; shownShape=shape; return; }
+  // Keys count from the box's corner, so a block that keeps its key and type stays where it is: the whole CPU slides
+  // to its new centre (root eases back to 0 in frame3d) and only the blocks that change animate.
+  if(shape!==shownShape){ root.position.x+=old.x-place.x; root.position.y+=old.y-place.y; root.position.z+=old.z-place.z;
+    buildBottom=buildTop=1e3; shownShape=shape; }   // the floor-up reveal only plays on first load
   const removed=[], added=[];
   for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
-  shownMap=map; if(!removed.length&&!added.length) return;
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map; if(!removed.length&&!added.length){ buildInstanced(map); return; }
   if(reduce||removed.length+added.length>2500){ buildInstanced(map); return; }
   buildInstanced(map,new Set(added.map(a=>a[0])));
   swapGroup=new THREE.Group(); root.add(swapGroup);
   const now=performance.now();
   const mk=(k,key)=>{ const m=new THREE.Mesh(CUBE(),mat(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); return m; };
   for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y}); }
-  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
-  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+  const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45);
+  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0);
     swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y}); }
-  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
 }
 
 /* ================= UI ================= */
@@ -548,6 +581,8 @@ function syncInputs(){
   $("fUnit").setAttribute("aria-pressed",state.fill==="unit"); $("fAcc").setAttribute("aria-pressed",state.fill==="acc");
   $("sAuto").setAttribute("aria-pressed",state.auto); $("sFixed").setAttribute("aria-pressed",!state.auto);
   for(const id of ["L","W","H"]){ $(id).value=state[id]; $(id+"N").value=state[id]; }
+  if(document.activeElement!==$("kAsm")) $("kAsm").value=state.asm;
+  $("kCards").value=state.cards;
   $("shapeHint").textContent=state.auto
     ?"The most compact box that holds your blocks, with the fewest spare ones. Move a slider to set the size yourself."
     :"1 to 17 blocks each way. Spare space fills with the block chosen above; blocks that don't fit are left out.";
@@ -558,6 +593,9 @@ function renderResults(){
   $("hudSub").textContent=`${L}×${W}×${H} · ${fmt(R.threads)} co-processor${R.threads===1?"":"s"} · ${fmt(R.v)} blocks`;
   const cells=[
     ["Crafting storage",`${short(R.bytes)} <small>bytes · ${fmt(R.bytes)}</small>`,"hero"],
+    ["Crafting speed",state.asm
+      ?`${fmt(R.speed,R.speed%1?1:0)} <small>crafts per second · ${R.pushes>R.asmCap?"limited by the assemblers":R.pushes<R.asmCap?"limited by the CPU":"CPU and assemblers matched"}</small>`
+      :`${fmt(R.pushes)} <small>crafts per second at most · add your assemblers</small>`,"hero"],
     ["Co-processors",`${fmt(R.threads)} <small>threads</small>`],
     ["Patterns sent",`${fmt(R.pushes)} <small>per second, at most</small>`],
     ["Size",`${L}×${W}×${H} <small>${fmt(R.v)} blocks</small>`],
@@ -572,8 +610,21 @@ function renderResults(){
   if(R.monOver>0) n.push(["warn",`Only ${fmt(R.c.mon||0)} monitor${(R.c.mon||0)===1?"":"s"} fit on the front face; the rest are left out.`]);
   if(listed()>MAXV) n.push(["bad",`You've listed ${fmt(listed())} blocks. The biggest CPU, 17×17×17, holds ${fmt(MAXV)}.`]);
   if(state.auto&&R.spare>0&&state.fill==="unit") n.push(["good",`${fmt(R.spare)} spare space${R.spare>1?"s are":" is"} filled with Crafting Units to make a solid box. Pick Co-processors for spare space and they add ${fmt(R.spare)} threads instead.`]);
+  const plural=(v,one,many=one+"s")=>`${fmt(v)} ${v===1?one:many}`;
+  const asmText=`${plural(state.asm,"assembler")} with ${plural(state.cards,"speed card")}`;
+  if(!state.asm){
+    if(R.threads>=8) n.push(["warn",`${fmt(R.pushes)} patterns a second only happens if pattern providers and machines are free to take them. Past that, extra co-processors wait. Add your assemblers above to see the real speed.`]);
+  }else if(R.pushes>R.asmCap){
+    const extra=R.threads-R.balance, idle=idleCoProcessors(R.c,extra), more=Math.ceil((R.pushes-R.asmCap)/R.rate);
+    const blocks=[idle.macc&&plural(idle.macc,"MEGA Accelerator"),idle.acc&&plural(idle.acc,"Co-Processing Unit")].filter(Boolean);
+    n.push(["warn",`${asmText} finish ${fmt(R.asmCap,R.asmCap%1?1:0)} crafts a second, and ${plural(R.balance,"co-processor")} already send that many patterns. The other ${fmt(extra)} wait.`
+      +(blocks.length?` That's ${blocks.join(" and ")} doing nothing: ${plural(idle.macc+idle.acc,"Engineering Processor")} and ${plural(idle.acc+4*idle.macc,"Crafting Unit")}' worth.`:"")
+      +` To use them, add ${plural(more,"assembler")}.`]);
+  }else if(R.pushes<R.asmCap){
+    const busy=Math.ceil(R.pushes/R.rate);
+    n.push(["warn",`The CPU sends at most ${fmt(R.pushes)} patterns a second, which keeps ${plural(Math.min(busy,state.asm),"assembler")} busy. Add ${plural(R.balance-R.threads,"co-processor")} to keep all ${fmt(state.asm)} working.`]);
+  }else n.push(["good",`Balanced: the CPU sends exactly as many patterns as ${asmText} finish. Two co-processors per five-card assembler is the match.`]);
   n.push(["good","Leave a one-block gap around it. Another CPU against a side either merges with it into one CPU (if the two line up into a bigger box) or stops both forming."]);
-  if(R.threads>=8) n.push(["warn",`${fmt(R.pushes)} patterns a second only happens if pattern providers and machines are free to take them. Past that, extra co-processors wait.`]);
   $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
   const m=materials(R.c), list=rows=>`<ul class="parts">${rows.map(([k,v])=>`<li><span>${k}</span><span class="n">${fmt(v)}</span></li>`).join("")}</ul>`;
   $("mParts").innerHTML=`<h3>Parts</h3>${list(m.first)}`;
@@ -616,15 +667,19 @@ $("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't 
 /* design code (mdc1): the whole design as one string, used by share links.
    mdc1.mods.L.W.H.shape.fill.mon.acc.macc.s1k.s4k.s16k.s64k.s256k.s1m.s4m.s16m.s64m.s256m
    mods is e (AE2 only) or m (with MEGA Cells); shape is a (smallest box) or f (fixed L×W×H);
-   fill is u (Crafting Units) or c (Co-Processing Units); the rest are block counts as the user set them. */
-const CODE_KEYS=["mon","acc","macc",...STORE];
-function encodeDesign(){ return ["mdc1",state.mega?"m":"e",state.L,state.W,state.H,state.auto?"a":"f",state.fill==="unit"?"u":"c",...CODE_KEYS.map(k=>state.n[k])].join("."); }
+   fill is u (Crafting Units) or c (Co-Processing Units); the rest are block counts as the user set them,
+   then .asm.cards (Molecular Assemblers and speed cards in each). Codes from before the assemblers end at s256m
+   and load with the default assemblers. */
+const CODE_KEYS=["mon","acc","macc",...STORE], ASM_MAX=100000;
+function encodeDesign(){ return ["mdc1",state.mega?"m":"e",state.L,state.W,state.H,state.auto?"a":"f",state.fill==="unit"?"u":"c",...CODE_KEYS.map(k=>state.n[k]),state.asm,state.cards].join("."); }
 function decodeDesign(code){
-  const p=String(code||"").trim().split("."); if(p.length!==7+CODE_KEYS.length||p[0]!=="mdc1"||!/^[em]$/.test(p[1])||!/^[af]$/.test(p[5])||!/^[uc]$/.test(p[6])) return null;
+  const p=String(code||"").trim().split("."), base=7+CODE_KEYS.length;
+  if(p.length!==base&&p.length!==base+2||p[0]!=="mdc1"||!/^[em]$/.test(p[1])||!/^[af]$/.test(p[5])||!/^[uc]$/.test(p[6])) return null;
   const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
   const d={mega:p[1]==="m",L:int(2,1,MAX),W:int(3,1,MAX),H:int(4,1,MAX),auto:p[5]==="a",fill:p[6]==="u"?"unit":"acc",n:{}};
   CODE_KEYS.forEach((k,i)=>{ d.n[k]=int(7+i,0,MAXV); });
-  return [d.L,d.W,d.H,...Object.values(d.n)].some(v=>Number.isNaN(v))?null:d;
+  if(p.length>base){ d.asm=int(base,0,ASM_MAX); d.cards=int(base+1,0,5); }
+  return [d.L,d.W,d.H,d.asm??0,d.cards??0,...Object.values(d.n)].some(v=>Number.isNaN(v))?null:d;
 }
 const share=mdShare({prefix:"mdc1", isPreset:()=>false, encode:encodeDesign, decode:decodeDesign, preset:()=>"default",
   apply:d=>{ Object.assign(state,d,{n:{...zero(),...d.n}}); buildTierSelect(); update(); }});
@@ -646,6 +701,14 @@ $("fUnit").onclick=()=>{ state.fill="unit"; update(); }; $("fAcc").onclick=()=>{
 $("sAuto").onclick=()=>{ state.auto=true; update(); }; $("sFixed").onclick=()=>{ state.auto=false; update(); };
 for(const id of ["L","W","H"]){ const f=v=>{ state[id]=+v; state.auto=false; update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); }
 $("aGo").onclick=plan; for(const id of ["aBytes","aThreads"]) $(id).onkeydown=e=>{ if(e.key==="Enter") plan(); };
+// assemblers update the result straight away and set the planner's co-processors to the most that still help
+function assemblersChanged(){ update(); if(!state.asm) return;
+  $("aThreads").value=R.balance;
+  $("aMsg").textContent=`${fmt(R.balance)} co-processors keep ${fmt(state.asm)} assembler${state.asm===1?"":"s"} busy at ${fmt(R.asmCap,R.asmCap%1?1:0)} crafts a second; more would wait. Plan the CPU to get the smallest one with them.`; }
+$("kAsm").oninput=e=>{ const v=Math.round(+e.target.value); if(e.target.value!==""&&v>=0){ state.asm=Math.min(v,ASM_MAX); assemblersChanged(); } };
+$("kAsm").onchange=()=>{ $("kAsm").value=state.asm; };
+$("kCards").onchange=e=>{ state.cards=clampI(e.target.value,0,5); assemblersChanged(); };
+$("kAsm").onkeydown=e=>{ if(e.key==="Enter") plan(); };
 $("tGuide").onclick=()=>setGuide(!guide.on);
 $("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
 
