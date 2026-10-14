@@ -9,8 +9,9 @@
 /tools/create-aeronautics/airship-planner/*  /tools/create-aeronautics/airship-calculator/    301
 
 # Short links typed from TikTok comments (links there aren't clickable). 302 so the design can change later.
-# /starter = the Short 13 starter build (ATM10): 3x3x3 reactor, 1 rod, 121 mB/t steam -> 5x5x4 turbine, 4 blades, 8 gold, 9,501 FE/t.
-/starter                  /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.3.3.3.rod.AA    302
-/starter/                 /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.3.3.3.rod.AA    302
+# /starter = a Basic 3x3x3 passive reactor, 1 rod (ATM10): the cheapest first reactor, power straight out.
+# /starter/turbine = Short 13's turbine (5x5x4, 4 blades, 8 gold, 9,501 FE/t), fed by a Reinforced 3x3x3 at 121 mB/t.
+/starter                  /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/starter/                 /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
 /starter/turbine          /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
 /starter/turbine/         /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
