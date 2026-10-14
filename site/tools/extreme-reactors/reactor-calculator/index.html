@@ -43,6 +43,7 @@ h1 .y{color:var(--accent-ink)}
 .src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
 .lede{max-width:70ch;margin:0;color:var(--muted)}
 .lede b{color:var(--ink)}
+.lede a{color:var(--accent-ink)}
 .grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
 @media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
 .stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
@@ -169,6 +170,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
     <span class="src">Simulates the Extreme Reactors 1.21.1-2.4.28 tick loop</span>
   </header>
   <p class="lede">Paint fuel rods and coolant blocks, choose passive or active cooling, and the calculator simulates the reactor tick by tick until it settles. You get the same RF/t, steam, temperatures and fuel burn the controller would show.</p>
+  <p class="lede" id="starterNote" hidden><b>Starter build:</b> this reactor's steam runs a 5×5×4 turbine with 4 blades and 8 gold blocks. <a href="/starter/turbine">Open the turbine</a></p>
 
   <div class="grid">
     <section class="stage" aria-label="3D reactor preview">
@@ -923,7 +925,9 @@ function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on);
 function stepLayer(d){ guide.layer+=d; renderGuide(); }
 
 let timer=0;
-function schedule(){ clearTimeout(timer); $("status").textContent="Simulating…"; timer=setTimeout(run,60); share.render(); }
+function schedule(){ clearTimeout(timer); $("status").textContent="Simulating…"; timer=setTimeout(run,60); share.render(); starterNote(); }
+// moddecoded.com/starter opens this design (site/_redirects); point on to the turbine half of that build
+const starterNote=()=>{ $("starterNote").hidden=encodeDesign()!==STARTER; };
 function run(){ result=simulate(state,cfg); renderResults(result); rebuild3D(); renderGuide(); }
 function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); drawCore(); renderLegend(); schedule(); }
 
@@ -967,6 +971,7 @@ addEventListener("resize",()=>{ if(result) drawChart(result); });
    cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits each, least significant bit first,
    base64url without padding. Column i = x*(Z-2)+z. */
 const FUEL_CODE={yellorium:"y",blutonium:"b",verderium:"v"}, FUEL_OF={y:"yellorium",b:"blutonium",v:"verderium"};
+const STARTER="mdr1.r.a.y.0.3.3.3.rod.AA";   // the /starter reactor: 3x3x3, one rod, active
 const palBits=n=>Math.max(1,Math.ceil(Math.log2(n)));
 function encodeDesign(){ const pal=[], idx={}, vals=state.cells.map(c=>idx[c]??(idx[c]=pal.push(c)-1));
   return ["mdr1",state.variant==="basic"?"b":"r",state.mode==="active"?"a":"p",FUEL_CODE[state.fuel],state.insertion,state.X,state.Z,state.Y,
