@@ -25,7 +25,7 @@ window.MD_PACKS = [
         "fission_reactor.energyPerFissionFuel": 250000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
-        "fusion_reactor.waterHeatingRatio": 0.27272727272727 } },
+        "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
     },
   },
   {
@@ -41,7 +41,7 @@ window.MD_PACKS = [
         "fission_reactor.energyPerFissionFuel": 8000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.fuelEnergy": 100000, "fusion_reactor.thermocoupleEfficiency": 0.02,
-        "fusion_reactor.casingThermalConductivity": 0.333333333, "fusion_reactor.waterHeatingRatio": 0.27272727272727 } },
+        "fusion_reactor.casingThermalConductivity": 0.333333333, "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
     },
   },
   {
@@ -55,7 +55,7 @@ window.MD_PACKS = [
         "fission_reactor.energyPerFissionFuel": 2800000, "fission_reactor.casingHeatCapacity": 4000,
         "fission_reactor.surfaceAreaTarget": 1.8, "turbine.ventChemicalFlow": 43478.262, "turbine.condenserRate": 128000,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
-        "fusion_reactor.waterHeatingRatio": 0.27272727272727 } },
+        "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
     },
   },
   {
@@ -69,7 +69,7 @@ window.MD_PACKS = [
         "fission_reactor.energyPerFissionFuel": 250000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
-        "fusion_reactor.waterHeatingRatio": 0.27272727272727 } },
+        "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
     },
   },
   {
@@ -116,7 +116,7 @@ window.MD_PACKS = [
     source: { repo: "https://github.com/TeamAOF/Craftoria", commit: "5689ac1", checked: "2026-09-28" },
     mods: {
       mekanism: { config: { "fission_reactor.energyPerFissionFuel": 500000,
-        "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.25 } },
+        "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.25, "fusion_reactor.fuelCapacity": 500 } },
     },
   },
 ];

@@ -142,7 +142,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
     <h1>Mekanism <span class="y">Fusion Reactor Calculator</span></h1>
     <span class="src">Formulas from the Mekanism 1.21.1-10.7.19.85 source</span>
   </header>
-  <p class="lede">Pick air or water cooling and an injection rate, and see the power, steam, plasma and case temperature, how many industrial turbines the steam needs, and the laser shot that lights it. Every number comes from Mekanism's <b>FusionReactorMultiblockData</b> and <b>TurbineMultiblockData</b>.</p>
+  <p class="lede">Pick deuterium + tritium or pre-mixed D-T fuel, air or water cooling and an injection rate, and see the power, steam, plasma and case temperature, how many industrial turbines the steam needs, and the laser shot that lights it. Every number comes from Mekanism's <b>FusionReactorMultiblockData</b> and <b>TurbineMultiblockData</b>.</p>
 
   <div class="grid">
     <section class="stage" aria-label="3D preview">
@@ -176,7 +176,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
               <li>It is always 5×5×5 with the corners and edges cut away. On each face, the ring of 8 around the middle plus must be <b>Fusion Reactor Frame</b>. The middle plus of 5 can be frame, <b>Reactor Glass</b>, ports, a logic adapter or the laser focus matrix. The 3×3×3 inside stays air.</li>
               <li>The <b>Fusion Reactor Controller</b> goes in the centre of the top face, and nowhere else.</li>
               <li>Put a <b>Laser Focus Matrix</b> where your laser can reach it, and at least two <b>Fusion Reactor Ports</b>. Sneak-right-click a port with a Configurator to switch it between input and output.</li>
-              <li>Pipe deuterium and tritium (or D-T fuel) into an input port, and water too if it's water-cooled. Power and steam leave through an output port.</li>
+              <li>Pipe deuterium and tritium into an input port, or pre-mixed D-T fuel (it burns up to a full fuel tank every tick, so set the Fuel option above), and water too if it's water-cooled. Power and steam leave through an output port.</li>
             </ol></div>
             <div><h3>Lighting it</h3><ol>
               <li>Fill a <b>Hohlraum</b> with 10 mB of D-T fuel (a Chemical Infuser makes D-T fuel from deuterium and tritium) and put it in the controller.</li>
@@ -225,9 +225,13 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
           <button type="button" id="cWater" aria-pressed="true">Water → steam → turbines</button>
           <button type="button" id="cAir" aria-pressed="false">Air (thermocouples only)</button>
         </div>
-        <div class="row"><label for="inj">Injection rate</label><input type="range" id="inj" min="2" max="98" step="2"><input class="num" id="injN" type="number" min="2" max="98" step="2" aria-label="Injection rate in mB of D-T fuel per tick"></div>
+        <div class="seg" role="group" aria-label="Fuel">
+          <button type="button" id="fDT" aria-pressed="true">Deuterium + tritium</button>
+          <button type="button" id="fPre" aria-pressed="false">Pre-mixed D-T fuel</button>
+        </div>
+        <div class="row"><label for="inj">Injection rate</label><input type="range" id="inj" min="2" max="98" step="2"><input class="num" id="injN" type="number" min="2" max="98" step="2" aria-label="Injection rate in mB per tick"></div>
         <div class="btns"><button class="btn" type="button" id="injMin">Set to lowest stable</button><button class="btn" type="button" id="injMax">Set to max (98)</button></div>
-        <p class="hint">The injection rate is how much D-T fuel it burns per tick: half deuterium, half tritium. The controller only takes even numbers up to 98.</p>
+        <p class="hint" id="injHint"></p>
         <div class="row"><label for="las">Lasers</label><input type="range" id="las" min="1" max="5"><input class="num" id="lasN" type="number" min="1" max="5" aria-label="Lasers feeding the amplifier"></div>
         <p class="hint">Lasers charging the amplifier. A beam stops at the first block it hits, so each laser needs its own side of the amplifier: five per amplifier at most.</p>
       </div>
@@ -309,6 +313,14 @@ max injection:      98</pre>
         <span class="ref">ATM-10-a config/Mekanism/generators.toml</span>
       </div>
       <div class="fact">
+        <h3>Pre-mixed D-T fuel skips the injection cap</h3>
+        <p>The injection rate only limits deuterium and tritium: each tick the reactor mixes up to that much into its fuel tank. Pre-mixed D-T fuel enters the fuel tank straight from a port, and the reactor burns everything in the tank every tick: 500 mB in ATM10, 1,000 by default. Same power per mB, just more fuel. Making it takes a Chemical Infuser: 2<sup>speed upgrades</sup> operations a tick, 1 D + 1 T into 2 D-T each, so 512 mB/t with 8 speed upgrades, and only with 8 energy upgrades too (without them its energy buffer covers one operation a tick).</p>
+<pre>inject = min(rate, room in tank)   // D + T only
+burned = min(T − 1e8, fuel in tank)
+ATM10: 98 → 500 mB/t, 15.7M → 80.0M FE/t air</pre>
+        <span class="ref">injectFuel · burnFuel · in-game 2026-10-15</span>
+      </div>
+      <div class="fact">
         <h3>Water cooling doesn't work at 2 mB/t</h3>
         <p>The reactor's water and steam tanks are sized from the injection rate, but only when the rate changes. A reactor starts at 2 and is set back to 2 after every reload, so at 2 they hold nothing and it runs air-cooled. We saw this in-game: water piped in at 2 never entered. Use 4 or more.</p>
 <pre>maxWater = rate × waterPerInjection   // only in setInjectionRate,
@@ -342,9 +354,10 @@ const big=(v)=>!Number.isFinite(v)?"—":v===0?"0":v>=1e9?fmt(v/1e9,2)+"B":v>=1e
 const mins=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"; };
 
 /* ================= config (generators.toml / general.toml) ================= */
-const DEFAULTS = {fuelEnergy:10000000, thermocoupleEfficiency:0.05, casingThermalConductivity:0.1, waterHeatingRatio:0.3,
+const DEFAULTS = {fuelEnergy:10000000, thermocoupleEfficiency:0.05, casingThermalConductivity:0.1, waterHeatingRatio:0.3, fuelCapacity:1000, waterPerInjection:1000000,
   bladesPerCoil:4, ventChemicalFlow:32000, disperserChemicalFlow:1280, condenserRate:64000, chemicalPerTank:64000, maxEnergyPerSteam:10, feConversionRate:2.5};
 const CFG_FIELDS=[["fuelEnergy","fusion_reactor.fuelEnergy"],["thermocoupleEfficiency","fusion_reactor.thermocoupleEfficiency"],["casingThermalConductivity","fusion_reactor.casingThermalConductivity"],["waterHeatingRatio","fusion_reactor.waterHeatingRatio"],
+  ["fuelCapacity","fusion_reactor.fuelCapacity"],["waterPerInjection","fusion_reactor.waterPerInjection"],
   ["bladesPerCoil","turbine.bladesPerCoil"],["ventChemicalFlow","turbine.ventChemicalFlow"],["disperserChemicalFlow","turbine.disperserChemicalFlow"],["condenserRate","turbine.condenserRate"],["chemicalPerTank","turbine.chemicalPerTank"],
   ["maxEnergyPerSteam","general.maxEnergyPerSteam"],["feConversionRate","general.feConversionRate"]];
 const ZERO_OK=new Set(["thermocoupleEfficiency","waterHeatingRatio"]);   // the mod allows 0 for these two
@@ -355,8 +368,8 @@ try{ const s=JSON.parse(localStorage.getItem("mek-fusion-cfg")||"null"); if(s&&m
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
 
 /* ================= state ================= */
-const state={cool:"water",inj:98,lasers:5,tL:17,tW:17,tH:18,rotor:14,blades:28,coils:4,vents:345,cond:0};
-const water=()=>state.cool==="water";
+const state={cool:"water",fuel:"dt",inj:98,lasers:5,tL:17,tW:17,tH:18,rotor:14,blades:28,coils:4,vents:345,cond:0};
+const water=()=>state.cool==="water", premix=()=>state.fuel==="premix";
 
 /* ================= model (Mekanism 10.7.19.85, FusionReactorMultiblockData) ================= */
 const BURN_T=1e8, PLASMA_C=100, PLASMA_CASE=0.2, STEAM_EFF=0.2, AMB=300, MAX_INJ=98;
@@ -369,14 +382,31 @@ function minInjection(k){ const c=cfg.casingThermalConductivity, E=cfg.fuelEnerg
 // changes, a reactor starts at 2, and FusionReactorCache re-applies 2 after every reload. So it runs air-cooled.
 // Seen in-game 2026-10-07: water piped in at 2 mB/t never entered and output stayed at the air-cooled figure.
 const NO_TANKS_RATE=2;
+// Fuel burned per tick. Each tick the reactor injects up to the injection rate of deuterium + tritium (half each) into
+// its fuel tank, then burns min(plasma - 100M K, fuel in the tank). Pre-mixed D-T fuel goes into that tank directly
+// through a port, so a fed reactor burns the whole tank every tick, whatever the injection rate (burnFuel, injectFuel).
+// Seen in-game 2026-10-15 (ATM10 config, 500 mB tank): 79.92M FE/t air-cooled and 224.0M water-cooled on pre-mixed,
+// against 15.66M and 43.88M on D + T at 98; the reactor's own D and T tanks sat untouched while pre-mixed fuel was in.
+const burnRate=(r,fuel)=>fuel==="premix"?cfg.fuelCapacity:r;
+// lowest injection rate whose water tank holds a tick's boil-off (the tank is rate x waterPerInjection, refilled each tick)
+const waterRateFor=steam=>Math.max(NO_TANKS_RATE+2,2*Math.ceil(steam/cfg.waterPerInjection/2));
 // steady state at injection rate r: all of the fuel's heat leaves through the case
-function steady(r,isWater){ const blocked=isWater&&r===NO_TANKS_RATE, k=isWater&&!blocked?cfg.waterHeatingRatio:0, c=cfg.casingThermalConductivity, H=cfg.fuelEnergy*r;
-  const caseT=AMB+H/(k+c), plasmaT=caseT+H/PLASMA_CASE, minLit=minInjection(isWater?cfg.waterHeatingRatio:0), lit=r>=minInjection(k);
-  // lowest rate to suggest: stays lit, and for water cooling also above the tankless rate 2
-  const min=isWater?Math.max(NO_TANKS_RATE+2,minLit):minLit;
-  return {k,c,H,caseT,plasmaT,min,minLit,lit,blocked,
+function steady(r,isWater,fuel=state.fuel){ const blocked=isWater&&r===NO_TANKS_RATE, k=isWater&&!blocked?cfg.waterHeatingRatio:0, c=cfg.casingThermalConductivity;
+  const b=burnRate(r,fuel), H=cfg.fuelEnergy*b, wPer=cfg.maxEnergyPerSteam/STEAM_EFF;   // J of case heat per mB of water boiled
+  // the water tank holds r x waterPerInjection: past that much boil-off a tick, the rest of the heat goes to the air
+  // (checked in-game 2026-10-15: pre-mixed at rate 40 boiled 40M mB/t and made 207.95M FE/t, model 208.0M)
+  const wCap=r*cfg.waterPerInjection, capped=k>0&&k*H/(k+c)>wCap*wPer;
+  const caseT=capped?AMB+(H-wCap*wPer)/c:AMB+H/(k+c), plasmaT=caseT+H/PLASMA_CASE;
+  const minLit=fuel==="premix"?Infinity:minInjection(isWater?cfg.waterHeatingRatio:0);
+  // burning keeps going while the plasma stays at least the burn ahead of 100M K
+  const lit=plasmaT>=BURN_T+b;
+  // lowest rate to suggest: stays lit, and for water cooling also above the tankless rate 2 and big enough a water tank
+  const steamFull=lit&&k>0?STEAM_EFF*k*(H/(k+c))/cfg.maxEnergyPerSteam:0;
+  const min=fuel==="premix"?(isWater?waterRateFor(steamFull||STEAM_EFF*cfg.waterHeatingRatio*H/(cfg.waterHeatingRatio+c)/cfg.maxEnergyPerSteam):NO_TANKS_RATE)
+    :isWater?Math.max(NO_TANKS_RATE+2,minLit):minLit;
+  return {k,c,b,H,caseT,plasmaT,min,minLit,lit,blocked,capped,wCap,
     passiveJ: lit ? cfg.thermocoupleEfficiency*c*(caseT-AMB) : 0,
-    steam: lit ? STEAM_EFF*k*(caseT-AMB)/cfg.maxEnergyPerSteam : 0,
+    steam: lit ? (capped?wCap:STEAM_EFF*k*(caseT-AMB)/cfg.maxEnergyPerSteam) : 0,
     tau: PLASMA_C*(1/PLASMA_CASE+1/(k+c))}; }
 function reactorModel(){ const s=steady(state.inj,water());
   return {...s, inj:state.inj, igniteFE:IGNITE_J/cfg.feConversionRate, chargeTicks:IGNITE_J/(LASER_JT*state.lasers), laserFE:LASER_JT*state.lasers/cfg.feConversionRate}; }
@@ -585,7 +615,7 @@ function rebuild3D(R,Tb){
 /* ================= UI ================= */
 function renderCfg(){
   renderPresetButtons();
-  $("cfgHint").innerHTML=`Fusion <b>${big(cfg.fuelEnergy)}</b> J per mB fuel · thermocouples <b>${fmt(cfg.thermocoupleEfficiency*100,1)}%</b> · case <b>${+cfg.casingThermalConductivity.toFixed(3)}</b> to air, <b>${+cfg.waterHeatingRatio.toFixed(3)}</b> to water · ${cfg.feConversionRate} J = 1 FE`;
+  $("cfgHint").innerHTML=`Fusion <b>${big(cfg.fuelEnergy)}</b> J per mB fuel · thermocouples <b>${fmt(cfg.thermocoupleEfficiency*100,1)}%</b> · case <b>${+cfg.casingThermalConductivity.toFixed(3)}</b> to air, <b>${+cfg.waterHeatingRatio.toFixed(3)}</b> to water · fuel tank <b>${fmt(cfg.fuelCapacity)}</b> mB · ${cfg.feConversionRate} J = 1 FE`;
   const g=$("cfgGrid");
   if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
     const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="any"; i.min="0";
@@ -602,21 +632,29 @@ function syncInputs(){
   set("tL",state.tL); set("tW",state.tW); set("tH",state.tH);
   set("rot",Tb.rotor,Math.max(1,Tb.maxRot)); set("bl",Tb.blades,Math.max(1,2*Tb.rotor)); set("co",Tb.coils,Math.max(1,Tb.aboveCells)); set("ve",Tb.vents,Math.max(1,Tb.maxVents)); set("cn",Tb.cond,Math.max(0,Tb.aboveCells-Tb.coils));
   for(const [id,c] of [["cWater","water"],["cAir","air"]]) $(id).setAttribute("aria-pressed",state.cool===c);
+  for(const [id,f] of [["fDT","dt"],["fPre","premix"]]) $(id).setAttribute("aria-pressed",state.fuel===f);
+  $("injHint").textContent=premix()
+    ?`On pre-mixed fuel the injection rate doesn't limit the fuel: the reactor burns its whole ${fmt(cfg.fuelCapacity)} mB fuel tank every tick. It still sets the water tank (rate × ${big(cfg.waterPerInjection)} mB), so for water cooling keep it at ${R.min} or more. Even numbers up to 98.`
+    :"The injection rate is how much fuel it burns per tick: half deuterium, half tritium, mixed inside the reactor. The controller only takes even numbers up to 98.";
+  $("injMin").textContent=premix()&&water()?"Set to lowest for water":"Set to lowest stable";
   const wt=water(); $("turbSect").hidden=!wt; $("turbSize").hidden=!wt; $("focusGrp").hidden=!wt; $("guideTurbine").hidden=!wt;
-  $("injMin").disabled=!Number.isFinite(R.min)||R.min>MAX_INJ;
+  $("injMin").disabled=!Number.isFinite(R.min)||R.min>MAX_INJ||(premix()&&!water());
   $("turbHint").textContent=Tb.valid?`Up to ${Tb.maxRot} rotor blocks fit this casing (${2*Tb.rotor} blades max). ${fmt(Tb.dispersers)} pressure dispersers fill the layer above the rotor.`:"This casing is too small for a rotor: make it taller or wider.";
   for(const el of document.querySelectorAll(".ign")) el.textContent=big(R.igniteFE)+" FE";
 }
 const turbinesNeeded=()=>water()&&Tb.valid&&Tb.intake>0?Math.ceil(R.steam/Tb.intake-1e-9):0;
 // power at injection rate r for either cooling, with enough of this turbine; used by the results and the chart
-const powerJ=(r,isWater)=>{ const s=steady(r,isWater); return s.passiveJ+(isWater?Tb.mult*s.steam:0); };
+const powerJ=(r,isWater,fuel=state.fuel)=>{ const s=steady(r,isWater,fuel); return s.passiveJ+(isWater?Tb.mult*s.steam:0); };
+// a Chemical Infuser runs 2^speed operations a tick (1 D + 1 T -> 2 D-T each): 8 speed upgrades = 512 mB/t, but only
+// with 8 energy upgrades as well; checked in-game 2026-10-15 (513 measured; 2 mB/t with speed upgrades alone)
+const INFUSER_MAX=512;
 function renderResults(){
   const need=turbinesNeeded(), wt=water();
   const turbJ=wt?Tb.mult*R.steam:0, totalJ=R.passiveJ+turbJ, FE=totalJ/cfg.feConversionRate;
   // temperatures: millions of K below 1e9, billions above
   const MK=v=>v>=1e9?fmt(v/1e9,2)+" billion K":fmt(v/1e6,1)+" million K", MKv=v=>v>=1e9?`${fmt(v/1e9,2)} <small>billion K</small>`:`${fmt(v/1e6,1)} <small>million K</small>`;
   $("hudMain").innerHTML=R.lit?`${big(FE)} <small>FE/t</small>`:`Goes out`;
-  $("hudSub").textContent=R.lit?`${MK(R.plasmaT)} plasma · ${state.inj} mB/t fuel`+(wt?` · ${need} turbine${need===1?"":"s"}`:""):`plasma would settle at ${MK(R.plasmaT)}`;
+  $("hudSub").textContent=R.lit?`${MK(R.plasmaT)} plasma · ${fmt(R.b)} mB/t ${premix()?"pre-mixed ":""}fuel`+(wt?` · ${need} turbine${need===1?"":"s"}`:""):`plasma would settle at ${MK(R.plasmaT)}`;
   const cells=[[wt?"Power (with enough turbines)":"Power",R.lit?`${big(FE)} <small>FE/t</small>`:`0 <small>FE/t · won't stay lit</small>`,"hero"]];
   if(wt) cells.push(["From turbines",`${big(turbJ/cfg.feConversionRate)} <small>FE/t</small>`],["From thermocouples",`${big(R.passiveJ/cfg.feConversionRate)} <small>FE/t</small>`],
     ["Steam",`${big(R.steam)} <small>mB/t · water in too</small>`],["Turbines needed",`${need} <small>× this turbine</small>`],["One turbine takes",`${big(Tb.intake)} <small>mB/t max</small>`],
@@ -624,8 +662,12 @@ function renderResults(){
     ["Air-cooled instead",`${big(steady(state.inj,false).lit?powerJ(state.inj,false)/cfg.feConversionRate:0)} <small>FE/t</small>`]);
   else cells.push(["From thermocouples",`${big(R.passiveJ/cfg.feConversionRate)} <small>FE/t</small>`]);
   cells.push(["Plasma",MKv(R.plasmaT)],["Case",MKv(R.caseT)],
-    ["Fuel burned",`${state.inj} <small>mB/t D-T · ${fmt(state.inj/2)} D + ${fmt(state.inj/2)} T</small>`],
-    [wt?"Lowest rate for water":"Lowest stable rate",Number.isFinite(R.min)&&R.min<=MAX_INJ?`${R.min} <small>mB/t</small>`:`none <small>above ${MAX_INJ}</small>`],
+    ["Fuel burned",`${fmt(R.b)} <small>mB/t D-T · ${fmt(R.b/2)} D + ${fmt(R.b/2)} T${premix()?" · the whole fuel tank":""}</small>`]);
+  if(premix()) cells.push(["Chemical Infusers",`${Math.ceil(R.b/INFUSER_MAX)} <small>with 8 speed + 8 energy upgrades · ${INFUSER_MAX} mB/t each</small>`],
+    ["Same reactor on D + T",`${big(steady(MAX_INJ,wt,"dt").lit?powerJ(MAX_INJ,wt,"dt")/cfg.feConversionRate:0)} <small>FE/t at ${MAX_INJ} mB/t</small>`]);
+  if(!(premix()&&!wt)) cells.push(
+    [premix()||wt?"Lowest rate for water":"Lowest stable rate",Number.isFinite(R.min)&&R.min<=MAX_INJ?`${R.min} <small>mB/t</small>`:`none <small>above ${MAX_INJ}</small>`]);
+  cells.push(
     ["Ignition shot",`${big(R.igniteFE)} <small>FE in one go</small>`],
     ["Charging it",`${mins(R.chargeTicks)} <small>with ${state.lasers} laser${state.lasers===1?"":"s"} · ${big(R.laserFE)} FE/t</small>`],
     ["Warm-up to 95%",`${mins(3*R.tau)} <small>after ignition</small>`]);
@@ -638,7 +680,13 @@ function renderResults(){
     else n.push(["bad",`At ${state.inj} mB/t the plasma settles at ${MK(R.plasmaT)}, under 100 million K plus the injection rate, so burning stops. Inject at least ${R.minLit} mB/t.`]);
   } else n.push(["good",`Stays lit: the plasma settles at ${MK(R.plasmaT)}. It can't melt down; nothing in the code damages the reactor.`]);
   if(R.blocked) n.push(["bad",`At ${NO_TANKS_RATE} mB/t water cooling doesn't work: Mekanism only sizes the reactor's water and steam tanks when the injection rate changes, and a reactor starts (and reloads) at ${NO_TANKS_RATE}. It runs air-cooled, as shown. Set the rate to 4 or more.`]);
-  if(cfgPreset==="atm10-aeronautics") n.push(["warn","ATM10: Aeronautics cuts fusion fuel to 1/100 of the default energy, so no injection rate keeps a fusion reactor burning there."]);
+  if(cfgPreset==="atm10-aeronautics") n.push(["warn",premix()
+    ?"ATM10: Aeronautics cuts fusion fuel to 1/100 of the default energy. On D + T no injection rate keeps it burning; the pre-mixed numbers here are the model's, not checked in game, and lighting it from a hohlraum may not work at that fuel energy."
+    :"ATM10: Aeronautics cuts fusion fuel to 1/100 of the default energy, so no injection rate keeps a fusion reactor burning there."]);
+  if(premix()&&R.lit){ const dt=powerJ(MAX_INJ,wt,"dt"), x=R.b/MAX_INJ, inf=Math.ceil(R.b/INFUSER_MAX);
+    n.push(["good",`Pre-mixed fuel skips the injection cap: it burns the whole ${fmt(cfg.fuelCapacity)} mB fuel tank every tick, ${fmt(x,1)}× the ${MAX_INJ} mB/t of D + T, for ${fmt(x,1)}× the power (${big(dt/cfg.feConversionRate)} → ${big(totalJ/cfg.feConversionRate)} FE/t).`]);
+    n.push(["warn",`It also burns ${fmt(x,1)}× the fuel: ${fmt(R.b/2)} mB/t of tritium and ${fmt(R.b/2)} of deuterium. The FE per mB is the same as D + T. Feeding it takes ${inf} Chemical Infuser${inf===1?"":"s"} with 8 speed and 8 energy upgrades (without the energy upgrades one makes 2 mB/t).`]); }
+  if(R.capped) n.push(["warn",`The water tank holds only ${big(R.wCap)} mB at injection rate ${state.inj}, so it can boil at most that much a tick; the rest of the heat goes to the air. Raise the rate to ${R.min} for full water cooling.`]);
   if(R.lit&&wt&&!R.blocked){
     const airFE=powerJ(state.inj,false)/cfg.feConversionRate;
     if(FE>airFE) n.push(["good",`Water cooling with turbines makes ${fmt(FE/airFE,2)}× the ${big(airFE)} FE/t it would make air-cooled.`]);
@@ -665,7 +713,7 @@ function drawChart(){
   const X=r=>pad.l+(r-2)/(MAX_INJ-2)*(w-pad.l-pad.r), Y=p=>pad.t+(1-p/yMax)*(h-pad.t-pad.b);
   g.font="11px "+mono; g.lineWidth=1;
   // shade the rates that can't stay lit with the current cooling
-  if(R.minLit>2){ const x1=X(Math.min(MAX_INJ,R.minLit)); g.fillStyle="rgba(238,123,123,0.10)"; g.fillRect(pad.l,pad.t,x1-pad.l,h-pad.t-pad.b);
+  if(!premix()&&R.minLit>2){ const x1=X(Math.min(MAX_INJ,R.minLit)); g.fillStyle="rgba(238,123,123,0.10)"; g.fillRect(pad.l,pad.t,x1-pad.l,h-pad.t-pad.b);
     g.fillStyle=bad; const lbl="goes out"; g.fillText(lbl,Math.max(pad.l+4,Math.min(x1,w-pad.r)-g.measureText(lbl).width-4),pad.t+12); }
   g.strokeStyle=line; g.fillStyle=muted;
   for(const f of [0,0.5,1]){ const p=yMax/1.08*f; g.beginPath(); g.moveTo(pad.l,Y(p)+.5); g.lineTo(w-pad.r,Y(p)+.5); g.stroke(); g.fillText(big(p),2,Y(p)+4); }
@@ -758,14 +806,15 @@ $("xGo").onclick=()=>downloadNbt().catch(()=>{ $("xHint").textContent="Couldn't 
 
 /* design code (mdz1): the whole design as one string, used by share links.
    mdz1.cooling.injection.lasers.tL.tW.tH.rotor.blades.coils.vents.cond
-   cooling is w (water) or a (air). Turbine counts are the effective (clamped) values. */
-function encodeDesign(){ return ["mdz1",water()?"w":"a",state.inj,state.lasers,state.tL,state.tW,state.tH,Tb.rotor,Tb.blades,Tb.coils,Tb.vents,Tb.cond].join("."); }
+   cooling is w (water) or a (air). Turbine counts are the effective (clamped) values.
+   An optional 13th field "p" means pre-mixed D-T fuel; without it (and in older links) the fuel is D + T. */
+function encodeDesign(){ return ["mdz1",water()?"w":"a",state.inj,state.lasers,state.tL,state.tW,state.tH,Tb.rotor,Tb.blades,Tb.coils,Tb.vents,Tb.cond].concat(premix()?["p"]:[]).join("."); }
 function decodeDesign(code){
-  const p=String(code||"").trim().split("."); if(p.length!==12||p[0]!=="mdz1"||!/^[wa]$/.test(p[1])) return null;
+  const p=String(code||"").trim().split("."); if(!(p.length===12||(p.length===13&&p[12]==="p"))||p[0]!=="mdz1"||!/^[wa]$/.test(p[1])) return null;
   const int=(i,a,b)=>{ const v=/^-?\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
   const d={cool:p[1]==="w"?"water":"air",inj:int(2,2,MAX_INJ),lasers:int(3,1,5),tL:int(4,5,17),tW:int(5,5,17),tH:int(6,5,18),rotor:int(7,1,14),blades:int(8,0,28),
-    coils:int(9,1,9999),vents:int(10,1,9999),cond:int(11,0,9999)};
-  if(Object.values(d).some(v=>Number.isNaN(v))||d.inj%2||d.tL%2===0||d.tW%2===0) return null;
+    coils:int(9,1,9999),vents:int(10,1,9999),cond:int(11,0,9999),fuel:p[12]==="p"?"premix":"dt"};
+  if(Object.values(d).some(v=>typeof v==="number"&&Number.isNaN(v))||d.inj%2||d.tL%2===0||d.tW%2===0) return null;
   return d;
 }
 const share=mdShare({prefix:"mdz1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
@@ -806,6 +855,7 @@ const bind=(id,key,after)=>{ const f=v=>{ state[key]=+v; if(after) after(); upda
 bind("inj","inj"); bind("las","lasers"); bind("tL","tL"); bind("tW","tW"); bind("tH","tH");
 bind("rot","rotor"); bind("bl","blades"); bind("co","coils"); bind("ve","vents"); bind("cn","cond");
 $("cWater").onclick=()=>{ state.cool="water"; update(); }; $("cAir").onclick=()=>{ state.cool="air"; update(); };
+$("fDT").onclick=()=>{ state.fuel="dt"; update(); }; $("fPre").onclick=()=>{ state.fuel="premix"; update(); };
 $("injMin").onclick=()=>{ if(R.min<=MAX_INJ){ state.inj=R.min; update(); } };
 $("injMax").onclick=()=>{ state.inj=MAX_INJ; update(); };
 $("tAuto").onclick=()=>{ autoTurbine(); update(); };

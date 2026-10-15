@@ -59,6 +59,8 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `fusion_reactor.thermocoupleEfficiency` | generators.toml | 0.05 |
 | `fusion_reactor.casingThermalConductivity` | generators.toml | 0.1 |
 | `fusion_reactor.waterHeatingRatio` | generators.toml | 0.3 |
+| `fusion_reactor.fuelCapacity` | generators.toml | 1000 |
+| `fusion_reactor.waterPerInjection` | generators.toml | 1000000 |
 | `turbine.bladesPerCoil` | generators.toml | 4 |
 | `turbine.ventChemicalFlow` | generators.toml | 32000 |
 | `turbine.disperserChemicalFlow` | generators.toml | 1280 |
