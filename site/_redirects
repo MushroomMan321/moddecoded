@@ -15,3 +15,12 @@
 /starter/                 /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
 /starter/turbine          /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
 /starter/turbine/         /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+# Mod-prefixed short links (the site covers several mods): /er/... Extreme Reactors. /starter stays as it was shared.
+# /er/starter = /starter. /er/medium = a 9x9x9 Reinforced passive reactor, 9 rods in a 3x3 grid, graphite between
+# (simplicity_482 on Short 13's TikTok, 2026-10-15): ~294K RF/t on ~20 ingots/h, the best power for fuel and parts at that size.
+/er/starter               /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/er/starter/              /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/er/starter/turbine       /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+/er/starter/turbine/      /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+/er/medium                /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
+/er/medium/               /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
