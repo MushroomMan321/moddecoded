@@ -24,3 +24,10 @@
 /er/starter/turbine/      /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
 /er/medium                /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
 /er/medium/               /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
+# /er/medium/turbine = the turbine half of the medium steam build: 7x7x20, 79 blades, 61 gold blocks, 1,968 mB/t -> ~154K RF/t.
+# /er/medium/steam = the reactor that feeds two of them: 7x7x7 active, 4 rods in a 2x2 grid, graphite between, 3,936 mB/t.
+# Built in the ATM10 film world 2026-10-15: 3,891 mB/t of steam (fuel 99% full), each turbine 153,420 RF/t at 1,822 RPM on 1,946 mB/t.
+/er/medium/turbine        /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.1968.7.7.20.2.79.gold~61  302
+/er/medium/turbine/       /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.1968.7.7.20.2.79.gold~61  302
+/er/medium/steam          /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.7.7.7.graphite,rod.QAEFAA  302
+/er/medium/steam/         /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.7.7.7.graphite,rod.QAEFAA  302
