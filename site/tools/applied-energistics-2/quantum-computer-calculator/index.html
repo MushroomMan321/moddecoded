@@ -144,6 +144,13 @@ details.mats .guide-cols{margin-top:10px}
 .fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
 .fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
 .fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+/* parallel jobs: this Quantum Computer against AE2 CPUs */
+.vs{width:100%;border-collapse:collapse;font-size:13.5px}
+.vs th,.vs td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.vs th:first-child{text-align:left;color:var(--muted);font-weight:400}
+.vs thead th{font:600 11.5px var(--font-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.vs td{font:600 13px var(--font-mono)}
+.vs td.qc{color:var(--accent-ink)}
 .credit{font-size:12.5px;color:var(--muted);margin:0}
 .credit a{color:var(--muted)}
 </style>
@@ -211,6 +218,7 @@ details.mats .guide-cols{margin-top:10px}
         <p class="cfg-hint" id="cfgHint"></p>
         <details class="cfg" id="cfgMore">
           <summary>Edit values from config/advanced_ae-common.toml</summary>
+          <p class="hint" style="margin-top:8px">ATM10 To The Sky and ATM10 Lite ship no <code>advanced_ae-common.toml</code>, so they run the mod defaults.</p>
           <div class="cfg-grid" id="cfgGrid"></div>
         </details>
       </div>
@@ -227,7 +235,7 @@ details.mats .guide-cols{margin-top:10px}
           <span class="ask-l" style="font-size:14px;color:var(--muted)">Can use</span>
           <span class="checks"><label><input type="checkbox" id="aDE" checked> Data Entangler</label><label><input type="checkbox" id="aMT" checked> Multi-Threader</label></span>
         </div>
-        <div class="btns"><button class="btn" type="button" id="aGo">Plan the Quantum Computer</button></div>
+        <div class="btns"><button class="btn" type="button" id="aGo">Plan the Quantum Computer</button><button class="btn" type="button" id="aMaxS">Max it out: storage</button><button class="btn" type="button" id="aMaxT">Max it out: co-processors</button></div>
         <p class="hint" id="aMsg" role="status">The crafting confirmation screen shows the bytes a job needs.</p>
       </div>
 
@@ -255,6 +263,16 @@ details.mats .guide-cols{margin-top:10px}
           <div class="row"><label for="H">Height</label><input type="range" id="H" min="3" max="7"><input class="num" id="HN" type="number" min="3" max="7" aria-label="Height"></div>
         </div>
         <p class="hint" id="shapeHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Parallel jobs</h2>
+        <div class="ask">
+          <label for="jBytes">One job's size</label>
+          <span class="pair"><input class="num" id="jBytes" type="number" min="0" step="any" value="64"><select id="jUnit" aria-label="Job size unit"><option value="1024">k bytes</option><option value="1048576" selected>M bytes</option><option value="1073741824">G bytes</option></select></span>
+        </div>
+        <table class="vs" id="vs"></table>
+        <p class="hint" id="vsHint"></p>
       </div>
 
       <div class="box" id="share">
@@ -459,6 +477,16 @@ function plan(){
   $("aMsg").textContent=`The core${parts.length?" plus "+parts.join(", "):""}: ${short(R.bytes)} bytes and ${fmt(R.threads)} co-processors in a ${state.L}×${state.W}×${state.H}.`;
 }
 
+// max it out: the biggest box, every multiplier the config allows, every other block inside storage or accelerators
+function maxOut(kind){
+  const S=cfg.maxSize, free=MAXI()-1-cfg.maxDE-cfg.maxMT;
+  state.n={...zero(),de:cfg.maxDE,mt:cfg.maxMT,[kind]:free}; Object.assign(state,{shape:"fixed",L:S,W:S,H:S,fill:"unit"}); update();
+  const swap=kind==="s256"
+    ?`Swap the Multi-Threader${cfg.maxMT>1?"s":""} for 256M Storage too and you get ${short(stats({...R.c,mt:0,s256:free+cfg.maxMT}).bytes)} bytes, but only ${fmt(cfg.threads)} co-processors.`
+    :`Swap the Data Entangler${cfg.maxDE>1?"s":""} for Accelerators too and you get ${fmt(stats({...R.c,de:0,acc:free+cfg.maxDE}).threads)} co-processors, but only 256M bytes.`;
+  $("aMsg").textContent=`${S}×${S}×${S}: the core, ${cfg.maxDE} Data Entangler${cfg.maxDE>1?"s":""}, ${cfg.maxMT} Multi-Threader${cfg.maxMT>1?"s":""} and ${fmt(free)} × ${TYPES[kind].short}: ${short(R.bytes)} bytes (${fmt(R.bytes/M)}M) and ${fmt(R.threads)} co-processors. ${swap}`;
+}
+
 /* ================= textures ================= */
 function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
 function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
@@ -649,6 +677,23 @@ function renderResults(){
   $("mRaw").innerHTML=`<h3>Made from</h3>${list(m.raw)}`;
   $("mHint").textContent=`From the ExtendedAE versions of the recipes, which every ATM pack uses. ${m.shattered?`The ${fmt(m.shattered)} Shattered Singularities take ${fmt(Math.ceil(m.shattered/2))} Reaction Chamber crafts (two each), each using one more Singularity. `:""}Structural Glass takes 4 Quartz Glass and 4 Sky Stone Blocks and makes one.`;
 }
+/* parallel jobs: how many jobs of one size fit at once, each with every co-processor, against AE2 crafting CPUs that
+   run the same jobs (one job each, so one CPU per job, built from MEGA Cells' 256M storage and 4-thread accelerators) */
+function renderParallel(){
+  const job=Math.ceil(Math.max(0,+$("jBytes").value*+$("jUnit").value||0));
+  if(!(job>0)){ $("vs").innerHTML=""; $("vsHint").textContent="Type one job's size from the crafting confirmation screen."; return; }
+  const jobs=Math.floor(R.bytes/job), cp=R.threads, per=Math.ceil(job/(256*M))+Math.ceil(cp/4);
+  const row=(k,a,b)=>`<tr><th scope="row">${k}</th><td class="qc">${a}</td><td>${b}</td></tr>`;
+  $("vs").innerHTML=`<thead><tr><th></th><th scope="col">This QC</th><th scope="col">AE2 CPUs</th></tr></thead><tbody>`+
+    row("Jobs at once",fmt(jobs),jobs?`${fmt(jobs)} CPU${jobs>1?"s":""}`:"—")+
+    row("Co-processors per job",fmt(cp),fmt(cp))+
+    row("Patterns a second per job",fmt(R.pushes),fmt(R.pushes))+
+    row("Channels","1",jobs?fmt(jobs):"—")+
+    row("Blocks",fmt(R.v),jobs?"at least "+fmt(jobs*per):"—")+`</tbody>`;
+  $("vsHint").textContent=jobs
+    ?`${fmt(jobs)} job${jobs>1?"s":""} of ${short(job)} fit at once, and every one gets all ${fmt(cp)} co-processors. An AE2 CPU runs one job at a time, so doing the same takes ${fmt(jobs)} CPU${jobs>1?"s":""}, each with ${short(job)} bytes and ${fmt(cp)} co-processors: at least ${fmt(per)} blocks each in MEGA 256M storage and MEGA accelerators, a channel each, and a gap between them.${per>4913?" That's more than the biggest AE2 CPU (17×17×17) holds.":""}`
+    :`A ${short(job)} job is bigger than this Quantum Computer's ${short(R.bytes)} bytes, so it can't start here.`;
+}
 /* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
 const partsList=c=>`<ul class="parts">${ORDER.filter(k=>c[k]).map(k=>`<li><img src="${swatch(k)}" alt=""><span>${TYPES[k].name}</span><span class="n">${fmt(c[k])}</span></li>`).join("")}</ul>`;
 function renderGuide(){
@@ -735,7 +780,7 @@ function update(){
   if(state.shape==="auto"){ const b=fitBox(Math.min(inside(),MAXI()))||{L:cfg.maxSize,W:cfg.maxSize,H:cfg.maxSize}; Object.assign(state,{L:b.L,W:b.W,H:b.H}); }
   for(const id of ["L","W","H"]) state[id]=clampI(state[id],3,cfg.maxSize);
   R=model();
-  renderCfg(); blockSubs(); syncInputs(); renderResults(); rebuild3D(R.map); renderGuide(); renderExport(); share.render();
+  renderCfg(); blockSubs(); syncInputs(); renderResults(); renderParallel(); rebuild3D(R.map); renderGuide(); renderExport(); share.render();
 }
 
 /* wiring */
@@ -744,6 +789,8 @@ $("fUnit").onclick=()=>{ state.fill="unit"; update(); }; $("fAcc").onclick=()=>{
 $("sAuto").onclick=()=>{ state.shape="auto"; update(); }; $("sFixed").onclick=()=>{ state.shape="fixed"; update(); }; $("sLone").onclick=()=>{ state.shape="lone"; update(); };
 for(const id of ["L","W","H"]){ const f=v=>{ state[id]=+v; state.shape="fixed"; update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); }
 $("aGo").onclick=plan; for(const id of ["aBytes","aThreads"]) $(id).onkeydown=e=>{ if(e.key==="Enter") plan(); };
+$("aMaxS").onclick=()=>maxOut("s256"); $("aMaxT").onclick=()=>maxOut("acc");
+$("jBytes").oninput=renderParallel; $("jUnit").onchange=renderParallel;
 $("tGuide").onclick=()=>setGuide(!guide.on);
 $("tGlass").onclick=()=>{ state.glass=!state.glass; $("tGlass").setAttribute("aria-pressed",state.glass); if(R) rebuild3D(R.map,true); };
 $("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
