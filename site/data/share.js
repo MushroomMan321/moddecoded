@@ -21,12 +21,19 @@ function packBits(vals,bits){ const out=new Uint8Array(Math.ceil(vals.length*bit
 function unpackBits(bytes,n,bits){ if(bytes.length!==Math.ceil(n*bits/8)) return null; const vals=new Array(n);
   for(let i=0;i<n;i++){ let v=0; for(let b=0;b<bits;b++){ const p=i*bits+b; if(bytes[p>>3]>>(p&7)&1) v|=1<<b; } vals[i]=v; } return vals; }
 const safeDecode=s=>{ try{ return decodeURIComponent(s); }catch(e){ return s; } };
-// Cloudflare's analytics beacon counts every same-page URL change it sees through the Navigation API as a pageview,
-// so the live link updates below would log one per edit. This listener is added before the beacon's (it loads as a
-// deferred module) and hides our own replaceState from it. Browsers without the Navigation API don't report replaceState.
-let quietNav=false;
-if(window.navigation&&navigation.addEventListener) navigation.addEventListener("navigate",e=>{ if(quietNav) e.stopImmediatePropagation(); });
-const quietReplace=u=>{ quietNav=true; try{ history.replaceState(null,"",u); }catch(e){} finally{ quietNav=false; } };
+// Cloudflare injects its analytics beacon with "spa":2, which counts same-page URL changes as pageviews. In Chromium
+// browsers with soft-navigation support that includes any URL change following a click or keypress, so the live link
+// updates below would log one pageview per edit. These pages have no client-side routing, so switch the beacon's
+// same-page tracking off. It reads its config from its tag's data-cf-beacon attribute when it runs, and as a deferred
+// module it runs after this script, so rewrite the attribute whether the parser has already added the tag or adds it later.
+const quietBeacon=s=>{ try{ const c=JSON.parse(s.getAttribute("data-cf-beacon"));
+  if(c&&c.spa!==false){ c.spa=false; s.setAttribute("data-cf-beacon",JSON.stringify(c)); } }catch(e){} };
+document.querySelectorAll("script[data-cf-beacon]").forEach(quietBeacon);
+const beaconWatch=new MutationObserver(ms=>{ for(const m of ms) for(const n of m.addedNodes)
+  if(n.nodeType===1&&n.matches("script[data-cf-beacon]")) quietBeacon(n); });
+beaconWatch.observe(document.documentElement,{childList:true,subtree:true});
+addEventListener("DOMContentLoaded",()=>beaconWatch.disconnect());
+const quietReplace=u=>{ try{ history.replaceState(null,"",u); }catch(e){} };
 
 function mdShare(o){
   const $=id=>document.getElementById(id), box=$("dCode"), msg=$("dMsg");

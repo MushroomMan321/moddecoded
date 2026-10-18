@@ -7,3 +7,30 @@
 /tools/mekanism/fission-planner/*            /tools/mekanism/fission-reactor-calculator/      301
 /tools/create-aeronautics/airship-planner    /tools/create-aeronautics/airship-calculator/    301
 /tools/create-aeronautics/airship-planner/*  /tools/create-aeronautics/airship-calculator/    301
+
+# Short links typed from TikTok comments (links there aren't clickable). 302 so the design can change later.
+# /starter = a Basic 3x3x3 passive reactor, 1 rod (ATM10): the cheapest first reactor, power straight out.
+# /starter/turbine = Short 13's turbine (5x5x4, 4 blades, 8 gold, 9,501 FE/t), fed by a Reinforced 3x3x3 at 121 mB/t.
+/starter                  /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/starter/                 /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/starter/turbine          /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+/starter/turbine/         /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+# Mod-prefixed short links (the site covers several mods): /er/... Extreme Reactors. /starter stays as it was shared.
+# /er/starter = /starter. /er/medium = a 9x9x9 Reinforced passive reactor, 9 rods in a 3x3 grid, graphite between
+# (simplicity_482 on Short 13's TikTok, 2026-10-15): ~294K RF/t on ~20 ingots/h, the best power for fuel and parts at that size.
+/er/starter               /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/er/starter/              /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
+/er/starter/turbine       /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+/er/starter/turbine/      /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.121.5.5.4.1.4.gold~8  302
+/er/medium                /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
+/er/medium/               /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
+# /er/medium/passive = /er/medium (the passive reactor), named to pair with /er/medium/active.
+/er/medium/passive        /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
+/er/medium/passive/       /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.p.y.0.9.9.9.graphite,rod.ABVABVABAA  302
+# /er/medium/turbine = the turbine half of the medium steam build: 7x7x20, 79 blades, 61 gold blocks, 1,968 mB/t -> ~154K RF/t.
+# /er/medium/active = the reactor that feeds two of them: 7x7x7 active, 4 rods in a 2x2 grid, graphite between, 3,936 mB/t.
+# Built in the ATM10 film world 2026-10-15: 3,891 mB/t of steam (fuel 99% full), each turbine 153,420 RF/t at 1,822 RPM on 1,946 mB/t.
+/er/medium/turbine        /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.1968.7.7.20.2.79.gold~61  302
+/er/medium/turbine/       /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.1968.7.7.20.2.79.gold~61  302
+/er/medium/active         /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.7.7.7.graphite,rod.QAEFAA  302
+/er/medium/active/        /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.7.7.7.graphite,rod.QAEFAA  302

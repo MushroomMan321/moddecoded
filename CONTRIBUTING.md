@@ -47,7 +47,7 @@ Keys are written `section.key`, exactly as they appear in the .toml file.
 ### Mekanism: `config/Mekanism/generators.toml` (and `general.toml`)
 
 Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some different key names
-(`turbineBladesPerCoil`, `turbineVentGasFlow`, `gasPerTank`); write them under the 10.7 names below.
+(`turbineBladesPerCoil`, `turbineVentGasFlow`, `gasPerTank`, `energyPerFusionFuel`); write them under the 10.7 names below.
 
 | Key | File | Default |
 |---|---|---|
@@ -55,6 +55,12 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `fission_reactor.casingHeatCapacity` | generators.toml | 1000 |
 | `fission_reactor.surfaceAreaTarget` | generators.toml | 4 |
 | `fission_reactor.burnPerAssembly` | generators.toml | 1 |
+| `fusion_reactor.fuelEnergy` | generators.toml | 10000000 |
+| `fusion_reactor.thermocoupleEfficiency` | generators.toml | 0.05 |
+| `fusion_reactor.casingThermalConductivity` | generators.toml | 0.1 |
+| `fusion_reactor.waterHeatingRatio` | generators.toml | 0.3 |
+| `fusion_reactor.fuelCapacity` | generators.toml | 1000 |
+| `fusion_reactor.waterPerInjection` | generators.toml | 1000000 |
 | `turbine.bladesPerCoil` | generators.toml | 4 |
 | `turbine.ventChemicalFlow` | generators.toml | 32000 |
 | `turbine.disperserChemicalFlow` | generators.toml | 1280 |
@@ -96,6 +102,11 @@ Defaults are for Advanced AE 1.6.12 (MC 1.21.1). The section name has a space, s
 Each calculator is one self-contained file: `site/tools/<mod>/<tool>/index.html`. There's no build step.
 If you change a formula, say how you checked it: an in-game test (with mod version and pack) or the
 mod's public source. Wiki numbers aren't enough on their own.
+
+The turning 3D models on the front page are each calculator's default build, exported to
+`site/img/tools/3d/`. If you change a default build or its block textures, re-export them with
+`python scripts/export-previews.py` (needs Python Playwright and Chrome). A new calculator also needs
+an entry in that script's `TOOLS` list and a `data-model` card on `site/index.html`.
 
 ## Preview locally
 
