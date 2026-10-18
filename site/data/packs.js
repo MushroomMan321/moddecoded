@@ -6,6 +6,7 @@
 //   extremereactors -> config/extremereactors/common.toml
 //   mekanism        -> config/Mekanism/generators.toml (general.*, boiler.* and dynamic_tank.* keys: config/Mekanism/general.toml)
 //   ryzergen        -> config/ryzergen-common.toml
+//   advanced_ae     -> config/advanced_ae-common.toml (its section is "quantum computer", with the space)
 // The keys each calculator reads are listed in its "Edit values" panel and in CONTRIBUTING.md.
 //
 //   id      URL-safe slug. It is also the deep link: /tools/.../turbine-calculator/#<id>
@@ -26,6 +27,9 @@ window.MD_PACKS = [
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
         "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
+      advanced_ae: { config: {
+        "quantum computer.quantumComputerAcceleratorThreads": 12, "quantum computer.quantumComputerMultiThreaderMultiplication": 6,
+        "quantum computer.quantumComputerDataEntanglerMultiplication": 6 } },
     },
   },
   {
@@ -42,6 +46,9 @@ window.MD_PACKS = [
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.fuelEnergy": 100000, "fusion_reactor.thermocoupleEfficiency": 0.02,
         "fusion_reactor.casingThermalConductivity": 0.333333333, "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
+      advanced_ae: { config: {
+        "quantum computer.quantumComputerAcceleratorThreads": 12, "quantum computer.quantumComputerMultiThreaderMultiplication": 6,
+        "quantum computer.quantumComputerDataEntanglerMultiplication": 6 } },
     },
   },
   {
@@ -70,6 +77,9 @@ window.MD_PACKS = [
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
         "fusion_reactor.waterHeatingRatio": 0.27272727272727, "fusion_reactor.fuelCapacity": 500 } },
+      advanced_ae: { config: {
+        "quantum computer.quantumComputerAcceleratorThreads": 12, "quantum computer.quantumComputerMultiThreaderMultiplication": 6,
+        "quantum computer.quantumComputerDataEntanglerMultiplication": 6 } },
     },
   },
   {
@@ -111,12 +121,13 @@ window.MD_PACKS = [
     },
   },
   {
-    // Craftoria 1.37.0 ships Mekanism 10.7.19 and no Extreme Reactors.
+    // Craftoria 1.37.0 ships Mekanism 10.7.19 and no Extreme Reactors. Its advanced_ae-common.toml keeps the QC defaults.
     id: "craftoria", name: "Craftoria", mc: "1.21.1",
     source: { repo: "https://github.com/TeamAOF/Craftoria", commit: "5689ac1", checked: "2026-09-28" },
     mods: {
       mekanism: { config: { "fission_reactor.energyPerFissionFuel": 500000,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.25, "fusion_reactor.fuelCapacity": 500 } },
+      advanced_ae: { config: {}, note: "mod defaults" },
     },
   },
 ];

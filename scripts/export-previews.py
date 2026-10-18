@@ -33,6 +33,7 @@ TOOLS = {
     "tank": "/tools/mekanism/dynamic-tank-calculator/",
     "airship": "/tools/create-aeronautics/airship-calculator/",
     "cpu": "/tools/applied-energistics-2/crafting-cpu-calculator/",
+    "quantum": "/tools/applied-energistics-2/quantum-computer-calculator/",
     "station": "/tools/ryzer-gen/fission-station-calculator/",
 }
 
