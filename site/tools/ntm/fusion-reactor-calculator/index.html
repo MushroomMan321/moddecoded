@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/ntm/fusion-reactor-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>NTM Fusion Reactor Calculator</title>
+<meta name="description" content="HBM's Nuclear Tech Mod fusion torus calculator: klystron ignition, plasma TU/t, superhot steam, MHDT EU, breeder tritium and self-sustaining coupler loops, from the NTM 1.0.27 (1.7.10) source code, with presets for NTM:Space, NTM CE, Reforged and Final Edition.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.view-hint{margin-top:-4px}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,.sel:focus-visible,.chks label:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.chart{width:100%;height:170px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px var(--font-mono);color:var(--muted);margin-top:-4px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+.sel{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px 8px}
+.chks{display:flex;flex-wrap:wrap;gap:8px}
+.chks label{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:6px 10px;cursor:pointer}
+.chks label.on{background:var(--accent-soft);border-color:var(--accent)}
+.chks input{accent-color:var(--accent)}
+.rig{display:flex;flex-wrap:wrap;align-items:stretch;gap:6px}
+.rig .node{flex:1 1 84px;min-width:80px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:8px 10px;display:flex;flex-direction:column;gap:1px;text-align:center}
+.rig .node b{font-family:var(--font-body);font-size:13px;color:var(--ink)}
+.rig .node span{font:11px/1.3 var(--font-mono);color:var(--muted)}
+.rig .node.torus{border-color:var(--accent);background:var(--accent-soft);flex:1 1 120px}
+.rig .node.off{opacity:.38}
+.rig .arrow{align-self:center;color:var(--muted);font:600 14px var(--font-mono);flex:0 0 auto}
+.verdict{font:600 14px var(--font-body);padding:8px 10px;border-radius:5px;border:1px solid var(--line);color:var(--muted)}
+.verdict.good{border-color:var(--good);color:var(--good)}
+.verdict.bad{border-color:var(--bad);color:var(--bad)}
+.verdict.warn{border-color:var(--warn);color:var(--warn)}
+.readout{display:flex;flex-direction:column;gap:4px}
+.readout .big{font:400 44px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A;overflow-wrap:anywhere}
+.readout .big small{font:400 13px var(--font-mono);color:#C9D2CE}
+.readout .sub{font:12px var(--font-mono);color:var(--muted)}
+.gauge{height:8px;border:1px solid var(--line);border-radius:4px;overflow:hidden;background:var(--bg)}
+.gauge i{display:block;height:100%;background:var(--accent);width:0}
+.gauge i.full{background:var(--good)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / <a href="/tools/ntm/">NTM</a> / Fusion Reactor Calculator</nav>
+  <header class="top">
+    <h1>HBM's NTM <span class="y">Fusion Reactor Calculator</span></h1>
+    <span class="src">Formulas from the HBM's Nuclear Tech Mod 1.7.10-1.0.27 source</span>
+  </header>
+  <p class="lede">Fire up the fusion torus: klystron KyU is a <b>gate, not a throttle</b> — every tick it must reach the recipe's ignition temperature while the ring sits at or under 123 °F — and every plasma receiver you bolt on <b>dilutes all the others</b>. This is the closed form of <b>TileEntityFusionTorus</b>, <b>TileEntityFusionKlystron</b>, <b>ModuleMachineFusion</b> and <b>FusionRecipes</b>: ignition, burn factor, plasma, steam, tritium, and the coupler loop that can make the whole rig run without klystrons once lit.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview and reactor status">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the fusion torus ring with klystrons, boiler, MHDT turbine and breeder around it"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="viewbar">
+          <button id="tCut" type="button" aria-pressed="false">Cutaway</button>
+          <button id="tCas" type="button" aria-pressed="true">Casing</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
+      <div class="box readout">
+        <span class="big" id="readMain" hidden>—</span>
+        <span class="sub" id="readSub" hidden></span>
+        <div class="gauge" aria-hidden="true"><i id="gFill"></i></div>
+        <span class="sub" id="gCap"></span>
+        <div class="verdict" id="verdict">—</div>
+      </div>
+      <div class="box">
+        <h2>The rig</h2>
+        <div class="rig" id="rig"></div>
+        <p class="hint">Klystrons pump KyU into the torus over the klystron network; the torus sprays plasma down the plasma network to its receivers. Couplers are receivers that pour their plasma straight back into the klystron net. Collectors hang on the plasma net, take no power, and speed up item production.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Mod preset</h2>
+        <div class="seg" role="group" aria-label="Mod preset">
+          <button type="button" id="pDefault" aria-pressed="true">Original NTM</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Fork</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Fork" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit fusion constants (NTM ships these in code, not in a config file)</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Fusion recipe</h2>
+        <select class="sel" id="recipe" aria-label="Fusion recipe"></select>
+        <p class="hint" id="recInfo"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Klystrons</h2>
+        <div class="row"><label for="kly">Klystrons</label><input type="range" id="kly" min="0" max="8" step="1"><input class="num" id="klyN" type="number" min="0" max="8" step="1" aria-label="Klystron count"></div>
+        <div class="row"><label for="target">Target each</label><input type="range" id="target" min="0" max="1000000" step="10000"><input class="num" id="targetN" type="number" min="0" max="1000000" step="10000" aria-label="Output target per klystron in KyU"></div>
+        <div class="row"><label for="air">Air feed, total</label><input type="range" id="air" min="0" max="200000" step="500"><input class="num" id="airN" type="number" min="0" max="200000" step="500" aria-label="Air supply in mB per tick"></div>
+        <p class="hint">Each klystron drains 2,500 mB/t of air at full power from its 150,000 mB compair tank; below half the tank (75,000 mB) output scales down, so the steady state is full speed at ≥2,500 mB/t per klystron. EU cost is target × factor per klystron per tick — and the quirk: exports below target/50 are zeroed, EU spent for nothing.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Torus feeds</h2>
+        <div class="row"><label for="he">Battery, HE/t</label><input type="range" id="he" min="0" max="500000" step="1000"><input class="num" id="heN" type="number" min="0" max="500000" step="1000" aria-label="HE feed into the torus battery"></div>
+        <div class="row"><label for="coolant">Coolant</label><input type="range" id="coolant" min="0" max="30" step="1"><input class="num" id="coolantN" type="number" min="0" max="30" step="1" aria-label="Torus coolant in mB per tick"></div>
+        <div class="row"><label for="fuelPct">Fuel flow</label><input type="range" id="fuelPct" min="0" max="200" step="5"><input class="num" id="fuelPctN" type="number" min="0" max="200" step="5" aria-label="Fuel supply as percent of demand"></div>
+        <p class="hint">The 10M HE battery runs the solenoids at 25,000 HE/t while burning, so ≥25,000 HE/t keeps the torus at full speed (stored HE settles at 200× feed). The ring heats +2.5 °F/t and only cools above the 123 °F gate: 0.5 °F per mB of coolant, so 5 mB/t is the minimum for continuous burn. Fuel at 100% parks each 4,000 mB input tank at its half-full full-speed point.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Receivers &amp; collectors</h2>
+        <div class="chks" role="group" aria-label="Plasma receivers">
+          <label id="lbB"><input type="checkbox" id="ckB"> Boiler</label>
+          <label id="lbM"><input type="checkbox" id="ckM"> MHDT turbine</label>
+          <label id="lbR"><input type="checkbox" id="ckR"> Breeder</label>
+        </div>
+        <div class="row"><label for="couplers">Couplers</label><input type="range" id="couplers" min="0" max="4" step="1"><input class="num" id="couplersN" type="number" min="0" max="4" step="1" aria-label="Coupler count"></div>
+        <div class="row"><label for="collectors">Collectors</label><input type="range" id="collectors" min="0" max="4" step="1"><input class="num" id="collectorsN" type="number" min="0" max="4" step="1" aria-label="Collector count"></div>
+        <p class="hint">Every receiver on the plasma net gets ceil(plasma × intensity); with 2/3/4 receivers the intensity is 0.625/0.5/0.4375, so four receivers pull 1.75× the plasma in total. Couplers count as receivers and recirculate their plasma 1:1 as KyU. Collectors add 0.5× item speed each, bonus pool capped at 1.5. A plasma forge on the net counts as a receiver too and dilutes the rest.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <canvas class="chart" id="chart" aria-label="Net KyU and steam versus klystron target"></canvas>
+        <div class="legend"><span><i style="background:var(--accent-ink)"></i>net KyU/t (klystrons + couplers)</span><span><i style="background:var(--steam)"></i>steam mB/t</span><span><i style="background:var(--bad)"></i>ignition gate</span></div>
+        <canvas class="chart" id="chart2" aria-label="Net KyU and steam versus klystron count"></canvas>
+        <div class="legend"><span><i style="background:var(--accent-ink)"></i>net KyU/t</span><span><i style="background:var(--steam)"></i>steam mB/t</span><span><i style="background:var(--bad)"></i>ignition gate</span><span>x: klystrons 0..8</span></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">Steady state of the mod's per-tick loop: klystronEnergy is summed fresh every tick, so the gate is checked every tick. Water, perfluoromethyl coolant and klystron EU are assumed piped in.</p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact rig. Paste a design code above to load one.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Ignition is a per-tick gate, not a threshold you cross</h3>
+        <p>The torus reads its klystron energy and zeroes it every single tick, so the recipe's ignition temperature must be met every tick — 4 klystrons at 250k pass the 1M gate of balefire, one klystron fed 1M in bursts does not. D-D fuses at 750k KyU; stellar flux asks 10M, and 8 klystrons top out at 8M — stellar flux and DHC never light on original NTM without creative klystrons.</p>
+<pre>ignition = recipe.ignitionTemp &lt;= klystronEnergy   // every tick
+burn     = isCool() &amp;&amp; ignition                    // temp &lt;= 123 F
+klystronEnergy = 0                                 // end of tick</pre>
+        <span class="ref">TileEntityFusionTorus.java:111,185,192,223 · TileEntityCooledBase.java:58</span>
+      </div>
+      <div class="fact">
+        <h3>Four receivers get 43.75% each — that's 175% of the plasma</h3>
+        <p>The output intensity per receiver is 1.0 / 0.625 / 0.5 / 0.4375 for 1/2/3/4 receivers, not a 1/n split. Add the fourth receiver and total plasma drawn goes up, not down — the torus happily over-delivers, so split your plasma across boiler, MHDT, breeder and a coupler loop.</p>
+<pre>intensity: 1→1.0  2→0.625  3→0.5  4→0.4375
+every receiver gets ceil(plasma × intensity)</pre>
+        <span class="ref">TileEntityFusionTorus.getOuputIntensity:275-283</span>
+      </div>
+      <div class="fact">
+        <h3>The MHDT pays 1.35× — if it clears the bar</h3>
+        <p>Turbine output is floor(plasma × 1.35), halved by integer division when the plasma it received is below 5,000,000 TU. D-T's 3.75M TU can't clear it alone: the pre-cliff figure 5,062,500 EU/t halves to 2,531,250. Run the turbine alone on a high-yield recipe, or feed it 5M+ TU, to keep the full rate. Minimum plasma is a JSON key (L:minimumPlasma in the mhd-turbine config) — edit it in Custom below.</p>
+<pre>power = floor(plasma × 1.35)
+if (plasma &lt; 5000000) power /= 2   // integer divide</pre>
+        <span class="ref">TileEntityFusionMHDT.java:52-54,85-88</span>
+      </div>
+      <div class="fact">
+        <h3>The boiler drinks 200 TU per mB</h3>
+        <p>Steam cycles are the plasma it received divided by water's 200 TU heat requirement, capped by water feed and the 32,000 mB steam tank. D-T at full power feeds one boiler 3.75M TU → 18,750 mB/t of superhot steam; stellar flux at 50M TU is 250,000 mB/t — 7.8M mB/s, pipes weep.</p>
+<pre>steam mB/t = plasma / 200   (WATER first-step heatReq)
+dt: 3,750,000/200 = 18,750 · stellar: 50M/200 = 250,000</pre>
+        <span class="ref">TileEntityFusionBoiler.java:38-39,115-119 · Fluids.java:718</span>
+      </div>
+      <div class="fact">
+        <h3>Small klystron outputs go to zero</h3>
+        <p>A klystron runs at min(power, air) scaled factors — full speed at ≥50% charge and ≥75,000 mB of the 150,000 mB air tank, i.e. ≥2,500 mB/t feed — then spends target × factor EU and 2,500 × factor mB/t of air. If the export lands under target/50 (factor below 2%), it is clamped to zero: the EU is still gone. Starving a 100k klystron of air burns 100k EU/t (the cost formula) for 0 KyU.</p>
+<pre>factor = min(powerFactor, airFactor)   // half-point scaling
+if (output &lt; target / 50) output = 0</pre>
+        <span class="ref">TileEntityFusionKlystron.java:53-54,69,80-102 · TileEntityFusionTorus.getSpeedScaled:403-409</span>
+      </div>
+      <div class="fact">
+        <h3>The breeder runs on raw flux, at 10,000 per item</h3>
+        <p>Breeders get the torus's neutron flux — not intensity-diluted like plasma — and progress += flux per tick against a fixed 10,000 capacity. D-D at 50 n/t breeds one item every 200 t (10 s): a lithium block fills its tank with 10,000 mB of tritium, an ingot with 1,000, a dust with 100. Chain breeders off a D-T or chlorine torus and tritium stops being the bottleneck.</p>
+<pre>time = 10000 / (neutronFlux × factor)   // ticks per item
+dd 50 n/t → 200 t · dt 100 → 100 t · stellar 10000 → 1 t</pre>
+        <span class="ref">TileEntityFusionBreeder.java:54,202-216,300-303</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=v=>!Number.isFinite(v)?"—":v===0?"0":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10?2:0);
+const secs=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"; };
+const F=Math.fround;
+
+/* ================= mod constants (NTM 1.0.27 TileEntityFusionTorus / TileEntityFusionKlystron / ModuleMachineFusion / FusionRecipes) ================= */
+// [id, label, inputs[[fluid, mB/t]], ignitionTemp KyU, outputTemp TU/t, neutronFlux /t, product] — FusionRecipes.registerDefaults:50-177
+const RECIPES=[
+  ["dd","D–D · deuterium",[["Deuterium",20]],750000,1000000,50,"Helium-4 · 1,000 mB/cycle"],
+  ["do","D–O · deuterium + oxygen",[["Deuterium",10],["Oxygen",10]],250000,1250000,50,"Charged pellet · 1/cycle"],
+  ["dt","D–T · deuterium + tritium",[["Deuterium",10],["Tritium",10]],750000,3750000,100,"Helium-4 · 1,000 mB/cycle"],
+  ["tcl","T–Cl · tritium + chlorine",[["Tritium",10],["Chlorine",10]],2500000,6250000,500,"Chlorophyte dust · 1/cycle"],
+  ["h3","He-3 · helium-3",[["Helium-3",20]],500000,3750000,0,"Helium-4 · 1,000 mB/cycle"],
+  ["th4","T–He4 · tritium + helium-4",[["Tritium",10],["Helium-4",10]],875000,4000000,500,"Charged pellet · 1/cycle"],
+  ["cl","Cl-36 · chlorine",[["Chlorine",20]],3750000,10000000,1000,"Chlorophyte dust · 1/cycle"],
+  ["dhc","DHC · heavy water fusion fuel",[["DHC",20]],10000000,25000000,2000,"Chlorophyte dust · 1/cycle"],
+  ["bf","Balefire + amat",[["Balefire",15],["Amat",5]],1000000,12500000,2000,"Balefire powder · 1/cycle"],
+  ["stellar","Stellar flux",[["Stellar flux",10]],10000000,50000000,10000,"Gold powder · 1/cycle"],
+];
+const RECIPE=Object.fromEntries(RECIPES.map(r=>[r[0],{id:r[0],name:r[1],inputs:r[2],ign:r[3],out:r[4],flux:r[5],product:r[6]}]));
+
+// every value is the mod's own constant; see research/ntm-1.0.27-reactors.md · "Fusion torus"
+const DEFAULTS={torusMaxPower:10000000,klystronMax:1000000,klystronAir:2500,klystronAirTank:150000,intensity2:0.625,intensity3:0.5,intensity4:0.4375,
+  mhdtEff:1.35,mhdtMinPlasma:5000000,boilerTuPerMb:200,breederFlux:10000,solenoidHE:25000,torusTank:4000,passiveHeat:2.5,coolPerMb:0.5,coolGate:123,
+  ...Object.fromEntries(RECIPES.flatMap(r=>[[`ign_${r[0]}`,r[3]],[`out_${r[0]}`,r[4]],[`flux_${r[0]}`,r[5]],[`dur_${r[0]}`,100]]))};
+const CFG_FIELDS=[["torusMaxPower","fusion.torusMaxPower"],["klystronMax","fusion.klystronMax"],["klystronAir","fusion.klystronAir"],["klystronAirTank","fusion.klystronAirTank"],
+  ["intensity2","fusion.intensity2"],["intensity3","fusion.intensity3"],["intensity4","fusion.intensity4"],["mhdtEff","fusion.mhdtEff"],["mhdtMinPlasma","fusion.mhdtMinPlasma"],
+  ["boilerTuPerMb","fusion.boilerTuPerMb"],["breederFlux","fusion.breederFlux"],["solenoidHE","fusion.solenoidHE"],["torusTank","fusion.torusTank"],
+  ["passiveHeat","fusion.passiveHeat"],["coolPerMb","fusion.coolPerMb"],["coolGate","fusion.coolGate"],
+  ...RECIPES.flatMap(r=>[[`ign_${r[0]}`,`fusion.recipe.${r[0]}.ignitionTemp`],[`out_${r[0]}`,`fusion.recipe.${r[0]}.outputTemp`],[`flux_${r[0]}`,`fusion.recipe.${r[0]}.neutronFlux`],[`dur_${r[0]}`,`fusion.recipe.${r[0]}.duration`]])];
+const ignOf=id=>+cfg[`ign_${id}`], outOf=id=>+cfg[`out_${id}`], fluxOf=id=>+cfg[`flux_${id}`], durOf=id=>+cfg[`dur_${id}`];
+
+const {presets:PRESETS,list:NTM_PACKS}=mdPackPresets("hbm",DEFAULTS,CFG_FIELDS);
+let cfgPreset="default",cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("ntm-fusion-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+function saveCfg(){ try{ localStorage.setItem("ntm-fusion-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+/* ================= state ================= */
+const state={recipe:"dt",kly:4,target:500000,air:10000,he:30000,coolant:8,fuelPct:100,collectors:1,couplers:0,b:true,m:true,r:true};
+
+/* ================= model: closed-form of the torus tick loop =================
+   getSpeedScaled(max,level): full at level >= max/2, else 2·level/max   (TileEntityFusionTorus.java:403-409)
+   Supply sliders (mB/t, HE/t) map to the mod's tank levels by steady state: feed = drain×factor,
+   factor = 2·fill/max  =>  fill = max/(2·drain) × feed. Klystron: 150000/(2·2500)=30×feed, full at
+   2500 mB/t (=75000=50%). Torus: 10M/(2·25000)=200×feed, full at 25000 HE/t (=5M=50%). Fuel: 4000
+   mB tanks (Torus:72-75), 100% of the mB/t demand settles at the 2000 half-point. */
+const speedScaled=(max,level)=>max<=0?0:(level>=max*0.5?1:level/max*2);
+
+function klyOut(target,airPer){   // one klystron at steady state; EU supply assumed to keep it fed
+  const tank=+cfg.klystronAirTank, air=+cfg.klystronAir;
+  const fill=Math.min(30*airPer,tank);
+  const f=speedScaled(tank,fill);
+  const eu=target>0?Math.ceil(target*f):0;                       // TileEntityFusionKlystron.java:92
+  let out=(target>0&&fill>=Math.ceil(air*f))?eu:0;               // power + air sufficiency, :94-98
+  if(out<target/50) out=0;                                       // the quirk, :100-102
+  return {f,out,eu};
+}
+function intensity(n){ return n<=1?1:n===2?+cfg.intensity2:n===3?+cfg.intensity3:+cfg.intensity4; }   // TileEntityFusionTorus:275-283
+
+function analyze(){
+  const rc=RECIPE[state.recipe];
+  const ign=ignOf(rc.id), outT=outOf(rc.id), flux=fluxOf(rc.id), dur=durOf(rc.id);
+  const airPer=state.kly>0?state.air/state.kly:0;
+  const k=klyOut(state.target,airPer);
+  const kyNet=state.kly*k.out, klyEU=state.kly*k.eu;
+  const pf=speedScaled(+cfg.torusMaxPower,Math.min(200*state.he,+cfg.torusMaxPower));   // Torus:180,388 · ModuleMachineFusion:71
+  const ff=speedScaled(+cfg.torusTank,Math.min(20*state.fuelPct,+cfg.torusTank));       // Torus:181-184 (tank 4000, half 2000 = 100% flow)
+  const factor=Math.min(pf,ff);
+  const needCool=+cfg.passiveHeat/+cfg.coolPerMb;                                        // 5 mB/t cancels +2.5 F/t (CooledBase:39-51)
+  const cool=state.coolant>=needCool;
+  const rcv=(state.b?1:0)+(state.m?1:0)+(state.r?1:0)+state.couplers;
+  const inten=intensity(rcv);
+  const plasmaFull=factor>0?Math.ceil(outT*factor):0;                                    // Torus:199
+  const eachFull=plasmaFull>0?Math.ceil(plasmaFull*inten):0;
+  const recirc=state.couplers*eachFull;                                                  // Coupler: plasma → klystronEnergy 1:1
+  const lit=cool&&factor>0&&kyNet+recirc>=ign;                                           // gate:185, isCool:192
+  const plasma=lit?plasmaFull:0, each=lit?eachFull:0;
+  const netKyU=kyNet+(lit?recirc:0);
+  const neutrons=lit?flux*factor:0;                                                      // outputFlux:207 (not intensity-scaled)
+  const steam=state.b?Math.floor(each/+cfg.boilerTuPerMb):0;                             // Boiler:115-116 (200 TU/mB)
+  const mhdtPre=state.m?Math.floor(each*+cfg.mhdtEff):0;                                 // MHDT:85
+  const mhdtEU=state.m&&each>0?(each<+cfg.mhdtMinPlasma?Math.floor(mhdtPre/2):mhdtPre):0;// MHDT:86-88
+  const breedT=state.r&&neutrons>0?+cfg.breederFlux/neutrons:Infinity;                   // Breeder:202-216
+  const breedMin=isFinite(breedT)?1200/breedT:0;
+  const cycleT=factor>0?dur/factor:Infinity;                                             // progress += factor/duration (ModuleMachineFusion:72)
+  const bonus=Math.min(state.collectors*0.5,1.5);                                        // bonusSpeed + cap (Torus:191, MModuleFusion:74-75,91-94)
+  const itemsMin=lit?1200/cycleT*(1+bonus):0;
+  const heDraw=lit?Math.ceil(+cfg.solenoidHE*factor):0;
+  const quirk=state.kly>0&&state.target>0&&k.eu>0&&k.out===0;
+  const selfSustain=lit&&kyNet<ign;
+  const klyNeeded=k.out>0&&ign/k.out>state.kly?Math.ceil(ign/k.out):null;
+  const fuel=rc.inputs.map(i=>`${i[0]} ${fmt(i[1]*factor,1)}`).join(" + ");
+  let verdict;
+  if(factor<=0) verdict={s:"STARVED",c:"bad",t:"fuel flow or HE feed at zero — the torus cannot run the cycle"};
+  else if(!cool) verdict={s:"OVERHEATED",c:"bad",t:`coolant under ${fmt(needCool)} mB/t — the ring drifts to 293 °F and the burn gate stays shut`};
+  else if(lit&&selfSustain) verdict={s:"SELF-SUSTAINING",c:"good",t:"the coupler loop alone holds the ignition gate — the rig runs with klystrons idle once lit"};
+  else if(lit) verdict={s:"IGNITES",c:"good",t:`${big(netKyU)} KyU meets the ${big(ign)} KyU gate at ${fmt(factor*100)}% burn`};
+  else verdict={s:"TOO COLD",c:"bad",t:`${big(netKyU)} of ${big(ign)} KyU — add klystrons / raise target${klyNeeded?` (need ${klyNeeded} at this target)`:""}`};
+  const heroV=state.b?steam:state.m?mhdtEU:plasma;
+  const heroU=state.b?"mB/t superhot steam":state.m?"EU/t MHDT":"TU/t plasma";
+  // target sweep: net KyU and steam as the per-klystron target slides 0..max
+  const pts=[];
+  for(let i=0;i<=100;i++){
+    const tg=i/100*(+cfg.klystronMax), kk=klyOut(tg,airPer), ky=state.kly*kk.out;
+    const lx=cool&&factor>0&&ky+recirc>=ign;
+    pts.push({x:tg,ky:lx?ky+recirc:ky,st:lx&&state.b?Math.floor(eachFull/+cfg.boilerTuPerMb):0});
+  }
+  // count sweep: net KyU and steam as klystrons are added (air shared)
+  const pts2=[];
+  for(let n=0;n<=8;n++){
+    const kk=klyOut(state.target,n>0?state.air/n:0), ky=n*kk.out;
+    const lx=cool&&factor>0&&ky+recirc>=ign;
+    pts2.push({x:n,ky:lx?ky+recirc:ky,st:lx&&state.b?Math.floor(eachFull/+cfg.boilerTuPerMb):0});
+  }
+  return {rc,ign,kyNet,klyEU,k,netKyU,recirc:lit?recirc:0,pf,ff,factor,cool,needCool,rcv,inten,plasma,each,neutrons,
+    steam,mhdtPre,mhdtEU,cliff:each-+cfg.mhdtMinPlasma,breedT,breedMin,cycleT,bonus,itemsMin,heDraw,quirk,selfSustain,klyNeeded,fuel,
+    lit,verdict,heroV,heroU,pts,pts2};
+}
+
+/* ================= three.js: the rig =================
+   Ring per the decompile: the torus is one block tile whose render box spans x±8, y..y+5 (Torus:454-462)
+   and whose anchors sit on a square ring of radius 6, sides 5 wide (getConPos:411-440); KyU/plasma nets
+   port onto the four cardinal faces at mid-height (createNode:285-299). Klystrons stand off-ring facing
+   the ring, fans spun by their output (Klystron:59-62,108-121). The client spins the magnet at up to
+   30°/t × powerFactor (Torus:229-242) — that spin is the plasma-progress marker here. */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plate(key,color,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b); }); }
+const T={
+  cas:()=>plate("cas","#5E6570",g=>{ g.fillStyle="#9AA3AD"; [[2,2],[13,2],[2,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,1,1)); g.fillStyle="#3A3E44"; g.fillRect(7,3,2,10); }),
+  coil:()=>plate("coil","#A66A38",g=>{ g.fillStyle="#6E3E1C"; for(let i=1;i<16;i+=3) g.fillRect(0,i,16,1); }),
+  kly:()=>plate("kly","#6B7480",g=>{ g.fillStyle="#22262A"; g.beginPath(); g.arc(8,8,5,0,7); g.fill(); g.fillStyle="#3A7BD5"; g.beginPath(); g.arc(8,8,2.4,0,7); g.fill(); g.fillStyle="#9AA3AD"; [[2,2],[13,2],[2,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,1,1)); }),
+  steel:()=>plate("steel","#7A828C",g=>{ g.fillStyle="#4A5058"; g.fillRect(0,11,16,2); }),
+  plinth:()=>plate("plinth","#39404A"),
+  boiler:()=>plate("boiler","#4F7FB0",g=>{ g.fillStyle="#A8C8E8"; g.fillRect(3,2,10,5); g.fillStyle="#22262A"; g.fillRect(4,9,8,5); }),
+  mhdt:()=>plate("mhdt","#C0703A",g=>{ g.fillStyle="#E2D03A"; g.fillRect(6,6,4,4); g.fillStyle="#7A3E18"; for(let i=1;i<16;i+=4) g.fillRect(0,i,16,1); }),
+  breeder:()=>plate("breeder","#3E5A44",g=>{ g.fillStyle="#5CC48A"; g.fillRect(4,1,2,14); g.fillRect(10,1,2,14); }),
+  coupler:()=>plate("coupler","#7A5EA8",g=>{ g.fillStyle="#C9A8FF"; g.fillRect(4,4,8,8); g.fillStyle="#2A2233"; g.fillRect(7,7,2,2); }),
+  collector:()=>plate("collector","#8A94A0",g=>{ g.fillStyle="#22262A"; g.fillRect(2,2,12,4); g.fillRect(2,10,12,2); }),
+  pipe:()=>plate("pipe","#575F68",g=>{ g.fillStyle="#3A3E44"; g.fillRect(0,7,16,2); }),
+  cool:()=>plate("cool","#3A7B8A",g=>{ g.fillStyle="#7FE3F0"; g.fillRect(6,2,4,12); }),
+};
+const NOMAP={
+  plasma:()=>new THREE.MeshLambertMaterial({color:0xffaa55,emissive:0xffaa55,transparent:true,opacity:0.55,depthWrite:false}),
+  klybeam:()=>new THREE.MeshLambertMaterial({color:0x9fd8ff,emissive:0x9fd8ff,transparent:true,opacity:0.85,depthWrite:false}),
+  marker:()=>new THREE.MeshLambertMaterial({color:0xffcc66,emissive:0xffcc66}),
+  accp:()=>new THREE.MeshLambertMaterial({color:0xc9a8ff,emissive:0xc9a8ff}),
+  bface:()=>new THREE.MeshLambertMaterial({color:0x2f7a4c,emissive:0x2f7a4c}),
+};
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, cutX, cutZ, casingOn=true, cutaway=false, buildStart=0;
+const matCache={};
+let gShell=null, spinMark=null, spinYoke=null, spinWheel=null, spinFans=[];
+function mat(k){ if(matCache[k]) return matCache[k]; let m;
+  if(NOMAP[k]) m=NOMAP[k]();
+  else { const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter; m=new THREE.MeshLambertMaterial({map:t}); }
+  m.clippingPlanes=[clip]; return matCache[k]=m; }
+function applyCuts(){ for(const k in matCache) matCache[k].clippingPlanes=cutaway?[clip,cutX,cutZ]:[clip]; }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0);
+  cutX=new THREE.Plane(new THREE.Vector3(-1,0,0),0.001); cutZ=new THREE.Plane(new THREE.Vector3(0,0,-1),0.001);
+  root=new THREE.Group(); scene.add(root);
+  buildStart=performance.now();
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera: left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms. Auto-spin after 2.5s idle.
+const orbit={theta:0.32,phi:1.02,radius:31,target:{x:0,y:2.6,z:0},idle:0,pan:false};
+const ptrs=new Map();
+const zoomBy=f=>{ orbit.radius=Math.min(90,Math.max(9,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k; }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  const q=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=-0.6+7.2*(1-Math.pow(1-q,3));
+  if(S){
+    if(spinMark) spinMark.rotation.y+=(S.lit?0.5+2.2*S.factor:0)*dt;
+    if(spinYoke) spinYoke.rotation.y+=(S.lit?0.4+1.6*S.pf:0)*dt;
+    if(spinWheel) spinWheel.rotation.y+=(S.lit&&state.m?3+2*S.factor:0)*dt;
+    const fs=S.k.out>0?1.5+4*S.k.f:0; for(const f of spinFans) f.rotation.z+=fs*dt;
+    if(matCache.plasma) matCache.plasma.emissiveIntensity=S.lit?0.85+0.25*Math.sin(t/230):0.12;
+    if(matCache.marker) matCache.marker.emissiveIntensity=S.lit?0.75+0.25*Math.sin(t/160):0.08;
+    if(matCache.cool) matCache.cool.emissive.setRGB(S.cool?0.05:0.35+0.3*Math.sin(t/130), S.cool?0.42:0.06, S.cool?0.46:0.06);
+  }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+const geoC={};
+const CYL=(r1,r2,h,s)=>geoC["c"+r1+"|"+r2+"|"+h+"|"+s]||(geoC["c"+r1+"|"+r2+"|"+h+"|"+s]=new THREE.CylinderGeometry(r1,r2,h,s));
+const TOR=()=>TOR.g||(TOR.g=new THREE.TorusGeometry(6,1.15,8,44));
+const TORS=()=>TORS.g||(TORS.g=new THREE.TorusGeometry(0.62,0.16,6,18));
+const UPY=new THREE.Vector3(0,1,0);
+function plasmaColor(out){ const k=Math.max(0,Math.min(1,(Math.log10(Math.max(1e5,out))-6)/1.7));
+  const a=new THREE.Color(0xF0703A), b=new THREE.Color(0xFFC94A), c=new THREE.Color(0x9FDCFF);
+  return k<0.5? a.clone().lerp(b,k*2) : b.clone().lerp(c,(k-0.5)*2); }
+const KLYA=[22.5,67.5,112.5,157.5,202.5,247.5,292.5,337.5];
+const DIAG=[45,135,225,315];
+function rebuild3D(){
+  if(!renderer) return;
+  const tc=plasmaColor(S.rc.out), lit=S.lit, injecting=lit&&S.k.out>0;
+  const pm=mat("plasma"); pm.color.copy(tc); pm.emissive.copy(tc); pm.opacity=lit?0.58:0.1;
+  mat("coil").emissive.copy(tc).multiplyScalar(lit?0.5:0.03);
+  mat("marker").color.copy(tc); mat("marker").emissive.copy(tc);
+  mat("klybeam").opacity=injecting?0.85:0.12;
+  mat("pipe").color.setHex(lit?0xC9B27A:0x808890);
+  mat("boiler").emissive.setHex(lit&&S.steam>0?0x17324E:0x000000);
+  mat("mhdt").emissive.setHex(lit&&S.mhdtEU>0?0x4A3D0E:0x000000);
+  mat("breeder").emissive.setHex(lit&&isFinite(S.breedT)?0x1C4A2E:0x000000);
+  const bf=mat("bface"), bgl=lit&&isFinite(S.breedT)?new THREE.Color(0x3BE070):new THREE.Color(0x16241C);
+  bf.color.copy(bgl); bf.emissive.copy(bgl);
+  mat("accp").color.copy(S.recirc>0?tc:new THREE.Color(0x3A3150)); mat("accp").emissive.copy(S.recirc>0?tc:new THREE.Color(0x241C33));
+  root.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); });
+  while(root.children.length) root.remove(root.children[0]);
+  spinFans=[]; spinWheel=null;
+  const G={};
+  const add=(g,k,x,y,z,sx,sy,sz,ry)=>{ (G[g]=G[g]||[]).push({k,p:[x,y,z],s:[sx,sy,sz],ry:ry||0}); };
+  const ring=(g,k,y,sx,sy,sz,R,r0,n)=>{ for(let i=0;i<n;i++){ const a=r0+i/n*Math.PI*2; add(g,k,Math.sin(a)*R,y,Math.cos(a)*R,sx,sy,sz,a); } };
+  add("core","plinth",0,-0.25,0,14.6,0.5,14.6);
+  ring("shell","cas",0.75,2.9,1.1,2.6,6,Math.PI/32,32); ring("shell","cas",4.45,2.9,1.1,2.6,6,Math.PI/32,32);
+  ring("core","coil",2.6,2.25,2.5,1.7,6,0,16);
+  ring("core","cool",1.55,0.75,0.6,1.2,7.15,Math.PI/8,8);
+  add("core","steel",0,2.5,0,0.9,5,0.9);
+  for(let i=0;i<state.kly;i++){ const a=KLYA[i]*Math.PI/180, sa=Math.sin(a), ca=Math.cos(a);
+    add("kly","plinth",sa*8.35,0.15,ca*8.35,2.5,0.3,2.9,a);
+    add("kly","kly",sa*8.35,1.9,ca*8.35,2.2,3.2,2.6,a);
+    add("kly","klybeam",sa*6.6,2.6,ca*6.6,0.5,0.5,2.3,a);
+  }
+  const RECV=[[state.b,90,"boiler"],[state.m,270,"mhdt"],[state.r,0,"breeder"]];
+  for(const [on,a,k] of RECV){ if(!on) continue; const ar=a*Math.PI/180, sa=Math.sin(ar), ca=Math.cos(ar);
+    add("recv",k,sa*8.9,1.6,ca*8.9,2.6,3.2,2.4,ar); add("recv","pipe",sa*7.15,2.6,ca*7.15,0.55,0.55,2.6,ar); }
+  for(let i=0;i<state.couplers;i++){ const ar=DIAG[i]*Math.PI/180, sa=Math.sin(ar), ca=Math.cos(ar);
+    add("recv","coupler",sa*8.5,0.8,ca*8.5,1.8,1.6,1.8,ar); add("recv","pipe",sa*7.3,1,ca*7.3,0.45,0.45,1.8,ar); }
+  for(let i=0;i<state.collectors;i++){ const ar=DIAG[i]*Math.PI/180; add("recv","collector",Math.sin(ar)*3.4,0.6,Math.cos(ar)*3.4,1.4,1.2,1.4,ar); }
+  const m4=new THREE.Matrix4(), qq=new THREE.Quaternion(), pv=new THREE.Vector3(), sv=new THREE.Vector3();
+  const gs={}; for(const g in G) gs[g]=new THREE.Group();
+  for(const g in G){ const buckets={}; for(const it of G[g]) (buckets[it.k]=buckets[it.k]||[]).push(it);
+    for(const k in buckets){ const arr=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),arr.length);
+      arr.forEach((it,i)=>{ qq.setFromAxisAngle(UPY,it.ry); pv.set(it.p[0],it.p[1],it.p[2]); sv.set(it.s[0],it.s[1],it.s[2]); m4.compose(pv,qq,sv); mesh.setMatrixAt(i,m4); });
+      if(k==="klybeam") mesh.renderOrder=2; gs[g].add(mesh); } }
+  for(const [on,a,k] of RECV){ if(!on) continue; const ar=a*Math.PI/180, sa=Math.sin(ar), ca=Math.cos(ar);
+    if(k==="boiler"){ const st=new THREE.Mesh(CYL(0.5,0.5,1.7,8),mat("boiler")); st.position.set(sa*8.9,4.05,ca*8.9); gs.recv.add(st); }
+    if(k==="mhdt"){ spinWheel=new THREE.Group(); spinWheel.position.set(sa*8.9,3.5,ca*8.9);
+      spinWheel.add(new THREE.Mesh(CYL(1.05,1.05,0.16,12),mat("steel")));
+      for(const rot of [0,Math.PI/2]){ const bl=new THREE.Mesh(CUBE(),mat("steel")); bl.scale.set(2.4,0.12,0.5); bl.rotation.y=rot; spinWheel.add(bl); }
+      gs.recv.add(spinWheel); }
+    if(k==="breeder"){ const fc=new THREE.Mesh(CUBE(),mat("bface")); fc.scale.set(1.9,2.3,0.16); fc.position.set(sa*7.55,1.7,ca*7.55); fc.rotation.y=ar; gs.recv.add(fc); } }
+  for(let i=0;i<state.couplers;i++){ const ar=DIAG[i]*Math.PI/180;
+    const ac=new THREE.Mesh(TORS(),mat("accp")); ac.rotation.x=-Math.PI/2; ac.position.set(Math.sin(ar)*8.5,1.95,Math.cos(ar)*8.5); gs.recv.add(ac); }
+  for(let i=0;i<state.collectors;i++){ const ar=DIAG[i]*Math.PI/180;
+    const dsh=new THREE.Mesh(CYL(1,0.6,0.5,10),mat("collector")); dsh.position.set(Math.sin(ar)*3.4,1.45,Math.cos(ar)*3.4); gs.recv.add(dsh); }
+  const pl=new THREE.Mesh(TOR(),mat("plasma")); pl.rotation.x=-Math.PI/2; pl.position.y=2.6; pl.renderOrder=2;
+  spinMark=new THREE.Group(); spinMark.position.y=2.6;
+  for(let i=0;i<6;i++){ const a=i/6*Math.PI*2, mk=new THREE.Mesh(CUBE(),mat("marker"));
+    mk.scale.set(1.5,0.7,0.8); mk.position.set(Math.sin(a)*6,0.95,Math.cos(a)*6); mk.rotation.y=a; spinMark.add(mk); }
+  gs.plasma=new THREE.Group(); gs.plasma.add(pl); gs.plasma.add(spinMark);
+  spinYoke=new THREE.Group(); spinYoke.position.y=5.15;
+  for(const rot of [0,Math.PI/2]){ const bar=new THREE.Mesh(CUBE(),mat("steel")); bar.scale.set(9.6,0.35,0.55); bar.rotation.y=rot; spinYoke.add(bar); }
+  spinYoke.add(new THREE.Mesh(CYL(0.5,0.5,0.5,10),mat("steel")));
+  gs.core.add(spinYoke);
+  for(let i=0;i<state.kly;i++){ const a=KLYA[i]*Math.PI/180;
+    const holder=new THREE.Group(); holder.position.set(Math.sin(a)*8.35,3.85,Math.cos(a)*8.35); holder.rotation.y=a;
+    const fan=new THREE.Group(); fan.position.z=-0.5;
+    const bl1=new THREE.Mesh(CUBE(),mat("steel")); bl1.scale.set(1.7,0.5,0.1);
+    const bl2=bl1.clone(); bl2.rotation.z=Math.PI/2;
+    const hub=new THREE.Mesh(CYL(0.16,0.16,0.3,8),mat("steel")); hub.rotation.x=Math.PI/2;
+    fan.add(bl1,bl2,hub); holder.add(fan); gs.kly.add(holder); spinFans.push(fan); }
+  gShell=gs.shell; if(gShell) gShell.visible=casingOn;
+  for(const g in gs) root.add(gs[g]);
+  applyCuts();
+}
+
+/* ================= design code (mdz2) =================
+   mdz2.<recipeIdx>.<klystrons>.<target>.<air>.<powerHE>.<coolant>.<fuelPct>.<collectors>.<couplers>.<B M R C 0/1> */
+const RIDX=RECIPES.map(r=>r[0]);
+function encodeDesign(){
+  const recv=`${state.b?1:0}${state.m?1:0}${state.r?1:0}${state.couplers>0?1:0}`;
+  return ["mdz2",RIDX.indexOf(state.recipe),state.kly,Math.round(state.target),Math.round(state.air),Math.round(state.he),
+    Math.round(state.coolant),Math.round(state.fuelPct),state.collectors,state.couplers,recv].join(".");
+}
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==11||p[0]!=="mdz2") return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const ri=int(1,0,RIDX.length-1),kly=int(2,0,8),target=int(3,0,1000000),air=int(4,0,200000),he=int(5,0,500000),
+    coolant=int(6,0,30),fuelPct=int(7,0,200),collectors=int(8,0,4),couplers=int(9,0,4);
+  if(!/^[01]{4}$/.test(p[10])||[ri,kly,target,air,he,coolant,fuelPct,collectors,couplers].some(Number.isNaN)) return null;
+  const [B,M,R,C]=p[10].split("");
+  const d={recipe:RIDX[ri],kly,target,air,he,coolant,fuelPct,collectors,b:B==="1",m:M==="1",r:R==="1"};
+  d.couplers=C==="1"?Math.max(couplers,1):0;
+  return d;
+}
+
+/* ================= UI ================= */
+let S=null;
+function renderCfg(){
+  renderPresetButtons();
+  $("cfgHint").innerHTML=`torus <b>${fmt(cfg.torusMaxPower)}</b> HE · klystron cap <b>${fmt(cfg.klystronMax)}</b> KyU at <b>${fmt(cfg.klystronAir)}</b> mB/t air · MHDT <b>${cfg.mhdtEff}</b>× above <b>${fmt(cfg.mhdtMinPlasma)}</b> TU · boiler <b>${fmt(cfg.boilerTuPerMb)}</b> TU/mB · solenoid <b>${fmt(cfg.solenoidHE)}</b> HE/t`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="any"; i.min="0";
+    i.onchange=()=>{ const v=+i.value; if(!(v>=0)||!Number.isFinite(v)){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function renderRig(){
+  const n=[];
+  const node=(cls,title,sub,on)=>{ n.push(`<div class="node ${cls}${on?"":" off"}"><b>${title}</b><span>${sub}</span></div>`); };
+  const arr=t=>{ n.push(`<span class="arrow">${t}</span>`); };
+  node("","Klystron"+(state.kly>0?` ×${state.kly}`:""),state.kly>0?`${big(S.k.out)} KyU/t ea`:"idle",state.kly>0&&S.k.out>0);
+  arr("→ KyU →");
+  node("torus","Torus",S.lit?`${big(S.plasma)} TU/t · ${fmt(S.factor*100)}%`:S.cool?"cold":"293 °F",S.lit);
+  arr("→ plasma →");
+  if(state.couplers) node("","Coupler ×"+state.couplers,`${big(S.recirc)} KyU back`,S.lit&&S.recirc>0);
+  if(state.b) node("","Boiler",`${fmt(S.steam)} mB/t`,S.steam>0);
+  if(state.m) node("","MHDT",`${fmt(S.mhdtEU)} EU/t`,S.mhdtEU>0);
+  if(state.r) node("","Breeder",isFinite(S.breedT)?fmt(S.breedT)+" t/item":"no flux",isFinite(S.breedT));
+  if(state.collectors) node("","Collector ×"+state.collectors,`items ×${fmt(1+S.bonus,1)}`,S.lit);
+  $("rig").innerHTML=n.join("");
+}
+function renderResults(){
+  $("readMain").innerHTML=`${big(S.heroV)} <small>${S.heroU}</small>`;
+  $("readSub").textContent=`${S.rc.name} · factor ${fmt(S.factor*100)}% · intensity ${fmt(S.inten*100,1)}% × ${S.rcv} receiver${S.rcv===1?"":"s"}`;
+  const vd=$("verdict"); vd.className="verdict "+S.verdict.c; vd.textContent=`${S.verdict.s} — ${S.verdict.t}`;
+  const gp=Math.max(0,Math.min(1,S.ign>0?S.netKyU/S.ign:0));
+  const gf=$("gFill"); gf.style.width=(gp*100).toFixed(1)+"%"; gf.className=gp>=1?"full":"";
+  $("gCap").textContent=`klystron net ${big(S.netKyU)} of ${big(S.ign)} KyU ignition gate`;
+  $("hudMain").innerHTML=S.lit?$("readMain").innerHTML:`<span style="color:${S.verdict.c==="good"?"var(--good)":"var(--bad)"}">${S.verdict.s}</span>`;
+  $("hudSub").textContent=S.lit?$("readSub").textContent:$("gCap").textContent;
+  const cells=[["Output",S.lit?`${big(S.heroV)} <small>${S.heroU}</small>`:`<span style="color:var(--bad)">—</span> <small>${S.verdict.s.toLowerCase()}</small>`,"hero"],
+    ["Ignition gate",`<span style="color:${S.lit?"var(--good)":"var(--bad)"}">${S.lit?"IGNITES":"NOT LIT"}</span> <small>net ${big(S.netKyU)} · klystrons ${big(S.kyNet)}${S.recirc?` + couplers ${big(S.recirc)}`:""} · need ${big(S.ign)} KyU · ${S.cool?"torus cool":"torus hot"}</small>`],
+    ["Plasma",`${big(S.plasma)} <small>TU/t = ceil(${big(S.rc.out)} × factor ${fmt(S.factor,2)}) · ${S.rc.flux?fmt(S.neutrons,1)+" n/t":"no neutrons"}</small>`],
+    ["Klystron EU cost",`${big(S.klyEU)} <small>EU/t · ${state.kly} × ceil(target × ${fmt(S.k.f,2)})${S.quirk?" · quirk: EU burned, 0 KyU out":""}</small>`]];
+  if(state.b) cells.push(["Boiler steam",`${fmt(S.steam)} <small>mB/t superhot · ${big(S.each)} TU ÷ ${fmt(cfg.boilerTuPerMb)} TU/mB · drinks ${fmt(S.steam)} mB/t water</small>`]);
+  if(state.m) cells.push(["MHDT output",`${fmt(S.mhdtEU)} <small>EU/t · floor(${big(S.each)}×${cfg.mhdtEff})=${big(S.mhdtPre)} ${S.mhdtEU<S.mhdtPre?" → halved":""} · cliff margin ${S.cliff>=0?"+":"−"}${big(Math.abs(S.cliff))} TU · 50 mB/t coolant</small>`]);
+  if(state.r) cells.push(["Breeder",`${fmt(S.breedMin,1)} <small>items/min · 1 per ${fmt(S.breedT)} t at ${fmt(S.neutrons,1)} n/t · Li block → 10k mB tritium (ingot 1,000 · dust 100)</small>`]);
+  if(state.couplers) cells.push(["Coupler loop",`${big(S.recirc)} <small>KyU/t recirculated 1:1${S.selfSustain?" — runs without klystrons once lit":""}</small>`]);
+  cells.push(["Torus power",`${fmt(state.he-S.heDraw)} <small>HE/t spare · feed ${fmt(state.he)} − solenoid ${fmt(S.heDraw)} (25k×factor)</small>`],
+    ["Coolant margin",`${fmt(state.coolant-S.needCool)} <small>mB/t ${state.coolant>=S.needCool?"surplus · ring rides ~123 °F":"short · ring heats to 293 °F, burn stops"} · 0.5 °F per mB, +2.5 °F/t passive</small>`],
+    ["Cycle time",`${secs(S.cycleT)} <small>per cycle at factor ${fmt(S.factor,2)} · ${S.rc.product} · ×${fmt(1+S.bonus,1)} items with collectors → ${fmt(S.itemsMin,1)}/min</small>`],
+    ["Fuel use",`${S.fuel||"0"} <small>mB/t (recipe draw × factor · inputs drain per tick, output per cycle)</small>`]);
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(!S.cool) n.push(["bad",`Coolant at ${fmt(state.coolant)} mB/t removes ${fmt(state.coolant*+cfg.coolPerMb,1)} °F/t against the +2.5 °F/t creep: the ring parks at 293 °F, above the 123 °F gate, and burns never start (progress resets every tick). Feed ${fmt(S.needCool)}+ mB/t of perfluoromethyl.`]);
+  else if(!S.lit&&S.factor>0) n.push(["bad",`Too cold: ${big(S.netKyU)} of ${big(S.ign)} KyU. ${S.klyNeeded?`At ${big(state.target)} KyU target and factor ${fmt(S.k.f,2)} you need ${S.klyNeeded} klystron${S.klyNeeded===1?"":"s"} — raise the target, feed more air (${fmt(S.k.f*100)}% now), or lower the recipe.`:"The klystrons export nothing — check air feed."}`]);
+  else if(S.lit) n.push([S.selfSustain?"good":"good",S.selfSustain
+    ?`The couplers alone return ${big(S.recirc)} KyU — past the ${big(S.ign)} gate. Real rigs need klystrons to light it (the torus zeroes klystronEnergy at the end of each tick, TileEntityFusionTorus.java:223), then the loop carries once the plasma is flowing.`
+    :`Steady burn at ${fmt(S.factor*100)}%: plasma ${big(S.plasma)} TU/t, ring cool. ${state.b?`The boiler exports ${fmt(S.steam)} mB/t of superhot steam.`:""} ${state.m?`The MHDT nets ${fmt(S.mhdtEU)} EU/t.`:""}`]);
+  if(S.quirk) n.push(["warn",`Klystron quirk: output (${big(S.k.eu)}) is below target/50, so the export is clamped to zero — ${big(S.klyEU)} EU/t spent for nothing. Factor is ${fmt(S.k.f,2)}; air feed is ${fmt(state.kly>0?state.air/state.kly:0)} mB/t per klystron (2,500 = full).`]);
+  if(state.m&&S.lit&&S.each>0&&S.each<+cfg.mhdtMinPlasma) n.push(["warn",`MHDT cliff: it received ${big(S.each)} TU, under the ${big(+cfg.mhdtMinPlasma)} minimum — EU output is halved (${big(S.mhdtEU)} instead of ${big(S.mhdtPre)}). Run it alone on a richer recipe (each receiver gets the full intensity) or raise plasma.`]);
+  if(S.factor>0&&S.factor<1&&S.lit) n.push(["warn",`Burn factor ${fmt(S.factor*100)}% (power ${fmt(S.pf*100)}%, fuel ${fmt(S.ff*100)}%): plasma, neutrons, solenoid draw and fuel use all scale with it.`]);
+  if(S.rc.ign>8*(+cfg.klystronMax)) n.push(["warn",`${S.rc.name} asks ${big(S.rc.ign)} KyU — over the 8.00M a full bank of 8 klystrons can produce: on original NTM it cannot ignite from cold. Forks with stronger klystrons, or creative klystrons, light it.`]);
+  if(state.m&&S.lit) n.push(["","The MHDT runs on its own perfluoromethyl loop: 50 mB/t of cryo, 4,000 mB tanks — pipe it spent cryo away to a cryocore and it never stops."]);
+  if(state.b&&S.lit) n.push(["","Water is assumed fed: the boiler drains its 32,000 mB tank in seconds at full D-T output. A full 4-receiver split (175% of the plasma) makes every output bigger than a lone receiver's — dilution is a bonus, not a tax."]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  drawChart(); drawChart2();
+}
+function drawSweep(c,pts,ign,curX,xFmt,xMax){
+  const dpr=Math.min(2,devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const cs=getComputedStyle(document.documentElement),v=k=>cs.getPropertyValue(k).trim();
+  const muted=v("--muted"),line=v("--line"),accent=v("--accent-ink"),steamC=v("--steam"),bad=v("--bad"),ink=v("--ink"),mono=v("--font-mono");
+  const kyMax=Math.max(ign*1.12,...pts.map(p=>p.ky))*1.05, yS=Math.max(10,...pts.map(p=>p.st))*1.15;
+  const pad={l:46,r:52,t:12,b:22}, X=x=>pad.l+x/xMax*(w-pad.l-pad.r), Yk=y=>pad.t+(1-y/kyMax)*(h-pad.t-pad.b), Ys=y=>pad.t+(1-y/yS)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.lineWidth=1; g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=Yk(kyMax/1.12/1.05*f); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillText(big(kyMax/1.12/1.05*f),2,y+4); g.fillText(big(yS/1.15*f),w-pad.r+4,y+4); }
+  g.fillStyle=muted; const xl=xFmt(xMax); g.fillText(xl,w-pad.r-g.measureText(xl).width,h-5);
+  if(ign<=kyMax){ g.strokeStyle=bad; g.setLineDash([4,3]); g.beginPath(); g.moveTo(pad.l,Yk(ign)+.5); g.lineTo(w-pad.r,Yk(ign)+.5); g.stroke(); g.setLineDash([]);
+    g.fillStyle=bad; g.fillText("ignition "+big(ign),pad.l+4,Yk(ign)-4); }
+  const curve=(key,Y,color)=>{ g.beginPath(); pts.forEach((p,i)=>i?g.lineTo(X(p.x),Y(p[key])):g.moveTo(X(p.x),Y(p[key]))); g.strokeStyle=color; g.lineWidth=2; g.stroke(); };
+  curve("st",Ys,steamC); curve("ky",Yk,accent);
+  let best=pts[0]; for(const p of pts) if(Math.abs(p.x-curX)<Math.abs(best.x-curX)) best=p;
+  const x=X(best.x),y=Yk(best.ky); g.fillStyle=ink; g.beginPath(); g.arc(x,y,4,0,7); g.fill();
+  g.font="600 11px "+mono; const lbl=`${big(best.ky)} KyU · ${S.lit?"lit":"cold"}`,tw=g.measureText(lbl).width;
+  g.fillText(lbl,Math.min(w-pad.r-tw,Math.max(pad.l,x-tw)),Math.max(12,y-8));
+}
+function drawChart(){ drawSweep($("chart"),S.pts,S.ign,state.target,t=>big(t)+" target",+cfg.klystronMax); }
+function drawChart2(){ drawSweep($("chart2"),S.pts2,S.ign,state.kly,n=>fmt(n)+" klystrons",8); }
+
+/* ================= wiring ================= */
+function renderPresetButtons(){
+  const pk=NTM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!pk); $("pAtmLabel").textContent=pk?pk[1]:"Fork";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of NTM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+const bind=(id,key,a,b)=>{ const f=v=>{ state[key]=Math.min(b,Math.max(a,+v||0)); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
+bind("kly","kly",0,8); bind("target","target",0,1000000); bind("air","air",0,200000); bind("he","he",0,500000);
+bind("coolant","coolant",0,30); bind("fuelPct","fuelPct",0,200); bind("couplers","couplers",0,4); bind("collectors","collectors",0,4);
+$("recipe").innerHTML=RECIPES.map(r=>`<option value="${r[0]}">${r[1]} — ign ${big(r[3])} KyU · ${big(r[4])} TU/t</option>`).join("");
+for(const [id,key,lb] of [["ckB","b","lbB"],["ckM","m","lbM"],["ckR","r","lbR"]]) $(id).onchange=()=>{ state[key]=$(id).checked; $(lb).classList.toggle("on",$(id).checked); update(); };
+$("recipe").onchange=()=>{ state.recipe=$("recipe").value; update(); };
+addEventListener("resize",()=>{ drawChart(); drawChart2(); });
+$("tCut").onclick=e=>{ cutaway=!cutaway; e.target.setAttribute("aria-pressed",String(cutaway)); applyCuts(); };
+$("tCas").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",String(casingOn)); if(gShell) gShell.visible=casingOn; };
+
+const share=mdShare({prefix:"mdz2",isPreset:k=>!!PRESETS[k],encode:encodeDesign,decode:decodeDesign,preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d); update(); },onPreset:k=>{ if(k!==cfgPreset) usePreset(k); },
+  loaded:d=>`Loaded a ${RECIPE[d.recipe].name} fusion design.`});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+if(share.atLoad.design) Object.assign(state,share.atLoad.design);
+
+function update(){
+  S=analyze();
+  renderCfg(); renderRig(); renderResults(); rebuild3D();
+  $("recipe").value=state.recipe; $("recInfo").innerHTML=`inputs <b>${S.rc.inputs.map(i=>`${i[0]} ${i[1]} mB/t`).join(" + ")}</b> · ignition <b>${big(ignOf(S.rc.id))} KyU</b> · plasma <b>${big(outOf(S.rc.id))} TU/t</b> · flux <b>${fmt(fluxOf(S.rc.id))} n/t</b> · ${durOf(S.rc.id)} t cycle · product ${S.rc.product}`;
+  for(const [id,key] of [["kly","kly"],["target","target"],["air","air"],["he","he"],["coolant","coolant"],["fuelPct","fuelPct"],["couplers","couplers"],["collectors","collectors"]]){ $(id).value=state[key]; $(id+"N").value=state[key]; }
+  for(const [id,key,lb] of [["ckB","b","lbB"],["ckM","m","lbM"],["ckR","r","lbR"]]){ $(id).checked=state[key]; $(lb).classList.toggle("on",state[key]); }
+  share.render();
+}
+
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/ntm/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>HBM's NTM Reactor Calculators</title>
+<meta name="description" content="Calculators for HBM's Nuclear Tech Mod: RBMK, ZIRNOX, research reactor, graphite pile and fusion torus, built from the NTM 1.0.27 (1.7.10) source with presets for NTM:Space, Community Edition, Reforged and Final Edition.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --font-display:"VT323","Courier New",monospace;
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:16px;line-height:1.55}
+a{color:var(--accent-ink)}
+.hero{position:relative;overflow:hidden;background:radial-gradient(120% 140% at 30% 0%,#1B2226,#0F1417);color:#E5E9E3;border-bottom:1px solid #2A332D;padding:40px 16px 48px}
+.hero::before{content:"";position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);background-size:32px 32px;background-position:-1px -1px;-webkit-mask-image:linear-gradient(#000,transparent);mask-image:linear-gradient(#000,transparent)}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:3px;background:#E2D03A}
+.hero-in{position:relative;max-width:828px;margin:0 auto}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted);margin-bottom:28px}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+.crumbs a:hover,.crumbs a:focus-visible{text-decoration:underline}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(44px,8vw,76px);line-height:.95;margin:0 0 18px;text-wrap:balance}
+h1 span{color:#F2E36A}
+.lede{margin:0;max-width:62ch;color:#B7C1BB;font-size:18px}
+.lede b{color:#FFFFFF}
+.pins{list-style:none;margin:26px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--font-mono);font-size:12px;color:#97A29A}
+.pins li{display:flex;align-items:center;gap:8px}
+.pins li::before{content:"";width:6px;height:6px;background:#E2D03A;flex:none}
+.pins b{font-weight:600;color:#DDE6E2}
+main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:40px;padding:40px 16px 64px}
+main section{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:26px;line-height:1;margin:0 0 2px;letter-spacing:.02em}
+.tool{display:grid;grid-template-columns:128px minmax(0,1fr);gap:4px 16px;align-items:start;text-decoration:none;color:inherit;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:12px 16px 12px 12px}
+.tool:hover,.tool:focus-visible{border-color:var(--accent);outline:none}
+.tool .nw{white-space:nowrap}
+.tool .thumb{grid-column:1;grid-row:1/span 3;display:block;width:128px;height:128px;border-radius:4px;overflow:hidden;background:radial-gradient(120% 120% at 30% 0%,#232C31,#12181B);transition:filter .15s}
+.tool .thumb img{display:block;width:100%;height:100%}
+.tool:hover .thumb,.tool:focus-visible .thumb{filter:brightness(1.15)}
+.tool .mod{grid-column:2;margin-top:6px;font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.tool .name{grid-column:2;font-family:var(--font-display);font-size:30px;line-height:1.1}
+.tool p{grid-column:2;margin:4px 0 0;color:var(--muted);max-width:62ch}
+.pick{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px 28px}
+.pick h3{font-size:15px;margin:0 0 4px}
+.pick p{margin:0;color:var(--muted);font-size:15px}
+.prose p{margin:0;color:var(--muted);max-width:68ch}
+.prose p+p{margin-top:10px}
+.prose b{color:var(--ink)}
+.forks{list-style:none;margin:6px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px}
+.forks li{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:10px 12px;font-size:14px;line-height:1.35}
+.forks b{display:block;color:var(--ink)}
+.forks span{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+@media (max-width:560px){
+  .hero{padding:28px 16px 36px}
+  .crumbs{margin-bottom:20px}
+  .lede{font-size:17px}
+  .pins{margin-top:20px}
+  .tool{grid-template-columns:76px minmax(0,1fr);gap:2px 14px}
+  .tool .thumb{grid-row:1/span 2;width:76px;height:76px}
+  .tool .mod{margin-top:4px}
+  .tool p{grid-column:1/-1;margin-top:10px}
+}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer a{color:var(--muted)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-in">
+    <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / NTM</nav>
+    <h1>HBM's <span>Nuclear Tech Mod</span> calculators</h1>
+    <p class="lede">Five reactor systems, each one run on the mod's own formulas: <b>RBMK, ZIRNOX, research reactor, graphite pile and fusion torus</b>. Every number is read out of the decompiled source, not copied from the wiki.</p>
+    <ul class="pins" aria-label="Version covered">
+      <li><b>HBM's NTM</b> 1.7.10-1.0.27</li>
+      <li><b>Forks</b> NTM:Space · CE · Reforged · Final Edition</li>
+    </ul>
+  </div>
+</header>
+<main>
+  <section aria-labelledby="tools">
+    <h2 id="tools">Calculators</h2>
+    <a class="tool" href="/tools/ntm/graphite-pile-calculator/">
+      <span class="thumb"><img src="/img/tools/pile.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">Graphite Pile Calculator</span>
+      <p>Build the pile layer by layer and run its 12-ray neutron Monte-Carlo: flux maps, concrete and boron shadowing, rod heat that self-damps, and the time to breed plutonium and tritium.</p>
+    </a>
+    <a class="tool" href="/tools/ntm/research-reactor-calculator/">
+      <span class="thumb"><img src="/img/tools/research.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">Research Reactor Calculator</span>
+      <p>Slide the control rod over a grid of plate fuels and watch the self-coupled cascade settle, melt down, or feed a breeder: equilibrium flux, temperature, and the highest safe level.</p>
+    </a>
+    <a class="tool" href="/tools/ntm/zirnox-reactor-calculator/">
+      <span class="thumb"><img src="/img/tools/zirnox.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">ZIRNOX Reactor Calculator</span>
+      <p>Paint the 24-slot core and trade neighbour decay bonuses against CO2 pressure: steam, meltdown margin and rod life, down to the float rounding in the mod's own steam formula.</p>
+    </a>
+    <a class="tool" href="/tools/ntm/rbmk-reactor-calculator/">
+      <span class="thumb"><img src="/img/tools/rbmk.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">RBMK Reactor Calculator</span>
+      <p>Paint a graphite core, drop in 31 kinds of fuel rod, and the RBMK is simulated tick by tick: neutron streams, xenon poison, column heat, steam, and the AZ-5 tip that makes the scram dangerous.</p>
+    </a>
+    <a class="tool" href="/tools/ntm/fusion-reactor-calculator/">
+      <span class="thumb"><img src="/img/tools/ntmfusion.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">Fusion Reactor Calculator</span>
+      <p>One of ten fusion recipes, any klystron rig: the ignition gate, the share each receiver gets, the MHDT's 5M plasma cliff, and the steam, neutrons and EU that come out.</p>
+    </a>
+  </section>
+
+  <section aria-labelledby="pick">
+    <h2 id="pick">Which one do you need?</h2>
+    <div class="pick">
+      <div><h3>Breeding plutonium or tritium</h3><p>The graphite pile gives the seconds to plutonium for any layout, and tritium from lithium rods. The research reactor page covers the breeder machine that sits next to a plate-fuel core.</p></div>
+      <div><h3>Steam from one block</h3><p>ZIRNOX is a single block that builds its own shell. The calculator shows how long a rod load lasts and how close the core runs to meltdown at your CO2 setting.</p></div>
+      <div><h3>A big, tunable steam plant</h3><p>The RBMK is the large one: rod type, graphite placement, control rods, boilers and xenon all change the result, and the page replays up to 1,000 seconds of it.</p></div>
+      <div><h3>Fusion</h3><p>The torus calculator checks whether your klystrons clear the recipe's ignition gate, then what the plasma is worth in steam or EU.</p></div>
+    </div>
+  </section>
+
+  <section aria-labelledby="forks" class="prose">
+    <h2 id="forks">One mod, several forks</h2>
+    <p>NTM has no config files for its reactors: the constants live in the code, and the forks change some of them. Each calculator has a <b>Mod preset</b> bar with the original 1.0.27 values and one preset per fork, read straight out of that fork's source.</p>
+    <p>The differences matter. The RBMK's rod-pull limit is 150 HE in the original and 1,500 HE in every fork we checked, and the Space and Community Edition forks run ZIRNOX steam at 187.5 against the original's 125. Pick your fork before trusting a number.</p>
+    <ul class="forks">
+      <li><b>NTM:Space</b><span>Minecraft 1.7.10</span></li>
+      <li><b>NTM: Community Edition</b><span>Minecraft 1.12.2</span></li>
+      <li><b>NTM Reforged</b><span>Minecraft 1.12.2</span></li>
+      <li><b>NTM: Final Edition</b><span>Minecraft 1.12.2</span></li>
+    </ul>
+  </section>
+
+  <footer><a href="/">Mod Decoded</a> · how modded Minecraft machines actually work</footer>
+</main>
+</body>
+</html>

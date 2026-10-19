@@ -35,7 +35,20 @@ TOOLS = {
     "cpu": "/tools/applied-energistics-2/crafting-cpu-calculator/",
     "quantum": "/tools/applied-energistics-2/quantum-computer-calculator/",
     "station": "/tools/ryzer-gen/fission-station-calculator/",
+    "zirnox": "/tools/ntm/zirnox-reactor-calculator/",
+    "rbmk": "/tools/ntm/rbmk-reactor-calculator/",
+    "research": "/tools/ntm/research-reactor-calculator/",
+    "pile": "/tools/ntm/graphite-pile-calculator/",
+    "ntmfusion": "/tools/ntm/fusion-reactor-calculator/",
 }
+
+# Page-side tweak before the export, for a card that reads better without part of the build
+PRE = {
+    "research": "document.getElementById('tCasing').click()",   # the glass box dwarfs the plates inside it
+}
+# Extra distance for wide, flat builds: the card frames a bounding cylinder, but perspective makes the
+# near corner of a 9x9 pile a lot bigger than its centre, so it runs off the edges without this
+ZOOM = {"pile": 1.3}
 
 # The calculators keep three.js inside an IIFE, so catch the scene and camera when the render loop
 # updates their matrices (r128's WebGLRenderer.render is a per-instance function, so it can't be hooked).
@@ -137,8 +150,13 @@ def main(names):
             page.goto(base + TOOLS[name])
             page.evaluate(HOOK)
             page.wait_for_function("window.__scene && window.__camera", timeout=20000)
+            if name in PRE:
+                page.evaluate(PRE[name])
+                page.wait_for_timeout(1500)
             page.wait_for_timeout(3500)   # let the build-in animation finish
             model = page.evaluate(EXPORT)
+            if name in ZOOM:
+                model["z"] = ZOOM[name]
             path = OUT / f"{name}.json"
             path.write_text(json.dumps(model, separators=(",", ":")), encoding="utf-8")
             n = sum(len(pt.get("p", [])) // 3 + len(pt.get("x", [])) // 12 for pt in model["parts"])

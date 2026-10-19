@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/ntm/research-reactor-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>NTM Research Reactor Calculator</title>
+<meta name="description" content="HBM's Nuclear Tech Mod research reactor calculator: plate-fuel flux cascade, rod level, water cooling, core temperature, breeder output and plate burn-up, from the NTM 1.0.27 (1.7.10) source code, with presets for NTM:Space, NTM CE, Reforged and Final Edition.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.viewbar .grp{display:flex}
+.viewbar .grp button{border-radius:0}.viewbar .grp button:first-child{border-radius:4px 0 0 4px}.viewbar .grp button:last-child{border-radius:0 4px 4px 0}
+.viewbar .grp button+button{border-left:0}
+.view-hint{margin-top:-4px}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,.pal button:focus-visible,.zcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pal{display:flex;flex-wrap:wrap;gap:6px}
+.pal button{display:flex;align-items:center;gap:6px;font:600 12px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:5px 8px;cursor:pointer}
+.pal button i{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.25)}
+.pal button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.zgrid{display:flex;flex-direction:column;gap:5px;align-items:center;padding:4px 0}
+.zrow{display:flex;gap:5px}
+.zcell{width:36px;height:36px;border-radius:5px;border:1px solid var(--line);background:var(--bg);cursor:pointer;display:flex;align-items:center;justify-content:center;font:600 9.5px var(--font-mono);color:#0D1110;padding:0;overflow:hidden}
+.zcell:hover{border-color:var(--accent)}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.chart{width:100%;height:170px;display:block}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px var(--font-mono);color:var(--muted);margin-top:-4px}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+.chart.lg{height:220px}
+.stage .box h2{font-size:22px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / <a href="/tools/ntm/">NTM</a> / Research Reactor Calculator</nav>
+  <header class="top">
+    <h1>HBM's NTM <span class="y">Research Reactor Calculator</span></h1>
+    <span class="src">Formulas from the HBM's Nuclear Tech Mod 1.7.10-1.0.27 source</span>
+  </header>
+  <p class="lede">Paint plate fuel into the 12-slot core and watch the cascade: every plate amplifies the flux its neighbours fed it last tick, and the rod level scales how much of that output gets passed on. See steady flux, core temperature, breeder output, plate burn-up and the runaway threshold. Every number is the mod's own tick loop, transcribed from <b>TileEntityReactorResearch</b> and <b>ItemPlateFuel</b> — int casts included.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview, plate grid and charts">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the research reactor: twelve fuel plates in two sealed stacks under a control rod, standing in a water pool"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="viewbar">
+          <div class="grp" role="group" aria-label="Camera focus">
+            <button id="fCore" type="button" aria-pressed="false">Core</button>
+            <button id="fAll" type="button" aria-pressed="true">Whole rig</button>
+          </div>
+          <button id="tCasing" aria-pressed="true" type="button">Casing</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Each plate glows with the flux landing on it — brighter means the cascade feeds it harder.</p>
+      <div class="box">
+        <h2>Fuel plate grid</h2>
+        <div class="pal" id="pal" role="group" aria-label="Plate palette"></div>
+        <div class="zgrid" id="zgrid" role="group" aria-label="Research reactor core, 12 plate slots, three rows of four"></div>
+        <div class="btns">
+          <button class="btn" type="button" id="zFill">Fill with selected</button>
+          <button class="btn" type="button" id="zClear">Empty core</button>
+        </div>
+        <p class="hint">Pick a plate, then click slots to place it. The core is <b>two sealed halves</b> — flux never crosses from the left block (slots 0,1 / 5,6 / 10,11) to the right block (2,3 / 7,4 / 8,9), so each half needs its own source. A passive plate (Ra-226/Be, Pu-238/Be) makes its reactivity out of nothing; every other curve reacts <b>only</b> to the flux it receives. The cell border glows with the flux landing on that plate.</p>
+      </div>
+      <div class="box">
+        <h2>Steady state vs rod level</h2>
+        <canvas class="chart lg" id="chart" aria-label="Equilibrium flux and core temperature as the rod level is scanned from 0 to 100 percent"></canvas>
+        <div class="legend"><span><i style="background:var(--accent-ink)"></i>steady flux (per tick)</span><span><i style="background:var(--heat)"></i>equilibrium (°C)</span><span><i style="background:var(--bad)"></i>meltdown zone</span></div>
+        <p class="hint">At each rod level the flux cascade is iterated to its fixed point (amplifying layouts have none — the shaded zone runs away). Marker: your current level.</p>
+        <canvas class="chart" id="chart2" aria-label="Core temperature and flux over time"></canvas>
+        <div class="legend"><span><i style="background:var(--heat)"></i>core (°C)</span><span><i style="background:var(--accent-ink)"></i>flux (per tick)</span></div>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Mod preset</h2>
+        <div class="seg" role="group" aria-label="Mod preset">
+          <button type="button" id="pDefault" aria-pressed="true">Original NTM</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Fork</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Fork" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit reactor constants (NTM ships these in code, not in a config file)</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Operation</h2>
+        <div class="row"><label for="level">Target rod level</label><input type="range" id="level" min="0" max="100" step="1"><input class="num" id="levelN" type="number" min="0" max="100" step="1" aria-label="Target rod level in percent"></div>
+        <div class="row"><label for="water">Water blocks</label><input type="range" id="water" min="0" max="12" step="1"><input class="num" id="waterN" type="number" min="0" max="12" step="1" aria-label="Water blocks around the reactor, 0 to 12"></div>
+        <div class="row"><label for="recipe">Breeder recipe flux</label><input type="range" id="recipe" min="100" max="5000" step="50"><input class="num" id="recipeN" type="number" min="1" max="1000000" step="1" aria-label="Breeder recipe flux requirement"></div>
+        <div class="seg" role="group" aria-label="Spent plates" id="replace">
+          <button type="button" data-k="1" aria-pressed="true">Swap in fresh plates</button>
+          <button type="button" data-k="0" aria-pressed="false">Let them burn out</button>
+        </div>
+        <p class="hint">The rod chases the target at 0.04/t (2.5 s for full travel). Water counts the 2 blocks above + 2 below at distance 2 and the 3×4 belt of sides — <b>max 12</b>, worth 7% of the core's heat per tick; with zero water the core only sheds 1 heat per tick. The breeder machine next to the reactor eats its total flux: at recipe flux it finishes one item every 400 ticks (20 s). "Burn out" sim shows one plate load ending in waste.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">The mod's per-tick loop, run for up to 1,000 seconds of game time, with the steady state solved by iterating the cascade. Heat is in HBM heat units; the °C figure is the reactor GUI's own conversion (heat×2e-5×980+20).</p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact core. Paste a design code above to load one.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Plates feed each other — and themselves</h3>
+        <p>Every tick, each plate reacts to the flux its neighbours output last tick (scaled by the rod level) and passes its own output on to them. That's a positive feedback loop through the whole core: the steady state is a fixed point of the cascade, found here by iteration, not by a formula.</p>
+<pre>flux[nb] += (int)(out × level)
+out       = react(flux)        // int cast
+heat     += out × 2</pre>
+        <span class="ref">TileEntityReactorResearch.reaction</span>
+      </div>
+      <div class="fact">
+        <h3>Curve shape is the physics</h3>
+        <p>Sa-326 is LINEAR (out = flux/100·80): each generation multiplies flux by 0.8 × level per neighbour, so a full 6-loop at 100% rod amplifies 1.6× per tick — no steady state exists; it runs away into the 50,000-heat blast. U-233/U-235 (√flux) and Pu-239 (arch peaking at flux 5000, out ≤ 25·R/50) flatten out and settle. MOX's logarithm never stops climbing — it just crawls.</p>
+<pre>LOG10: (int)(log10(x+1)·0.5·R)   SQRT: (int)(√x·R/10)
+NEGQ:  (int)max((x−x²/10000)/100·R, 0)
+LINEAR:(int)(x/100·R)   PASSIVE: R</pre>
+        <span class="ref">ItemPlateFuel.react · EnumPlateFuel, ModItems 3858-3899</span>
+      </div>
+      <div class="fact">
+        <h3>Water is capped — and thin</h3>
+        <p>getWater counts 2 water blocks above + 2 below at distance 2 and the 3-high, 4-side belt: 12 blocks max, worth heat×0.07×water/12 per tick — 7% at best. With no water the loop runs heat-- — one heat unit per tick. 12 blocks soak 14× the heat load of 1 block; there is no third tier.</p>
+<pre>heat = (int)(heat − heat×0.07·water/12)
+// water == 0:  heat--
+°C = round(heat×2e-5×980 + 20)</pre>
+        <span class="ref">TileEntityReactorResearch.getWater · updateResources</span>
+      </div>
+      <div class="fact">
+        <h3>50,000 heat = strength-18 blast</h3>
+        <p>Heat over 50,000 (982 °C on the GUI scale) deletes the reactor, pops 12 water blocks, drops corium and dumps a 50 rad burst. While running with any unshielded side (lead/desh/hardness ≥100 blocks the line) the core radiates heat/50000×50 rad/s — 50 rad/s at the melt threshold. The margin shown is heat ÷ 50,000.</p>
+<pre>meltdown: heat &gt; 50000
+rad/s = heat/50000 × 50   // unshielded sides</pre>
+        <span class="ref">TileEntityReactorResearch.explode · radiation 121-135</span>
+      </div>
+      <div class="fact">
+        <h3>The breeder eats flux at 400 t/item</h3>
+        <p>Place the breeding machine beside the reactor and it sums the totalFlux of every adjacent research reactor, then progress += 0.0025 × flux/recipe.flux per tick. At exactly the recipe's flux that's 400 ticks (20 s) per item; half the flux doubles the time; below it the machine stalls at zero progress.</p>
+<pre>progress += 0.0025 × flux / recipe.flux
+flux == recipe.flux → 1/0.0025 = 400 t/item</pre>
+        <span class="ref">TileEntityMachineReactorBreeding 52-63, 81-97</span>
+      </div>
+      <div class="fact">
+        <h3>There is an autopilot: Reactor Control</h3>
+        <p>The Reactor Control block links through a reactor sensor and drives the rod target automatically on a LINEAR/LOG/QUAD heat→level curve between two bounds. Rods always move at 0.04/t, so the control block sets where the rod chases, never how fast — the same rod speed this calculator simulates.</p>
+<pre>LINEAR: (heat−lo)·(lvlHi−lvlLo)/(hi−lo)+lvlLo
+LOG:    ((heat−hi)/(lo−hi))²·(lvlLo−lvlHi)+lvlHi
+QUAD:   ((heat−lo)/(hi−lo))²·(lvlHi−lvlLo)+lvlLo</pre>
+        <span class="ref">TileEntityReactorControl 100-191 · getTargetLevel 175-187</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=v=>!Number.isFinite(v)?"—":v===0?"0":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10?2:0);
+const secs=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"; };
+const F=Math.fround;
+
+/* ================= mod constants (NTM 1.0.27 TileEntityReactorResearch / ItemPlateFuel) ================= */
+const PLATES=[
+  ["u233","U-233",2200000,50,"SQUARE_ROOT","#58b06a"],
+  ["u235","U-235",2200000,40,"SQUARE_ROOT","#4a90d9"],
+  ["mox","MOX",2400000,50,"LOGARITHM","#8a6fb0"],
+  ["pu239","Pu-239",2000000,50,"NEGATIVE_QUADRATIC","#c05a5a"],
+  ["sa326","Sa-326",2000000,80,"LINEAR","#4ac0b0"],
+  ["ra226be","Ra-226/Be",1300000,30,"PASSIVE","#c9a15a"],
+  ["pu238be","Pu-238/Be",1000000,50,"PASSIVE","#cfd6e6"],
+];
+const PL=Object.fromEntries(PLATES.map(p=>[p[0],{id:p[0],name:p[1],maxLife:p[2],R:p[3],fn:p[4],color:p[5]}]));
+const SHORT={u233:"U-233",u235:"U-235",mox:"MOX",pu239:"Pu-239",sa326:"Sa-326",ra226be:"RaBe",pu238be:"PuBe"};
+// TileEntityReactorResearch.getNeighboringSlots (205-234): 14 edges — two sealed 6-loops
+// (0-1-6-11-10-5 and 2-3-4-9-8-7) plus the cross-bars 5-6 and 3-8. Flux never crosses halves.
+const NB=[[1,5],[0,6],[3,7],[2,4,8],[3,9],[0,6,10],[1,5,11],[2,8],[3,7,9],[4,8],[5,11],[6,10]];
+const ROWS=[[0,1,2,3],[5,6,7,4],[10,11,8,9]];   // screen layout: every edge neighbours on screen except the 3-8 bar
+const FUNCS=["LOGARITHM","SQUARE_ROOT","NEGATIVE_QUADRATIC","LINEAR","PASSIVE"];
+
+const DEFAULTS={heatPerFlux:2,maxHeat:50000,waterCool:0.07,rodSpeed:0.04};
+for(const p of PLATES){ DEFAULTS["life_"+p[0]]=p[2]; DEFAULTS["R_"+p[0]]=p[3]; DEFAULTS["fn_"+p[0]]=p[4]; }
+const CFG_FIELDS=[["heatPerFlux","research.heatPerFlux"],["maxHeat","research.maxHeat"],["waterCool","research.waterCool"],["rodSpeed","research.rodSpeed"],
+  ...PLATES.flatMap(p=>[[`life_${p[0]}`,`research.plate.${p[0]}.maxLife`],[`R_${p[0]}`,`research.plate.${p[0]}.reactivity`],[`fn_${p[0]}`,`research.plate.${p[0]}.function`]])];
+const plateLife=id=>+cfg["life_"+id]||PL[id].maxLife;
+const plateR=id=>cfg["R_"+id]!=null?+cfg["R_"+id]:PL[id].R;
+const plateFn=id=>{ const f=String(cfg["fn_"+id]||PL[id].fn).toUpperCase(); return FUNCS.includes(f)?f:PL[id].fn; };
+// ItemPlateFuel.react (49-68), the (int) casts kept: every output truncates toward zero.
+function react(id,flux){
+  const R=plateR(id);
+  switch(plateFn(id)){
+    case "PASSIVE": return R;
+    case "LOGARITHM": return Math.trunc(Math.log10(flux+1)*0.5*R);
+    case "SQUARE_ROOT": return Math.trunc(Math.sqrt(flux)*R/10);
+    case "NEGATIVE_QUADRATIC": return Math.trunc(Math.max((flux-flux*flux/10000)/100*R,0));
+    case "LINEAR": return Math.trunc(flux/100*R);
+    default: return 0;
+  }
+}
+
+const {presets:PRESETS,list:NTM_PACKS}=mdPackPresets("hbm",DEFAULTS,CFG_FIELDS);
+let cfgPreset="default",cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("ntm-research-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+function saveCfg(){ try{ localStorage.setItem("ntm-research-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+/* ================= state ================= */
+// A full U-235 core is dead in the mod: every non-passive curve is 0 at flux 0, so it never starts.
+// The default is a live showcase: a Ra-226/Be starter in each sealed half (slot 6 left, slot 8 right —
+// the most-connected slot of its block) with U-235 filling the rest.
+const state={grid:["u235","u235","u235","u235","u235","u235","ra226be","u235","ra226be","u235","u235","u235"],brush:"u235",level:50,water:12,recipe:1000,replace:true};
+
+/* ================= model: cascade fixed point + the mod's tick loop ================= */
+// One generation: in-flux = Σ (int)(out[nb] × level) from the previous outputs (reaction(), 236-262),
+// then out[i] = react(flux[i]). The live mod propagates in slot order inside a tick; stepping the
+// cascade generation-by-generation lands on the same fixed point.
+function cascade(L,g,out){
+  const flux=Array(12).fill(0);
+  for(let i=0;i<12;i++){ let s=0;
+    for(const nb of NB[i]) if(out[nb]) s+=Math.trunc(out[nb]*L);
+    flux[i]=s; }   // flux lands on empty slots too; they just don't react
+  const next=Array(12).fill(0);
+  let tot=0,stable=true;
+  for(let i=0;i<12;i++){ const id=g[i]; if(!id) continue;
+    const o=react(id,flux[i]); next[i]=o; tot+=o; if(o!==out[i]) stable=false; }
+  return {flux,out:next,tot,stable};
+}
+// Steady state at rod level L: iterate the cascade. Each plate gets a 100-flux startup kick — amplifiers are
+// 0 at 0, so the scan asks "what does this layout settle at once running". Subcritical layouts decay to 0;
+// supercritical ones blow past the cap (div).
+function equilib(L,g,water){
+  g=g||state.grid; water=water==null?state.water:water;
+  if(L<=0||!g.some(Boolean)) return {flux:0,gen:0,eq:0,div:false,out:Array(12).fill(0),fluxIn:Array(12).fill(0)};
+  let out=g.map(id=>id?100:0), tot=0, r=null;
+  for(let it=0;it<800;it++){
+    r=cascade(L,g,out); out=r.out; tot=r.tot;
+    if(tot>1e7) return {flux:Infinity,gen:Infinity,eq:Infinity,div:true,out,fluxIn:r.flux};
+    if(r.stable) break;
+  }
+  const gen=tot*+cfg.heatPerFlux;
+  // cooling fixed point of heat' = (int)(heat − heat·0.07·w/12) + gen:  heat* ≈ gen/cool
+  const cool=+cfg.waterCool*water/12;
+  const eq=water>0?gen/cool:(gen>1?Infinity:0);
+  return {flux:tot,gen,eq,div:false,out,fluxIn:r?r.flux:Array(12).fill(0)};
+}
+function scan(){
+  const pts=[];
+  for(let p=0;p<=100;p++){ const e=equilib(p/100); pts.push({p,flux:e.flux,eq:e.eq,div:e.div}); }
+  let maxSafe=-1;
+  for(const q of pts){ if(q.div||q.eq>+cfg.maxHeat) break; maxSafe=q.p; }
+  return {pts,maxSafe};
+}
+function simulate(){
+  const g=state.grid.slice(), life=Array(12).fill(0);
+  const target=state.level/100;
+  let level=0,heat=0,melt=null,firstSwap=null,swaps=0,prog=0,gen=0,flux=0;
+  // seed a 100-flux kick per plate (same startup kick the scan uses): a raw mod core with no passive
+  // plate never starts on its own — every non-passive curve is 0 at flux 0 — the notes call that out.
+  let out=g.map(id=>id?100:0), cellFlux=Array(12).fill(0);
+  const hist=[{t:0,c:20,f:0}];
+  const MAXT=20000;
+  for(let t=1;t<=MAXT;t++){
+    if(level<target) level=Math.min(target,level+ +cfg.rodSpeed);        // rodControl (334-352)
+    else if(level>target) level=Math.max(target,level- +cfg.rodSpeed);
+    flux=0; gen=0;
+    if(level>0){
+      const r=cascade(level,g,out);
+      cellFlux=r.flux; out=r.out; flux=r.tot;
+      for(let i=0;i<12;i++){ const id=g[i]; if(!id) continue;
+        gen+=out[i]*+cfg.heatPerFlux;
+        life[i]+= plateFn(id)==="PASSIVE"?plateR(id):r.flux[i];
+        if(life[i]>plateLife(id)){ swaps++; if(firstSwap==null) firstSwap=t; if(state.replace) life[i]=0; else g[i]=null; } }
+      heat+=gen;
+    } else { out=Array(12).fill(0); cellFlux=Array(12).fill(0); }
+    if(heat>0){                                                          // cooling (108-119), float32 like the mod
+      if(state.water>0) heat=Math.trunc(F(F(heat)-F(F(F(heat)*F(+cfg.waterCool))*F(state.water/12))));
+      else heat--;
+      if(heat<0) heat=0;
+    }
+    if(state.recipe>0&&flux>=state.recipe){ prog+=0.0025*flux/state.recipe; if(prog>=1){ prog-=1; } } else prog=0;   // breeder (52-63)
+    if(t%10===0||t===MAXT) hist.push({t,c:heat*2e-5*980+20,f:flux});
+    if(heat>+cfg.maxHeat){ melt=t; hist.push({t,c:heat*2e-5*980+20,f:flux}); break; }
+  }
+  const eq=equilib(target), SC=scan();
+  let burn={t:Infinity,name:null,rate:0};
+  for(let i=0;i<12;i++){ const id=state.grid[i]; if(!id) continue;
+    const rate=plateFn(id)==="PASSIVE"?plateR(id):eq.fluxIn[i];
+    if(rate>0){ const tt=plateLife(id)/rate; if(tt<burn.t) burn={t:tt,name:PL[id].name,id,rate}; } }
+  return {flux,heat,tempC:Math.round(heat*2e-5*980+20),gen,cellFlux,gridFinal:g,eq,pts:SC.pts,maxSafe:SC.maxSafe,
+    melt,firstSwap,swaps,burn,rad:Math.min(heat,+cfg.maxHeat)/+cfg.maxHeat*50,
+    ratePerMin:state.recipe>0&&flux>=state.recipe?0.0025*(flux/state.recipe)*1200:0,
+    hist,level:target};
+}
+
+/* ================= three.js: two sealed plate stacks under the rod, in the counting pool ================= */
+const view=$("view"),reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null,scene,camera,root,clip,buildStart=0,casingOn=true;
+let grpShell,grpRod,waterMesh,casingMat,rodMat,waterMat;
+const plates=[],fuelT={},rod={shown:0,target:0.5};
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plateTex(key,color,deco){ return tex(key,g=>{ const R=rng(key),b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b); }); }
+const T={
+  casing:()=>plateTex("casing","#5E6570",g=>{ g.fillStyle="#9AA3AD"; [[2,2],[13,2],[2,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,1,1)); }),
+  rod:()=>plateTex("rod","#C2C8CE",g=>{ g.fillStyle="#C0392B"; g.fillRect(0,7,16,2); g.fillStyle="#858B92"; g.fillRect(0,3,16,1); g.fillRect(0,12,16,1); }),
+};
+function matOf(canvas,extra){ const t=new THREE.CanvasTexture(canvas); t.magFilter=t.minFilter=THREE.NearestFilter;
+  return new THREE.MeshLambertMaterial(Object.assign({map:t,clippingPlanes:[clip]},extra)); }
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+// the pool slots getWater counts: the 3×4 side belt (8 of them shown), 2 water above and 2 below at distance 2
+const POOL=[[3,0,0],[3,1,0],[-3,0,0],[-3,1,0],[0,0,3],[0,1,3],[0,0,-3],[0,1,-3],[0,4,1],[0,4,-1],[0,-3,1],[0,-3,-1]];
+const slotXYZ=i=>{ const r=ROWS.findIndex(row=>row.includes(i)),c=ROWS[r].indexOf(i); return [c-1.5+(c<2?-0.2:0.2),1-r,0]; };
+function mesh(geo,mat,x,y,z,grp,ro){ const o=new THREE.Mesh(geo,mat); o.position.set(x,y,z); if(ro)o.renderOrder=ro; grp.add(o); return o; }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  for(const [id] of PLATES){ const t=new THREE.CanvasTexture(plateTex("fuel_"+id,PL[id].color,(g,b)=>{ g.fillStyle=shade(b,1.35); g.fillRect(1,3,14,1); g.fillRect(1,8,14,1); g.fillRect(1,13,14,1); g.fillStyle=shade(b,0.55); g.fillRect(7,5,2,6); }));
+    t.magFilter=t.minFilter=THREE.NearestFilter; fuelT[id]=t; }
+  // pool tank: steel floor, glass walls
+  const pool=new THREE.Group(); root.add(pool);
+  const glass=new THREE.MeshLambertMaterial({color:0x9CC4D8,transparent:true,opacity:0.5,depthWrite:false,clippingPlanes:[clip]});
+  mesh(new THREE.BoxGeometry(7.6,0.24,7.6),matOf(T.casing()),0,-3.7,0,pool);
+  mesh(new THREE.BoxGeometry(0.24,8.4,7.6),glass,-3.78,0.42,0,pool,2); mesh(new THREE.BoxGeometry(0.24,8.4,7.6),glass,3.78,0.42,0,pool,2);
+  mesh(new THREE.BoxGeometry(7.6,8.4,0.24),glass,0,0.42,-3.78,pool,2); mesh(new THREE.BoxGeometry(7.6,8.4,0.24),glass,0,0.42,3.78,pool,2);
+  waterMat=new THREE.MeshLambertMaterial({color:0x4FA6E0,transparent:true,opacity:0.5,depthWrite:false,clippingPlanes:[clip]});
+  const wg=new THREE.Group(); root.add(wg); waterMesh=new THREE.InstancedMesh(CUBE(),waterMat,12); waterMesh.renderOrder=1; wg.add(waterMesh);
+  // reactor casing: a 5×5 ring frame + rod housing on top; the bulkhead between the sealed halves lives in the core group
+  grpShell=new THREE.Group(); root.add(grpShell); casingMat=matOf(T.casing());
+  const frm=new THREE.InstancedMesh(CUBE(),casingMat,16),m4=new THREE.Matrix4(); let fi=0;
+  for(let x=-2;x<=2;x++)for(let y=-2;y<=2;y++) if(Math.abs(x)===2||Math.abs(y)===2){ m4.makeTranslation(x,y,0); m4.scale(new THREE.Vector3(1,1,0.6)); frm.setMatrixAt(fi++,m4); }
+  grpShell.add(frm);
+  mesh(new THREE.BoxGeometry(1.1,0.55,1.1),casingMat,0,2.78,0,grpShell);
+  const core=new THREE.Group(); root.add(core);
+  mesh(new THREE.BoxGeometry(0.36,3.24,0.44),casingMat,0,0,0,core);
+  const plateGeo=new THREE.BoxGeometry(0.92,0.92,0.16);
+  for(let i=0;i<12;i++){ const [x,y,z]=slotXYZ(i);
+    const m=new THREE.Mesh(plateGeo,new THREE.MeshLambertMaterial({map:fuelT.u235,clippingPlanes:[clip]}));
+    m.position.set(x,y,z); m.userData={fuel:"u235",glow:0,base:new THREE.Color(PL.u235.color)}; core.add(m); plates.push(m); }
+  grpRod=new THREE.Group(); root.add(grpRod); rodMat=matOf(T.rod());
+  mesh(new THREE.CylinderGeometry(0.16,0.16,3.6,10),rodMat,0,0,0,grpRod);
+  mesh(new THREE.ConeGeometry(0.16,0.36,10),rodMat,0,-1.98,0,grpRod).rotation.x=Math.PI;
+  grpRod.position.y=4.55;
+  buildStart=performance.now();
+  setFocus("all",true); const g=orbit.goal; orbit.target={x:g.x,y:g.y,z:g.z}; orbit.radius=g.r; orbit.goal=null;
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function update3D(S){
+  if(!renderer) return;
+  const melt=S.melt!=null,maxF=Math.max(1,...S.eq.fluxIn);
+  for(let i=0;i<12;i++){ const m=plates[i],id=state.grid[i],u=m.userData; m.visible=!!id; if(!id) continue;
+    if(u.fuel!==id){ u.fuel=id; m.material.map=fuelTexOf(id); m.material.needsUpdate=true; }
+    u.glow=S.eq.div?1:Math.pow(S.eq.fluxIn[i]/maxF,0.6);
+    u.base.set(melt?0xF04838:PL[id].color); }
+  const m4=new THREE.Matrix4();
+  for(let i=0;i<12;i++){ if(i<state.water) m4.makeTranslation(POOL[i][0],POOL[i][1],POOL[i][2]); else m4.makeScale(0,0,0); waterMesh.setMatrixAt(i,m4); }
+  waterMesh.instanceMatrix.needsUpdate=true;
+  rod.target=state.level/100;
+  casingMat.color.setHex(melt?0xB4574E:0xffffff); rodMat.color.setHex(melt?0xE0554A:0xffffff); waterMat.color.setHex(melt?0xD05548:0x4FA6E0);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms.
+// focus "core" frames the plate stacks, "all" the whole rig in its pool; panning drops the focus.
+const orbit={theta:0.62,phi:1.14,radius:21,target:{x:0,y:0.4,z:0},focus:"all",goal:null,idle:0,pan:false};
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(60,Math.max(5,orbit.goal.r*f)); else orbit.radius=Math.min(60,Math.max(5,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0),up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } setFocus(null); }
+const ptrs=new Map();
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return; ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()],mx=(a.x+b.x)/2,my=(a.y+b.y)/2,d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()],d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x,dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+function framing(f){ return f==="core"?{x:0,y:0,z:0,r:11}:{x:0,y:0.4,z:0,r:21}; }
+function setFocus(f,go){ orbit.focus=f; for(const [id,k] of [["fCore","core"],["fAll","all"]]) $(id).setAttribute("aria-pressed",f===k);
+  if(f&&go) orbit.goal={...framing(f)}; }
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal,a=reduce?1:1-Math.exp(-dt*7),o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius,o.y+Math.cos(orbit.phi)*orbit.radius,o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=-4.9+11.5*(1-Math.pow(1-p,3));
+  const v=reduce?Infinity:+cfg.rodSpeed*20*dt; rod.shown+=Math.max(-v,Math.min(v,rod.target-rod.shown));   // the mod's 0.04/t chase, in real time
+  grpRod.position.y=4.55-4.25*rod.shown;
+  const run=S&&S.flux>0,melt=S&&S.melt!=null,gate=rod.target>0?Math.min(1,rod.shown/rod.target):0;
+  for(let i=0;i<12;i++){ const m=plates[i],u=m.userData;
+    if(!m.visible){ m.material.emissive.setHex(0); continue; }
+    const pulse=reduce||!run?1:melt?1.15+0.5*Math.sin(t/110+i):1+0.18*Math.sin(t/280+i*0.7);
+    m.material.emissive.copy(u.base).multiplyScalar(u.glow*gate*pulse*0.85); }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+const fuelTexOf=id=>fuelT[id];
+
+/* ================= UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  $("cfgHint").innerHTML=`heat <b>${fmt(+cfg.heatPerFlux)}</b>/flux · meltdown <b>${fmt(+cfg.maxHeat)}</b> HE (982 °C) · water <b>−${fmt(+cfg.waterCool*100)}%</b>/t at 12 blocks · rod <b>${cfg.rodSpeed}</b>/t`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.id="cfg-"+k;
+    const isF=k.startsWith("fn_");
+    if(isF){ i.type="text"; i.spellcheck=false; i.title=FUNCS.join(" | "); }
+    else { i.type="number"; i.step="any"; i.min="0"; }
+    i.onchange=()=>{ if(isF){ const v=String(i.value).trim().toUpperCase(); if(!FUNCS.includes(v)){ i.value=cfg[k]; return; } cfg[k]=v; }
+      else { const v=+i.value; if(!(v>0)){ i.value=cfg[k]; return; } cfg[k]=v; }
+      cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function renderPal(){
+  const p=$("pal"); if(p.childElementCount){ for(const b of p.children) b.setAttribute("aria-pressed",b.dataset.k===String(state.brush)); return; }
+  for(const [id,name] of PLATES){ const b=document.createElement("button"); b.type="button"; b.dataset.k=id;
+    const i=document.createElement("i"); i.style.background=PL[id].color; b.append(i,name);
+    b.title=`${PL[id].name} · life ${big(PL[id].maxLife)} · R ${PL[id].R} · ${PL[id].fn}`;
+    b.onclick=()=>{ state.brush=id; renderPal(); }; p.append(b); }
+  const e=document.createElement("button"); e.type="button"; e.dataset.k="";
+  const i=document.createElement("i"); i.style.background="var(--bg)"; e.append(i,"Empty"); e.onclick=()=>{ state.brush=null; renderPal(); }; p.append(e);
+}
+function renderGrid(S){
+  const g=$("zgrid"); g.innerHTML="";
+  const maxF=Math.max(1,...S.eq.fluxIn);
+  for(const row of ROWS){ const r=document.createElement("div"); r.className="zrow";
+    for(const i of row){ const b=document.createElement("button"); b.type="button"; b.className="zcell";
+      const id=state.grid[i];
+      b.style.background=id?PL[id].color:"var(--bg)";
+      b.textContent=id?SHORT[id]:"";
+      const f=S.eq.fluxIn[i];
+      const rate=id?(plateFn(id)==="PASSIVE"?plateR(id):f):0;
+      b.title=(id?`${PL[id].name} · R ${plateR(id)} · ${plateFn(id)} · in-flux ${fmt(f)}/t`:"Empty")+(rate>0&&isFinite(plateLife(id)/rate)?` · ${secs(plateLife(id)/rate*20)} at this cascade`:"");
+      b.setAttribute("aria-label",b.title);
+      b.style.boxShadow=id?`inset 0 0 0 2px rgba(240,138,93,${Math.pow(f/maxF,0.6)*0.9})`:"";
+      b.onclick=()=>{ state.grid[i]=state.brush; update(); };
+      r.append(b); }
+    g.append(r); }
+}
+let S=null;
+const eqFluxOf=id=>{ const i=state.grid.indexOf(id); return plateFn(id)==="PASSIVE"?plateR(id):(i>=0?S.eq.fluxIn[i]:0); };
+function renderResults(){
+  const molten=S.melt!=null, margin=S.heat/+cfg.maxHeat, eqC=S.eq.eq===Infinity?null:Math.round(S.eq.eq*2e-5*980+20);
+  $("hudMain").innerHTML=molten?"Meltdown":S.eq.div?"Runaway":`${big(S.eq.flux)} <small>flux/t steady</small>`;
+  $("hudSub").textContent=molten?`blast at ${secs(S.melt*20)} — pull the rod to ${S.maxSafe}%`:`${fmt(S.tempC)} °C · ${big(S.flux)} flux/t · rod ${fmt(state.level)}% · ${state.water}/12 water`;
+  const cells=[["Total flux",`${big(S.flux)} <small>flux/t · ${fmt(S.gen)} HE/t into the core</small>`,"hero"]];
+  cells.push(
+    ["Core temperature",`${fmt(S.tempC)} <small>°C · ${big(S.heat)} HE · ${fmt(margin*100,1)}% of the ${fmt(+cfg.maxHeat)} blast</small>`],
+    ["Steady state",S.eq.div?`runaway <small>no fixed point at ${fmt(state.level)}% — the cascade amplifies every tick</small>`
+      :eqC==null?`runaway <small>zero water: ${fmt(S.eq.gen)} HE/t in, 1 HE/t out</small>`
+      :`${fmt(eqC)} <small>°C at ${fmt(state.level)}% rod · ${fmt(S.eq.flux)} flux/t steady</small>`],
+    ["Max safe level",`${S.maxSafe} <small>% at this layout + ${state.water} water block(s)</small>`],
+    ["Meltdown margin",`${fmt(Math.min(margin,9.99)*100,1)} <small>% · ${fmt(S.rad,1)} rad/s from unshielded sides</small>`],
+    ["Breeder machine",S.ratePerMin>0?`${fmt(S.ratePerMin,2)} <small>items/min · ${fmt(S.flux)}/${fmt(state.recipe)} flux · ${fmt(1200/S.ratePerMin)} t/item</small>`
+      :`— <small>below the ${fmt(state.recipe)} recipe flux: progress stays 0</small>`],
+    ["First plate burns out",S.burn.name&&isFinite(S.burn.t)?`${secs(S.burn.t*20)} <small>${S.burn.name}: life ${big(plateLife(S.burn.id))} ÷ ${fmt(S.burn.rate,1)}/t${state.replace?" — fresh plate swaps in":""}</small>`:(S.eq.div?`instantly <small>the runaway flux eats a plate load in one tick</small>`:"—")]);
+  if(molten) cells.push(["Melts down at",`${secs(S.melt*20)} <small>at ${fmt(state.level)}% rod — above the ${S.maxSafe}% safe line</small>`]);
+  if(!state.replace&&S.firstSwap!=null) cells.push(["Core dies at",`${secs(S.firstSwap*20)} <small>first plate → waste plate · ${S.swaps} burnouts in the run</small>`]);
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(molten) n.push(["bad",`Meltdown at ${secs(S.melt*20)} of game time — heat passes ${fmt(+cfg.maxHeat)} (982 °C): strength-18 blast, corium block and a 50 rad burst. Pull the rod to ${S.maxSafe}% at this water, or add water: 12 blocks shed 7% of the core's heat per tick.`]);
+  else if(S.eq.div) n.push(["bad",`No steady state at ${fmt(state.level)}%: every generation multiplies the flux. The core reaches blast heat in seconds — pull the rod below ${S.maxSafe}%.`]);
+  else if(S.maxSafe>=0&&state.level>S.maxSafe) n.push(["warn",`Your ${fmt(state.level)}% target sits above the ${S.maxSafe}% safe line: the equilibrium heat passes ${fmt(+cfg.maxHeat)}. The sim counts the ticks to the blast.`]);
+  if(state.water===0&&S.eq.gen>1&&!molten) n.push(["warn","No water: the loop only sheds heat-- (1 unit/t). Any layout making more than 1 heat/t ends at 50,000."]);
+  if(margin>0.8&&!molten) n.push(["warn",`Riding at ${fmt(margin*100)}% of blast heat. The research reactor has no scram — the rod is your only brake, and it moves 0.04/t.`]);
+  if(!S.gridFinal.some(Boolean)) n.push(["warn","No fuel plates left in the core — nothing reacts, nothing heats."]);
+  const ids=[...new Set(state.grid.filter(Boolean))];
+  if(ids.length&&ids.every(id=>plateFn(id)==="PASSIVE")) n.push(["","All passive plates: out = R no matter the flux, no amplification. A Ra-226/Be at full rod feeds 30 flux to each neighbour and ages 30/t."]);
+  if(ids.length&&ids.every(id=>plateFn(id)!=="PASSIVE")&&S.flux===0) n.push(["warn","A pure amplifier core is dead in the game: every non-passive curve is 0 at flux 0, so it never starts — a Ra-226/Be or Pu-238/Be starter in each half is the neutron source. (The scan curves assume the cascade kicked off.)"]);
+  if(!molten&&!S.eq.div&&S.flux>0&&S.ratePerMin>0) n.push(["good",`Steady at ${fmt(S.tempC)} °C: the cascade holds ${big(S.flux)} flux/t, and a breeder machine beside the reactor finishes an item every ${fmt(1200/S.ratePerMin)} ticks.`]);
+  if(!molten&&ids.length&&isFinite(S.eq.flux)&&S.eq.flux>0) n.push(["",`Plate life at this cascade: ${ids.map(id=>{ const f=eqFluxOf(id); return `${PL[id].name} ${f>0&&isFinite(plateLife(id)/f)?secs(plateLife(id)/f*20):"—"}`; }).join(" · ")}.`]);
+  n.push(["","The two halves of the core never exchange flux — give each its own passive starter, and ring the sides with lead, desh or steel (hardness ≥100) so the running reactor doesn't radiation-bake your base."]);
+  $("notes").innerHTML=n.filter(x=>x.length).map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+}
+function drawChart(){
+  const c=$("chart"),dpr=Math.min(2,devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight; if(!w||!S) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const cs=getComputedStyle(document.documentElement),v=k=>cs.getPropertyValue(k).trim();
+  const muted=v("--muted"),line=v("--line"),heatC=v("--heat"),accent=v("--accent-ink"),bad=v("--bad"),ink=v("--ink"),mono=v("--font-mono");
+  const P=S.pts,maxSafe=S.maxSafe;
+  const yF=Math.max(10,...P.filter(q=>!q.div&&isFinite(q.flux)).map(q=>q.flux))*1.15;
+  const yT=Math.max(990,...P.filter(q=>!q.div&&isFinite(q.eq)).map(q=>q.eq*2e-5*980+20))*1.08;
+  const pad={l:46,r:48,t:12,b:22}, X=p=>pad.l+p/100*(w-pad.l-pad.r), Yf=x=>pad.t+(1-x/yF)*(h-pad.t-pad.b), Yt=x=>pad.t+(1-x/yT)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.lineWidth=1;
+  if(maxSafe<100){ g.fillStyle="rgba(238,123,123,.10)"; const x0=X(Math.max(maxSafe,0)); g.fillRect(x0,pad.t,w-pad.r-x0,h-pad.t-pad.b);
+    g.fillStyle=bad; g.fillText("meltdown",w-pad.r-58,pad.t+12); }
+  g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=Yf(yF/1.15*f); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillText(fmt(yF/1.15*f),2,y+4); g.fillText(fmt(yT/1.08*f),w-pad.r+4,Yf(yF/1.15*f)+4); }
+  const ym=Yt(982); g.strokeStyle=bad; g.setLineDash([4,3]); g.beginPath(); g.moveTo(pad.l,ym+.5); g.lineTo(w-pad.r,ym+.5); g.stroke(); g.setLineDash([]);
+  g.fillStyle=bad; g.fillText("982 °C",pad.l+4,ym-4);
+  const curve=(key,Y,color)=>{ g.beginPath(); let pen=false;
+    for(const q of P){ const val=q[key]; if(q.div||!isFinite(val)){ pen=false; continue; } const x=X(q.p),y=Y(val); if(pen)g.lineTo(x,y); else g.moveTo(x,y); pen=true; }
+    g.strokeStyle=color; g.lineWidth=2; g.stroke(); };
+  curve("flux",Yf,accent); curve("eq",x=>Yt(x*2e-5*980+20),heatC);
+  const xm=X(state.level); g.strokeStyle=ink; g.setLineDash([2,3]); g.beginPath(); g.moveTo(xm,pad.t); g.lineTo(xm,h-pad.b); g.stroke(); g.setLineDash([]);
+  const q=P[Math.max(0,Math.min(100,Math.round(state.level)))];
+  if(q&&!q.div&&isFinite(q.flux)){ g.fillStyle=ink; g.beginPath(); g.arc(X(q.p),Yf(q.flux),4,0,7); g.fill(); }
+  g.font="600 11px "+mono; g.fillStyle=ink; g.fillText(`${fmt(state.level)}%`,Math.min(w-pad.r-32,xm+4),h-6);
+  g.fillStyle=muted; g.font="11px "+mono; g.fillText("rod 0%",pad.l,h-6); g.fillText("100%",w-pad.r-g.measureText("100%").width,h-6);
+}
+function drawHistory(){
+  const c=$("chart2"),dpr=Math.min(2,devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight; if(!w||!S) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  const cs=getComputedStyle(document.documentElement),v=k=>cs.getPropertyValue(k).trim();
+  const muted=v("--muted"),line=v("--line"),heatC=v("--heat"),accent=v("--accent-ink"),bad=v("--bad"),ink=v("--ink"),mono=v("--font-mono");
+  const H=S.hist,tMax=Math.max(200,H[H.length-1].t),yC=Math.max(90,...H.map(p=>p.c))*1.1,yF=Math.max(10,...H.map(p=>p.f))*1.1;
+  const pad={l:44,r:46,t:10,b:20}, X=t=>pad.l+t/tMax*(w-pad.l-pad.r), Yc=x=>pad.t+(1-x/yC)*(h-pad.t-pad.b), Yf=x=>pad.t+(1-x/yF)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.lineWidth=1; g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=Yc(yC/1.1*f); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillText(fmt(yC/1.1*f),2,y+4); g.fillText(fmt(yF/1.1*f),w-pad.r+4,y+4); }
+  const line2=(key,Y,color)=>{ g.beginPath(); H.forEach((p,i)=>i?g.lineTo(X(p.t),Y(p[key])):g.moveTo(X(p.t),Y(p[key]))); g.strokeStyle=color; g.lineWidth=2; g.stroke(); };
+  line2("c",Yc,heatC); line2("f",Yf,accent);
+  if(S.melt!=null){ const x=X(S.melt); g.strokeStyle=bad; g.setLineDash([4,3]); g.beginPath(); g.moveTo(x,pad.t); g.lineTo(x,h-pad.b); g.stroke(); g.setLineDash([]);
+    g.fillStyle=bad; g.fillText("meltdown",Math.min(w-pad.r-58,x+4),pad.t+12); }
+  const p=H[H.length-1],x=X(p.t),y=Yc(p.c); g.fillStyle=ink; g.beginPath(); g.arc(x,y,3.5,0,7); g.fill();
+  g.font="600 11px "+mono; const l2=`${fmt(p.c)} °C · ${fmt(p.f)} flux/t`,tw=g.measureText(l2).width; g.fillText(l2,Math.min(w-pad.r-tw,Math.max(pad.l,x-tw)),Math.max(12,y-8));
+}
+/* ================= design code (mdn1) =================
+   mdn1.<grid>.<level>.<water>.<recipe>.<replace>
+   grid: 12 plate codes (0=empty, 1..7=palette order), 4 bits each, base64url. */
+const CODE=PLATES.map(p=>p[0]);
+function encodeDesign(){
+  const codes=state.grid.map(g=>g?CODE.indexOf(g)+1:0);
+  return ["mdn1",mdShare.b64u.enc(mdShare.packBits(codes,4)),state.level,state.water,state.recipe,state.replace?1:0].join(".");
+}
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==6||p[0]!=="mdn1") return null;
+  let bytes; try{ bytes=mdShare.b64u.dec(p[1]); }catch(e){ return null; }
+  const codes=mdShare.unpackBits(bytes,12,4); if(!codes||codes.some(v=>v>CODE.length)) return null;
+  const int=(i,a,b)=>{ const v=/^-?\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={grid:codes.map(v=>v?CODE[v-1]:null),level:int(2,0,100),water:int(3,0,12),recipe:int(4,1,1000000),replace:p[5]==="1"};
+  if(Number.isNaN(d.level)||Number.isNaN(d.water)||Number.isNaN(d.recipe)) return null;
+  return d;
+}
+const share=mdShare({prefix:"mdn1",isPreset:k=>!!PRESETS[k],encode:encodeDesign,decode:decodeDesign,preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d); update(); },onPreset:k=>{ if(k!==cfgPreset) usePreset(k); },
+  loaded:d=>`Loaded a ${d.grid.filter(Boolean).length}-plate core.`});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+/* ================= wiring ================= */
+function renderPresetButtons(){
+  const pk=NTM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!pk); $("pAtmLabel").textContent=pk?pk[1]:"Fork";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of NTM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+const bind=(id,key,a,b)=>{ const f=v=>{ state[key]=Math.min(b,Math.max(a,Math.round(+v||0))); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
+bind("level","level",0,100); bind("water","water",0,12); bind("recipe","recipe",1,1000000);
+for(const b of $("replace").children) b.onclick=()=>{ state.replace=b.dataset.k==="1"; update(); };
+$("zFill").onclick=()=>{ state.grid=Array(12).fill(state.brush); update(); };
+$("zClear").onclick=()=>{ state.grid=Array(12).fill(null); update(); };
+addEventListener("resize",()=>{ drawChart(); drawHistory(); });
+
+function update(){
+  S=simulate();
+  renderCfg(); renderPal(); renderGrid(S); renderResults(); update3D(S);
+  $("level").value=state.level; $("levelN").value=state.level;
+  $("water").value=state.water; $("waterN").value=state.water;
+  $("recipe").value=Math.min(5000,state.recipe); $("recipeN").value=state.recipe;
+  for(const b of $("replace").children) b.setAttribute("aria-pressed",b.dataset.k===(state.replace?"1":"0"));
+  drawChart(); drawHistory(); share.render();
+}
+
+$("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(grpShell) grpShell.visible=casingOn; };
+$("fCore").onclick=()=>setFocus("core",true); $("fAll").onclick=()=>setFocus("all",true);
+
+if(share.atLoad.design) Object.assign(state,share.atLoad.design);
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>

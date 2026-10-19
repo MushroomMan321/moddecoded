@@ -97,6 +97,25 @@ Defaults are for Advanced AE 1.6.12 (MC 1.21.1). The section name has a space, s
 | `quantum computer.quantumComputerMultiThreaderMultiplication` | 4 |
 | `quantum computer.quantumComputerDataEntanglerMultiplication` | 4 |
 
+### HBM's Nuclear Tech Mod (mod id `hbm`): no config file
+
+Original NTM (1.7.10-1.0.27) has no reactor `.toml`: its tunables are Java constants and, for the RBMK,
+gamerule "dials". Preset entries carry values **read out of each fork's code** (verified per fork — see
+`research/ntm-1.0.27-reactors.md`). Grouped defaults:
+
+| Key family | Calculator | Defaults |
+|---|---|---|
+| `zirnox.maxHeat` · `zirnox.meltdownPressure` · `zirnox.heatLossDiv` · `zirnox.steamThreshold` · `zirnox.steamFactor` · `zirnox.co2Fill` · `zirnox.co2Max` · `zirnox.co2TankMax` · `zirnox.steamMax` · `zirnox.waterMax` | ZIRNOX | 100000 · 100000 · 1e6 · 10256 · 125 · 14000 · 16000 · 16000 · 8000 · 32000 |
+| `zirnox.rod.<id>.maxLife` / `.heat` (11 rod ids) | ZIRNOX | per `ItemZirnoxRod.EnumZirnoxType` |
+| `research.heatPerFlux` · `research.maxHeat` · `research.waterCool` · `research.rodSpeed` | Research reactor | 2 · 50000 · 0.07 · 0.04 |
+| `research.plate.<id>.maxLife` / `.reactivity` / `.function` (7 plate ids) | Research reactor | per `ModItems` plate registrations |
+| `rbmk.dial.<name>` (24 dials: passiveCooling, innerCooling, columnHeatFlow, diffusionMod, heatProvision, columnHeight, boilerHeatConsumption, controlSpeed, reactivityMod, surgeMod, fluxRange, meltdowns, moderatorEfficiency, absorberEfficiency, absorberHeatConversion, reflectorEfficiency, depletion, xenon, …) | RBMK | per `RBMKDials` (2.5 · 0.1 · 0.2 · 1 · 0.2 · 4 · 0.1 · 1 · 1 · 1 · 5 · on · 1 · 1 · 0.05 · 1 · on · on) |
+| `rbmk.fuel.<id>.yield` / `.reactivity` / `.function` / `.depletion` / `.heat` / `.meltingPoint` / `.diffusion` / `.xGen` / `.xBurn` (33 rod ids) | RBMK | per `ModItems` `rbmk_fuel_*` registrations |
+| `rbmk.rodHullLimit` · `rbmk.columnMaxHeat` · `rbmk.columnBaseMax` · `rbmk.boilerPerMb` · `rbmk.coolerPerGel` | RBMK | 150 (forks: 1500) · 10000 · 1500 · 0.1 · 200 |
+| `fusion.torusMaxPower` · `fusion.klystronMax` · `fusion.klystronAir` · `fusion.intensity2/3/4` · `fusion.mhdtEff` · `fusion.mhdtMinPlasma` · `fusion.boilerTuPerMb` · `fusion.breederFlux` · `fusion.solenoidHE` | Fusion | 1e7 · 1e6 · 2500 · 0.625/0.5/0.4375 · 1.35 · 5e6 · 200 · 10000 · 25000 |
+| `fusion.recipe.<id>.ignitionTemp` / `.outputTemp` / `.neutronFlux` / `.duration` (10 recipes) | Fusion | per `FusionRecipes` |
+| `pile.maxProgress` · `pile.maxProgress528` · `pile.liProgress` · `pile.liProgress528` · `pile.dissipate` · `pile.dissipateWater` · `pile.maxHeat` · `pile.rayFlux` · `pile.range` · `pile.concreteMult` · `pile.sourceFlux` · `pile.isotopeFlux` · `pile.detectAt` | Graphite pile | 50000 · 75000 · 30000 · 50000 · 0.05 · 0.065 · 1000 · 0.25 · 5 · 0.25 · 1 · 2 · 10 |
+
 ## Changing a calculator
 
 Each calculator is one self-contained file: `site/tools/<mod>/<tool>/index.html`. There's no build step.
