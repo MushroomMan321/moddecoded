@@ -486,7 +486,7 @@ function simulate(st,cfg){
   for(let i=0;i<N;i++){ fx[i]=Math.floor(i/D); fz[i]=i%D;
     if(cells[i]===6) boi.push(i); else if(cells[i]===7) coo.push(i); else if(cells[i]===8) hea.push(i);
     if(isFuel(i)) fuelL.push(i); }
-  const bf=new Float64Array(boi.length).fill(10000), bt=new Float64Array(boi.length); // boiler tanks (Boiler.java 49-50)
+  const bf=new Float64Array(boi.length), bt=new Float64Array(boi.length); // boiler tanks (Boiler.java 49-50), empty like a fresh build (checked in game 2026-10-19)
   const feedStopT=st.feedStop==null?Infinity:st.feedStop*20;
   const coolCache=coo.map(c=>{ const list=[]; const cx=Math.floor(c/D), cz=c%D;
     for(let x=Math.max(0,cx-2);x<=Math.min(W-1,cx+2);x++)for(let z=Math.max(0,cz-2);z<=Math.min(D-1,cz+2);z++) list.push(x*D+z);
