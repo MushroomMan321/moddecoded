@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/ntm/graphite-pile-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>NTM Graphite Pile Calculator</title>
+<meta name="description" content="HBM's Nuclear Tech Mod graphite pile calculator: a per-tick seeded Monte-Carlo of the 12-ray neutron cast from the NTM 1.0.27 (1.7.10) source — neutrons per rod, heat self-damping, concrete and boron shadowing, seconds to plutonium and tritium — with fork presets for NTM:Space, NTM CE, Reforged and Final Edition.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,.pal button:focus-visible,.pcell:focus-visible,.mcell:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pal{display:flex;flex-wrap:wrap;gap:6px}
+.pal button{display:flex;align-items:center;gap:6px;font:600 12px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:5px 8px;cursor:pointer}
+.pal button i{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.25)}
+.pal button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar span{min-width:78px;text-align:center;font-variant-numeric:tabular-nums}
+.view-hint{margin-top:-4px}
+.pile{display:flex;flex-direction:column;gap:2px;align-items:center;padding:4px 0}
+.prow{display:flex;gap:2px}
+.pcell{width:var(--cs,20px);height:var(--cs,20px);border-radius:3px;border:1px solid var(--line);background:var(--bg);cursor:pointer;padding:0}
+.pcell:hover{border-color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 12px;font:12px var(--font-mono);color:var(--muted)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;border:1px solid rgba(255,255,255,.25);vertical-align:-1px;margin-right:5px}
+.seedrow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.chart{width:100%;height:170px;display:block}
+.legend2{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px var(--font-mono);color:var(--muted);margin-top:-4px}
+.legend2 i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / <a href="/tools/ntm/">NTM</a> / Graphite Pile Calculator</nav>
+  <header class="top">
+    <h1>HBM's NTM <span class="y">Graphite Pile Calculator</span></h1>
+    <span class="src">Formulas from the HBM's Nuclear Tech Mod 1.7.10-1.0.27 source</span>
+  </header>
+  <p class="lede">Paint a graphite pile, block by block, and the page runs the mod's own neutron transport: every reacting rod casts <b>12 rays in random directions</b>, marching <b>0.5 blocks at a time out to range 5</b> — concrete quarters the flux, boron eats it, empty space kills it dead. Heat self-damps (hot rods go quiet), rods transmute at 50,000 progress, lithium breeds tritium. Seeded Monte-Carlo over 2,000 ticks, exactly the mod's tick loop, transcribed from <b>PileNeutronHandler</b> and the pile tile entities.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D pile view and painter">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the painted graphite pile"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" role="group" aria-label="Slice navigation">
+          <button type="button" id="lyPrev" aria-label="Lower slice">&#9664;</button>
+          <span id="lyLab" aria-live="polite">Y 3 / 3</span>
+          <button type="button" id="lyNext" aria-label="Raise slice">&#9654;</button>
+        </div>
+        <div class="viewbar">
+          <button type="button" id="tNeu" aria-pressed="false">Neutrons</button>
+          <button type="button" id="lyAll" aria-pressed="false">All layers</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Click a block face to place the selected block there; click a block with the Empty brush to remove it.</p>
+      <div class="box">
+        <h2>Pile painter</h2>
+        <div class="pal" id="pal" role="group" aria-label="Cell palette"></div>
+        <div class="pile" id="pile" role="group" aria-label="Current slice preview, depth rows by width columns"></div>
+        <div class="btns">
+          <button class="btn" type="button" id="pFill">Fill slice with selected</button>
+          <button class="btn" type="button" id="pFillAll">Fill pile with selected</button>
+          <button class="btn" type="button" id="pClear">Clear pile</button>
+        </div>
+        <div class="legend" id="legend"></div>
+        <p class="hint">The slice preview tracks the layer the slicer is on — click a cell to paint it too. Rows run front to back (Z), columns left to right (X). <b>Air stops a neutron ray instantly</b> — a ray that steps into an empty cell dies there, so leave no gaps between the rods. Rod end-faces glow as progress burns toward plutonium; <b>Neutrons</b> tints every block by the neutrons it received in the first tick.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Mod preset</h2>
+        <div class="seg" role="group" aria-label="Mod preset">
+          <button type="button" id="pDefault" aria-pressed="true">Original NTM</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Fork</span><span class="caret" aria-hidden="true">&#9662;</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Fork" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit pile constants (NTM ships these in code, not in a config file)</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Pile shape &amp; RNG</h2>
+        <div class="row"><label for="wd">Width &times; depth</label><input type="range" id="wd" min="5" max="15" step="1"><input class="num" id="wdN" type="number" min="5" max="15" step="1" aria-label="Width and depth in blocks"></div>
+        <div class="row"><label for="layers">Layers (Y)</label><input type="range" id="layers" min="1" max="5" step="1"><input class="num" id="layersN" type="number" min="1" max="5" step="1" aria-label="Layer count"></div>
+        <div class="seedrow">
+          <div class="row"><label for="seed">Seed</label><input type="range" id="seed" min="0" max="9999" step="1"><input class="num" id="seedN" type="number" min="0" max="4294967295" step="1" aria-label="Monte-Carlo seed"></div>
+          <button class="btn" type="button" id="seedR">Reroll &#8635;</button>
+        </div>
+        <div class="seg" role="group" aria-label="528 mode" id="f528">
+          <button type="button" data-k="0" aria-pressed="true">Standard targets</button>
+          <button type="button" data-k="1" aria-pressed="false">528 mode (GeneralConfig.enable528)</button>
+        </div>
+        <p class="hint">Same seed + same pile = the exact same run; reroll to sample a new set of random ray directions. The loop is a per-tick Monte-Carlo — a full 15&times;15&times;5 core takes a few seconds. 528 mode retargets plutonium to 75,000 progress and tritium to 50,000.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <canvas class="chart" id="chart" aria-label="Median fuel rod progress and heat over the simulation"></canvas>
+        <div class="legend2"><span><i style="background:var(--accent)"></i>median fuel rod progress</span><span><i style="background:var(--heat)"></i>median rod heat</span><span><i style="background:var(--bad)"></i>Pu target</span><span><i style="background:var(--steam)"></i>heat cap 1,000</span></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">2,000 game ticks = 100 s. The chart tracks the fuel rod nearest the pile centre. A pile has no meltdown — the heat cap means radon, not a blast.</p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact pile with this exact seed. Paste a design code above to load one.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Twelve rays, no fixed directions</h3>
+        <p><b>There is no fixed set of 12 vectors in 1.0.27.</b> Every cast starts from <b>(1,0,0)</b> and rotates it by three independent random full turns — rotateX, rotateY, rotateZ (<b>TileEntityPileBase.castRay, lines 34-37</b>). On (1,0,0) rotateX does nothing, so each ray's exact direction is (cos&nbsp;a&middot;cos&nbsp;b, cos&nbsp;a&middot;sin&nbsp;b, &minus;sin&nbsp;a) with a,b uniform on [0,2&pi;) — a true Monte-Carlo over the sphere. The stream walks it with <code>i</code> from 1.0 to 5.0 in 0.5 steps, hopping to <code>floor(pos+0.5+v&middot;i)</code> (<b>PileNeutronHandler.runStreamInteraction, lines 47-54</b>).</p>
+<pre>12 casts: fuel reaction, source rod
+2 casts: lithium with neutrons &gt; 0
+range 5, step 0.5, per-ray flux:
+fuel max(reaction&times;0.25, 1) · source 1 (isotope 2)</pre>
+        <span class="ref">TileEntityPileBase.castRay · PileNeutronHandler.range=5</span>
+      </div>
+      <div class="fact">
+        <h3>Hot rods go quiet</h3>
+        <p>Every neutron budget is scaled by (1 &minus; heat/1000 &times; 0.5): a rod at 1,000 heat converts only half its neutrons, at 2,000 none at all — and with reaction &le; 0 the function returns early, so a cold-started lone fuel rod casts <b>zero</b> rays. Heat feeds back into itself: equilibrium lands at 20&times; the reaction rate (dry sleeve). The pile can't melt down; it throttles.</p>
+<pre>reaction = (int)(neutrons &times; (1 &minus; heat/1000 &times; 0.5))
+progress += reaction; heat += reaction
+heat &minus;= heat &times; (0.065 water | 0.05)
+if (reaction &lt;= 0) return   // no rays at all</pre>
+        <span class="ref">TileEntityPileFuel.react · dissipateHeat</span>
+      </div>
+      <div class="fact">
+        <h3>Concrete is the control rod</h3>
+        <p>Every concrete variant a ray crosses — concrete, smooth, asbestos, colored, brick concrete — multiplies its flux by 0.25. Receivers get <code>floor(flux)</code> and swallow the ray, so one concrete layer in front of a rod delivers floor(0.25) = <b>zero</b> neutrons. Boron blocks absorb the ray outright. Stack concrete plates between rods and you carve a neutron shadow into the pile.</p>
+<pre>concrete&nbsp;· flux &times;= 0.25 (keeps going)
+boron&nbsp;&nbsp;&nbsp;&nbsp;· return (absorbed)
+receiver&nbsp;· receive(floor(flux)); return
+detector with meta bit 8&nbsp;· passes through</pre>
+        <span class="ref">PileNeutronHandler.runStreamInteraction, lines 70-96</span>
+      </div>
+      <div class="fact">
+        <h3>50,000 progress = plutonium</h3>
+        <p>A fuel rod adds its reaction to progress every tick; at maxProgress the block is replaced by a plutonium block (528 mode: 75,000). It stops being a pile tile — no TE, rays pass through. Lithium breeding rods add raw neutrons (no heat) to 30,000 (528: 50,000) and become a tritium block, casting 2 rays per active tick on the way.</p>
+<pre>fuel: maxProgress = enable528 ? 75000 : 50000
+Li:&nbsp;&nbsp; maxProgress = enable528 ? 50000 : 30000
+at max → block swap, tile entity gone</pre>
+        <span class="ref">TileEntityPileFuel · TileEntityPileBreedingFuel</span>
+      </div>
+      <div class="fact">
+        <h3>Empty sleeves absorb — build order matters</h3>
+        <p>A ray resolves the block position to a tile entity first: air (no TE) ends the stream instantly, and a graphite rod sleeve without a rod (meta bit 8 clear) absorbs it too. The source rod is a pile tile but <b>not</b> a receiver, so rays sail straight through it. Neutrons only cross the pile where solid, transparent material (graphite) connects the rods.</p>
+<pre>tile == null&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → return (air)
+graphite_rod (meta&amp;8)==0 → return
+graphite · source rod&nbsp;&nbsp;&nbsp; → pass through</pre>
+        <span class="ref">PileNeutronHandler, lines 60-88 · TileEntityPileSource</span>
+      </div>
+      <div class="fact">
+        <h3>Radon cap, trip detector, water sleeves</h3>
+        <p>At heat &ge; 1000 the rod spawns dense radon gas and smoke — the cap is a radiation hazard, not a meltdown. Neutron detectors trip their rod control at 10 neutrons/tick and, when powered (meta bit 8), stop absorbing beams. Water-cooled sleeves (meta bit 4) shed 6.5% of their heat per tick instead of 5% — a 30% better equilibrium. Anything living standing in a stream takes flux/4 rads per pass.</p>
+<pre>heat &gt;= 1000&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → gas_radon_dense
+neutrons &gt;= 10&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → detector triggerRods
+meta bit 4&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → dissipation 0.065
+stream entity&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; → contaminate(flux/4)</pre>
+        <span class="ref">TileEntityPileFuel · TileEntityPileNeutronDetector · PileNeutronHandler, line 104</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=v=>!Number.isFinite(v)?"—":v===0?"0":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10?2:0);
+const secs=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"; };
+const F=Math.fround;
+
+/* ================= mod constants (NTM 1.0.27 handler/neutron/PileNeutronHandler + tileentity/machine/pile) ================= */
+// cell codes: 0 air · 1 graphite · 2 concrete · 3 boron · 4 fuel rod · 5 fuel rod, water-cooled sleeve (meta bit 4)
+// 6 lithium breeding rod · 7 source rod (isotope variant = flag, flux 2) · 8 neutron detector
+// 9 plutonium block · 10 tritium block (transmutation endo states, rays pass through — the tile entity is gone)
+const C={EMPTY:0,GRAPHITE:1,CONCRETE:2,BORON:3,FUEL:4,FUELW:5,LITH:6,SRC:7,DET:8,PU:9,TR:10};
+const PALETTE=[
+  {t:0,iso:0,name:"Empty (air)",color:"#101412",tag:""},
+  {t:1,iso:0,name:"Graphite",color:"#5A626E",tag:"G"},
+  {t:2,iso:0,name:"Concrete",color:"#A8A294",tag:"C"},
+  {t:3,iso:0,name:"Boron",color:"#9B6BC7",tag:"B"},
+  {t:4,iso:0,name:"Fuel rod",color:"#4A90D9",tag:"F"},
+  {t:5,iso:0,name:"Fuel · water",color:"#7FB8E8",tag:"Fw"},
+  {t:6,iso:0,name:"Lithium",color:"#CFD6E6",tag:"Li"},
+  {t:7,iso:0,name:"Source",color:"#E2D03A",tag:"n"},
+  {t:7,iso:1,name:"Isotope",color:"#F5E66B",tag:"N"},
+  {t:8,iso:0,name:"Detector",color:"#5CC48A",tag:"D"},
+];
+const COLOR={0:"#101412",1:"#5A626E",2:"#A8A294",3:"#9B6BC7",4:"#4A90D9",5:"#7FB8E8",6:"#CFD6E6",7:"#E2D03A",8:"#5CC48A",9:"#D9A05A",10:"#B8E0C8"};
+const CNAME={0:"Empty (air) — rays die here",1:"Graphite",2:"Concrete — flux ×0.25 per block",3:"Boron — absorbs the ray",4:"Fuel rod",5:"Fuel rod · water-cooled (6.5% dissipation)",6:"Lithium breeding rod",7:"Source rod — 12 rays, flux 1",8:"Neutron detector — trips at 10/t",9:"Plutonium block",10:"Tritium block"};
+
+const DEFAULTS={maxProgress:50000,maxProgress528:75000,liProgress:30000,liProgress528:50000,dissipate:0.05,dissipateWater:0.065,
+  maxHeat:1000,rayFlux:0.25,range:5,concreteMult:0.25,sourceFlux:1,isotopeFlux:2,detectAt:10};
+const CFG_FIELDS=[["maxProgress","pile.maxProgress"],["maxProgress528","pile.maxProgress528"],["liProgress","pile.liProgress"],
+  ["liProgress528","pile.liProgress528"],["dissipate","pile.dissipate"],["dissipateWater","pile.dissipateWater"],
+  ["maxHeat","pile.maxHeat"],["rayFlux","pile.rayFlux"],["range","pile.range"],["concreteMult","pile.concreteMult"],
+  ["sourceFlux","pile.sourceFlux"],["isotopeFlux","pile.isotopeFlux"],["detectAt","pile.detectAt"]];
+const {presets:PRESETS,list:NTM_PACKS}=mdPackPresets("hbm",DEFAULTS,CFG_FIELDS);
+let cfgPreset="default",cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("ntm-pile-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+function saveCfg(){ try{ localStorage.setItem("ntm-pile-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+/* ================= state ================= */
+function defaultCells(w,d,L){ const n=w*d*L, cells=new Array(n).fill(C.GRAPHITE), iso=new Array(n).fill(0);
+  const y=L-1, cz=d>>1, cx=w>>1;   // rods on the top layer: the pile reads as graphite with visible rods from the default camera
+  for(let dz=-1;dz<=1;dz++)for(let dx=-1;dx<=1;dx++){ const i=(y*d+cz+dz)*w+cx+dx; cells[i]=(dx===0&&dz===0)?C.SRC:C.FUEL; }
+  return {cells,iso}; }
+const state={w:9,d:9,layers:3,...defaultCells(9,9,3),layer:2,all:false,brush:{t:1,iso:0},seed:7,f528:false};
+function resizeGrid(w,d,L){ const o=state, n=w*d*L, cells=new Array(n).fill(C.GRAPHITE), iso=new Array(n).fill(0);
+  for(let y=0;y<Math.min(L,o.layers);y++)for(let z=0;z<Math.min(d,o.d);z++)for(let x=0;x<Math.min(w,o.w);x++){
+    cells[(y*d+z)*w+x]=o.cells[(y*o.d+z)*o.w+x]; iso[(y*d+z)*w+x]=o.iso[(y*o.d+z)*o.w+x]; }
+  state.w=w;state.d=d;state.layers=L;state.cells=cells;state.iso=iso;
+  state.layer=Math.max(0,Math.min(L-1,state.layer)); }
+
+/* ================= model: the mod's tick loop, seeded Monte-Carlo =================
+   Tick order mirrors NeutronHandler.onServerTick (Phase.START): every stream cast on tick t-1 runs
+   first (delivering neutrons), then each pile tile runs its update — sources cast, fuel reacts,
+   lithium breeds, detectors trip. */
+const lcg=s=>{ let x=(s>>>0)||1; return ()=>((x=(Math.imul(x,1664525)+1013904223)>>>0)/4294967296); };
+// TileEntityPileBase.castRay lines 34-37: Vec3(1,0,0) → rotateX(2πr1) → rotateY(2πr2) → rotateZ(2πr3).
+// rotateX is a no-op on (1,0,0); rotateY(a) gives (cos a, 0, −sin a); rotateZ(b) gives the closed form below.
+function rayDir(R){ const r1=2*Math.PI*R(), a=2*Math.PI*R(), b=2*Math.PI*R();   // r1 feeds rotateX (no-op), kept to mirror the 3 draws
+  return [Math.cos(a)*Math.cos(b),Math.cos(a)*Math.sin(b),-Math.sin(a)]; }
+function simulate(){
+  const w=state.w,d=state.d,L=state.layers,N=w*d*L,T=2000;
+  const ty=Int8Array.from(state.cells), iso=Uint8Array.from(state.iso);
+  const heat=new Int32Array(N), prog=new Int32Array(N), neu=new Int32Array(N), lastN=new Int32Array(N);
+  const meta8=new Uint8Array(N), doneAt=new Int32Array(N).fill(-1), detN=new Float64Array(N), detAct=new Int32Array(N);
+  const R=lcg(state.seed);
+  const maxP=Math.round(state.f528?+cfg.maxProgress528:+cfg.maxProgress);
+  const maxLi=Math.round(state.f528?+cfg.liProgress528:+cfg.liProgress);
+  const range=+cfg.range, cm=+cfg.concreteMult, rf=+cfg.rayFlux, sFlux=+cfg.sourceFlux, iFlux=+cfg.isotopeFlux;
+  const detAt=Math.round(+cfg.detectAt), diss=+cfg.dissipate, dissW=+cfg.dissipateWater, heatCap=Math.round(+cfg.maxHeat);
+  const xyz=i=>[i%w,(i/(w*d))|0,(i/w|0)%d];
+  const fuel0=[],lith0=[],det0=[],src0=[]; let isoCount=0;
+  for(let i=0;i<N;i++){ const c=ty[i];
+    if(c===C.FUEL||c===C.FUELW)fuel0.push(i); else if(c===C.LITH)lith0.push(i);
+    else if(c===C.DET)det0.push(i); else if(c===C.SRC){src0.push(i); if(iso[i])isoCount++;} }
+  const cx0=(w-1)/2, cy0=(L-1)/2, cz0=(d-1)/2;
+  let med=-1, medD=1e18;
+  for(const i of fuel0){ const [x,y,z]=xyz(i); const dd=(x-cx0)**2+(y-cy0)**2+(z-cz0)**2; if(dd<medD){medD=dd;med=i;} }
+  const hp=[], hh=[];
+  let streams=[], raysCast=0, boronRays=0, airRays=0, recvRays=0, concreteHits=0, srcDeliv=0;
+  let nFuelSum=0, nFuelMin=1e18, nFuelMax=0, nLithSum=0, rxnSum=0, heatSumAll=0, heatMaxAll=0;
+  const fr=[], rx10=[], heat10=[]; let inFirstRun=false, maxSteps=0;
+  for(let t=1;t<=T;t++){
+    let nFuelTick=0, nLithTick=0;
+    inFirstRun=(t===2);                                    // tick 2 runs the tick-1 casts: the receive-map probe
+    // ---- START phase: run every stream cast last tick (PileNeutronStream.runStreamInteraction) ----
+    for(let s=0;s<streams.length;s++){ const st=streams[s];
+      let px=st.x, py=st.y, pz=st.z, fl=st.f, steps=0;
+      for(let i2=1;i2<=range;i2+=0.5){
+        const nx=Math.floor(px+0.5+st.vx*i2), ny=Math.floor(py+0.5+st.vy*i2), nz=Math.floor(pz+0.5+st.vz*i2);
+        if(nx===px&&ny===py&&nz===pz) continue;
+        px=nx; py=ny; pz=nz; steps++;
+        if(nx<0||nx>=w||ny<0||ny>=L||nz<0||nz>=d){ airRays++; break; }   // no tile entity → return
+        const j=(ny*d+nz)*w+nx, c=ty[j];
+        if(c===C.FUEL||c===C.FUELW||c===C.LITH||c===C.DET){
+          const give=Math.floor(fl); neu[j]+=give; recvRays++;
+          if(inFirstRun) fr.push([j,give,st.s]);
+          if(c===C.FUEL||c===C.FUELW){ nFuelTick+=give; if(st.s===1)srcDeliv+=give; }
+          else if(c===C.LITH){ nLithTick+=give; if(st.s===1)srcDeliv+=give; }
+          if(!(c===C.DET&&meta8[j])) break;                              // powered detector lets the ray through
+        } else if(c===C.SRC){ }                                          // source tile: not a receiver, passes
+        else if(c===C.EMPTY){ airRays++; break; }                        // air: null TE → stream ends
+        else if(c===C.BORON){ boronRays++; break; }
+        else if(c===C.CONCRETE){ fl*=cm; concreteHits++; }
+      }
+      if(steps>maxSteps)maxSteps=steps;
+    }
+    streams.length=0;
+    nFuelSum+=nFuelTick; nLithSum+=nLithTick;
+    if(fuel0.length){ if(nFuelTick<nFuelMin)nFuelMin=nFuelTick; if(nFuelTick>nFuelMax)nFuelMax=nFuelTick; }
+    // ---- tile updates, cell order layer→row→col ----
+    let rxnTick=0;
+    for(let i=0;i<N;i++){
+      const c=ty[i];
+      if(c===C.SRC){
+        const f=iso[i]?iFlux:sFlux, [x,y,z]=xyz(i);
+        for(let k=0;k<12;k++){ const v=rayDir(R); streams.push({x,y,z,vx:v[0],vy:v[1],vz:v[2],f,s:1}); raysCast++; }
+      } else if(c===C.FUEL||c===C.FUELW){
+        let h=heat[i]; h=(h-(c===C.FUELW?h*dissW:h*diss))|0;             // dissipateHeat (int cast)
+        const reaction=Math.trunc(neu[i]*(1-h/1000*0.5));                // react() — self-damping
+        lastN[i]=neu[i]; neu[i]=0; prog[i]+=reaction;
+        if(reaction>0){ h+=reaction; const f=Math.max(reaction*rf,1)|0;
+          const [x,y,z]=xyz(i);
+          for(let k=0;k<12;k++){ const v=rayDir(R); streams.push({x,y,z,vx:v[0],vy:v[1],vz:v[2],f,s:0}); raysCast++; } }
+        heat[i]=h; rxnTick+=reaction;
+        if(prog[i]>=maxP){ ty[i]=C.PU; doneAt[i]=t; }                    // → plutonium block, TE gone
+        else if(prog[i]>=maxP-1000) meta8[i]=1;                          // transmute(): sleeve "used" bit at max−1000
+      } else if(c===C.LITH){
+        const ln=neu[i]; lastN[i]=ln; prog[i]+=ln; neu[i]=0;
+        if(ln>0){ const [x,y,z]=xyz(i);
+          for(let k=0;k<2;k++){ const v=rayDir(R); streams.push({x,y,z,vx:v[0],vy:v[1],vz:v[2],f:1,s:2}); raysCast++; } }
+        if(prog[i]>=maxLi){ ty[i]=C.TR; doneAt[i]=t; }
+      } else if(c===C.DET){
+        const n=neu[i]; detN[i]+=n;
+        if(n>=detAt){ detAct[i]++; if(meta8[i]) meta8[i]=0; }            // triggerRods toggle, rising edge
+        if(n<detAt&&lastN[i]<detAt&&!meta8[i]) meta8[i]=1;               // two quiet ticks → latch back on
+        lastN[i]=n; neu[i]=0;
+      }
+    }
+    let heatTick=0, heatMaxTick=0;
+    for(const i of fuel0){ const h=heat[i]; heatTick+=h; if(h>heatMaxTick)heatMaxTick=h; }
+    heatSumAll+=heatTick; if(heatMaxTick>heatMaxAll)heatMaxAll=heatMaxTick; rxnSum+=rxnTick;
+    if(t%20===0) rx10.push(rxnTick);
+    if(t%20===0) heat10.push(heatMaxTick);
+    hp.push(med>=0?prog[med]:0); hh.push(med>=0?heat[med]:0);
+  }
+  const fc=fuel0.length, nf=Math.max(1,fc*T);
+  const est=[]; let puMin=-1, fuelDone=0;
+  for(const i of fuel0){ if(prog[i]>0)est.push(maxP/(prog[i]/T)/20);
+    if(doneAt[i]>=0){ fuelDone++; if(puMin<0||doneAt[i]<puMin)puMin=doneAt[i]; } }
+  const le=[]; let liDone=0;
+  for(const i of lith0){ if(prog[i]>0)le.push(maxLi/(prog[i]/T)/20); if(doneAt[i]>=0)liDone++; }
+  const capRods=fuel0.reduce((a,i)=>a+(heat[i]>=heatCap?1:0),0);
+  const medXyz=med>=0?xyz(med):null;
+  return {T,w,d,L,med:medXyz,maxP,maxLi,heatCap,
+    fuelCount:fc,lithCount:lith0.length,detCount:det0.length,srcCount:src0.length,isoCount,fuelDone,liDone,
+    nPerFuel:nFuelSum/nf, nMin:nFuelMin>1e17?0:nFuelMin/Math.max(1,fc), nMax:nFuelMax/Math.max(1,fc),
+    nLithPer:lith0.length?nLithSum/Math.max(1,lith0.length*T):0,
+    rxnPerFuel:rxnSum/nf, heatAvg:heatSumAll/nf, heatMax:heatMaxAll, capRods,
+    puFastest:est.length?Math.min(...est):null, puAvg:est.length?est.reduce((a,b)=>a+b,0)/est.length:null, puMin,
+    tritFastest:le.length?Math.min(...le):null, tritAvg:le.length?le.reduce((a,b)=>a+b,0)/le.length:null,
+    dets:det0.map(i=>{ const [x,y,z]=xyz(i); return {x,y,z,n:detN[i]/T,frac:detAct[i]/T}; }),
+    srcDeliv, nFuel:nFuelSum, srcShare:nFuelSum?srcDeliv/nFuelSum*100:null,
+    raysCast, boronRays, airRays, recvRays, concreteHits, maxSteps, hist:{p:hp,h:hh},
+    fr, rx10, heat10,
+    fuelFinal:fuel0.map(i=>({i,x:xyz(i)[0],y:xyz(i)[1],z:xyz(i)[2],p:prog[i],h:heat[i],done:doneAt[i]})),
+    lithFinal:lith0.map(i=>({i,x:xyz(i)[0],y:xyz(i)[1],z:xyz(i)[2],p:prog[i],done:doneAt[i]}))};
+}
+
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plate(key,color,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b,R); }); }
+const T={
+  graphite:()=>plate("graphite","#5A626E",(g)=>{ g.fillStyle="#3C434D"; g.fillRect(2,6,12,1); g.fillRect(4,11,9,1); g.fillStyle="#7C8593"; g.fillRect(3,3,4,1); g.fillRect(9,13,4,1); }),
+  concrete:()=>plate("concrete","#A8A294",(g,b,R)=>{ for(let k=0;k<14;k++){ const x=1+(R()*14|0), y=1+(R()*14|0); g.fillStyle=shade(b,R()<0.5?0.62:1.24); g.fillRect(x,y,2,1); } }),
+  boron:()=>plate("boron","#9B6BC7",(g)=>{ g.fillStyle="#5E3E80"; g.fillRect(2,7,12,2); g.fillRect(7,2,2,12); g.fillStyle="#C7A3E8"; g.fillRect(4,4,3,3); g.fillRect(9,9,3,3); }),
+  fuel:()=>plate("fuel","#5A626E",(g)=>{ g.fillStyle="#3F6B96"; g.fillRect(1,1,2,14); g.fillRect(13,1,2,14); g.fillStyle="#2E4C6B"; g.fillRect(4,7,8,2); }),
+  fuelw:()=>plate("fuelw","#5A626E",(g)=>{ g.fillStyle="#7FB8E8"; g.fillRect(1,2,2,3); g.fillRect(1,7,2,3); g.fillRect(1,12,2,3); g.fillRect(13,2,2,3); g.fillRect(13,7,2,3); g.fillRect(13,12,2,3); g.fillStyle="#2E6B8F"; g.fillRect(4,7,8,2); }),
+  lith:()=>plate("lith","#CFD6E6",(g,b)=>{ g.fillStyle=shade(b,0.7); g.fillRect(3,3,2,2); g.fillRect(10,6,2,2); g.fillRect(6,11,2,2); g.fillStyle="#FFFFFF"; g.fillRect(8,3,2,2); g.fillRect(12,11,2,2); }),
+  src:()=>plate("src","#E2D03A",(g)=>{ g.fillStyle="#22262A"; g.fillRect(4,4,8,8); g.fillStyle="#F5E66B"; g.fillRect(6,6,4,4); }),
+  iso:()=>plate("iso","#F5E66B",(g)=>{ g.fillStyle="#22262A"; g.fillRect(3,3,10,10); g.fillStyle="#F5E66B"; g.fillRect(5,5,6,6); g.fillStyle="#22262A"; g.fillRect(7,7,2,2); }),
+  det:()=>plate("det","#5CC48A",(g)=>{ g.fillStyle="#24402F"; g.fillRect(3,3,10,10); g.fillStyle="#BFF2D4"; g.fillRect(6,6,4,4); g.fillStyle="#101412"; g.fillRect(7,7,2,2); }),
+  pu:()=>plate("pu","#D9A05A",(g)=>{ g.fillStyle="#4A2F14"; g.fillRect(7,3,2,4); g.fillRect(4,9,3,4); g.fillRect(9,9,3,4); g.fillStyle="#F2C58B"; g.fillRect(7,7,2,2); }),
+  tr:()=>plate("tr","#B8E0C8",(g)=>{ g.fillStyle="#3E6B4F"; g.fillRect(4,4,8,8); g.fillStyle="#E2F5E8"; g.fillRect(6,6,4,4); }),
+  rodface:()=>plate("rodface","#FFFFFF",(g)=>{ g.fillStyle="#B9C0C9"; g.fillRect(2,2,12,12); g.fillStyle="#EFF2F5"; g.fillRect(4,4,8,8); g.fillStyle="#8A929C"; g.fillRect(7,1,2,3); g.fillRect(7,12,2,3); }),
+  lifface:()=>plate("lifface","#FFFFFF",(g)=>{ g.fillStyle="#B9C0C9"; g.fillRect(2,2,12,12); g.fillStyle="#EFF2F5"; g.fillRect(4,4,8,8); g.fillStyle="#8A929C"; g.fillRect(1,7,3,2); g.fillRect(12,7,3,2); }),
+};
+
+/* ================= three.js: instanced pile, clipping slicer, face painting ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, hl=null, neuOn=false, groups={};
+const matCache={}, anims=[], ptrs=new Map();
+const KIND={1:"graphite",2:"concrete",3:"boron",4:"fuel",5:"fuelw",6:"lith",7:"src",8:"det",9:"pu",10:"tr"};
+const FUEL_RAMP=[0x4A90D9,0xE2D03A,0xF08A5D], LITH_RAMP=[0x9FC6E8,0xE2D03A,0xB8E0C8], NEU_RAMP=[0x2E3740,0xE2D03A,0xF08A5D];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  return matCache[k]=new THREE.MeshLambertMaterial({map:t,clippingPlanes:[clip]}); }
+function ramp(stops,t){ t=Math.min(1,Math.max(0,t)); const n=stops.length-1, x=t*n, i=Math.min(n-1,Math.floor(x));
+  return new THREE.Color(stops[i]).lerp(new THREE.Color(stops[i+1]),x-i); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); root=new THREE.Group(); scene.add(root);
+  // hover highlight (annotation: dropped from exports)
+  hl=new THREE.Group(); const hb=new THREE.BoxGeometry(1.02,1.02,1.02);
+  hl.add(new THREE.Mesh(hb,new THREE.MeshBasicMaterial({color:0xE2D03A,transparent:true,opacity:0.22,depthTest:false})));
+  hl.add(new THREE.LineSegments(new THREE.EdgesGeometry(hb),new THREE.LineBasicMaterial({color:0xF2E36A,depthTest:false})));
+  hl.visible=false; scene.add(hl);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// orbit: left-drag rotates, right/middle/Shift-drag or two fingers pan, wheel/pinch zoom, idle auto-spin
+const orbit={theta:0.62,phi:1.02,radius:26,target:{x:0,y:1,z:0},goal:null,idle:0,pan:false};
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(120,Math.max(4,orbit.goal.r*f)); else orbit.radius=Math.min(120,Math.max(4,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+const frameRadius=()=>Math.max(state.w,state.d)*1.32+state.layers*0.9+8;
+let lastT=performance.now(), sweepT0=0;
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  const top=state.all?state.layers+2:state.layer+1.001;
+  if(sweepT0){ const p=Math.min(1,(t-sweepT0)/1100); clip.constant=top*(1-Math.pow(1-(reduce?1:p),3)); if(p>=1) sweepT0=0; }
+  else clip.constant=top;
+  for(let i=anims.length-1;i>=0;i--){ const an=anims[i]; if(t<an.t0){ an.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-an.t0)/an.dur); an.mesh.visible=true;
+    if(an.kind==="in"){ const k=1-Math.pow(1-q,3); an.mesh.position.y=an.y+(1-k)*2.5; an.mesh.scale.copy(an.s0).multiplyScalar(0.4+0.6*k); }
+    else an.mesh.scale.copy(an.s0).multiplyScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(an.kind==="out"&&an.mesh.parent) an.mesh.parent.remove(an.mesh); anims.splice(i,1); } }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+/* ================= the pile as a block map, colours from the last sim run ================= */
+function simMaps(){ const done=new Map(), prog=new Map(), neu=new Map(); let neuMax=0;
+  if(!S) return {done,prog,neu,neuMax};
+  for(const f of S.fuelFinal){ prog.set(f.i,f.p/S.maxP); if(f.done>=0) done.set(f.i,"pu"); }
+  for(const f of S.lithFinal){ prog.set(f.i,f.p/S.maxLi); if(f.done>=0) done.set(f.i,"tr"); }
+  for(const [j,g] of S.fr){ const v=(neu.get(j)||0)+g; neu.set(j,v); if(v>neuMax) neuMax=v; }
+  return {done,prog,neu,neuMax}; }
+function blockMaps(){ const M=new Map(), P=new Map(), sim=simMaps(), {w,d,layers}=state;
+  for(let y=0;y<layers;y++)for(let z=0;z<d;z++)for(let x=0;x<w;x++){ const i=(y*d+z)*w+x, c=state.cells[i]; if(!c) continue;
+    let k=KIND[c]; if(c===C.SRC&&state.iso[i]) k="iso";
+    const dn=sim.done.get(i); if(dn==="pu"&&(c===C.FUEL||c===C.FUELW)) k="pu"; if(dn==="tr"&&c===C.LITH) k="tr";
+    const key=`${x},${y},${z}`; M.set(key,k);
+    if(c===C.FUEL||c===C.FUELW) P.set(key,"rodface"); else if(c===C.LITH) P.set(key,"lifface"); }
+  return {M,P,sim}; }
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+const PLATE=new THREE.Vector3(0.78,0.16,0.78);
+function colorFor(k,x,y,z,sim){ const i=(y*state.d+z)*state.w+x;
+  if(neuOn) return ramp(NEU_RAMP, sim.neuMax>0?Math.log1p(sim.neu.get(i)||0)/Math.log1p(sim.neuMax):0);
+  if(k==="rodface") return ramp(FUEL_RAMP,sim.prog.get(i)||0);
+  if(k==="lifface") return ramp(LITH_RAMP,sim.prog.get(i)||0);
+  return null; }
+function buildInstanced(M,P,sim,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups={};
+  const buckets={};
+  for(const [key,k] of M){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  for(const [key,k] of P){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), white=new THREE.Color(0xffffff), {w,d}=state, cx=(w-1)/2, cz=(d-1)/2;
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),mat(k),keys.length), isP=k==="rodface"||k==="lifface";
+    const cols=[]; let anyC=false;
+    keys.forEach((key,i)=>{ const [x,y,z]=key.split(",").map(Number);
+      if(isP){ m4.makeTranslation(x-cx,y+1.03,z-cz); m4.scale(PLATE); } else m4.makeTranslation(x-cx,y+0.5,z-cz);
+      mesh.setMatrixAt(i,m4); const c=colorFor(k,x,y,z,sim); cols.push(c); if(c) anyC=true; });
+    if(anyC) keys.forEach((key,i)=>{ const [x,y,z]=key.split(",").map(Number); mesh.setColorAt(i,cols[i]||white); });
+    mesh.userData.keys=keys; (groups[k]=groups[k]||new THREE.Group()).add(mesh); }
+  for(const k in groups) root.add(groups[k]);
+}
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+let shown=null, shapeKey="", firstBuild=true, settleTimer=0, swapGroup=null;
+function rebuild3D(){
+  if(!renderer) return;
+  const {M,P,sim}=blockMaps(), shape=state.w+"x"+state.d+"x"+state.layers;
+  const comb=new Map(); for(const [k,v] of M) comb.set(k,v); for(const [k,v] of P) comb.set("p:"+k,v);
+  clearSwaps();
+  if(!shown||shape!==shapeKey){ buildInstanced(M,P,sim); shown=comb; shapeKey=shape;
+    sweepT0=reduce?0:performance.now();
+    const g={y:(state.layers-1)/2, r:frameRadius()};
+    if(firstBuild){ firstBuild=false; orbit.target.y=g.y; orbit.radius=g.r; } else orbit.goal={...(orbit.goal||{}),...g};
+    return; }
+  const removed=[], added=[];
+  for(const [key,k] of shown){ const nk=comb.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of comb) if(!shown.has(key)) added.push([key,k]);
+  shown=comb; if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>1500){ buildInstanced(M,P,sim); return; }
+  buildInstanced(M,P,sim,new Set(added.map(a=>a[0].replace(/^p:/,""))));
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const mk=(k,key)=>{ const [x,y,z]=key.replace(/^p:/,"").split(",").map(Number);
+    const m=new THREE.Mesh(CUBE(),mat(k)); m.position.set(x-(state.w-1)/2,y+0.5,z-(state.d-1)/2);
+    m.s0=new THREE.Vector3(1,1,1); if(k==="rodface"||k==="lifface"){ m.position.y+=0.53; m.s0.copy(PLATE); } m.scale.copy(m.s0); return m; };
+  const now=performance.now();
+  for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y:m.position.y,s0:m.s0}); }
+  const ys=added.map(([key])=>+key.replace(/^p:/,"").split(",")[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45); let end=now;
+  for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+160+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y:m.position.y,s0:m.s0}); }
+  settleTimer=setTimeout(()=>{ const r=blockMaps(); buildInstanced(r.M,r.P,r.sim); clearSwaps(); },end-now+40);
+}
+/* ================= face painting ================= */
+const rc=new THREE.Raycaster(), gPlane=new THREE.Plane(new THREE.Vector3(0,1,0),0), gPt=new THREE.Vector3();
+function pick(e){ if(!renderer) return null; const r=view.getBoundingClientRect();
+  rc.setFromCamera({x:((e.clientX-r.left)/r.width)*2-1, y:-((e.clientY-r.top)/r.height)*2+1}, camera);
+  let best=null, bestD=Infinity;
+  for(const h of rc.intersectObjects([root],true)){
+    const o=h.object; if(!o.isInstancedMesh||!o.userData.keys) continue; const key=o.userData.keys[h.instanceId]; if(!key) continue;
+    const isP=key[0]==="p", cell=key.slice(isP?2:0).split(",").map(Number);
+    let n=[0,1,0]; if(!isP&&h.face){ const f=h.face.normal; n=[Math.round(f.x),Math.round(f.y),Math.round(f.z)]; }
+    best={cell,n,plate:isP}; bestD=h.distance; break; }   // intersectObjects is distance-sorted
+  // the paint plane: the floor in All-layers mode, the top of the current slice when sliced — catches empty columns
+  gPlane.constant=-(state.all?0:state.layer+1);
+  if(rc.ray.intersectPlane(gPlane,gPt)){ const gx=Math.round(gPt.x+(state.w-1)/2), gz=Math.round(gPt.z+(state.d-1)/2);
+    if(gx>=0&&gz>=0&&gx<state.w&&gz<state.d&&rc.ray.origin.distanceTo(gPt)<bestD) best={floor:true,x:gx,z:gz}; }
+  return best; }
+// paint target: the outer cell of the clicked face. Sliced: the current slice (Y n) is the paint plane —
+// top faces of the slice's blocks, side faces along it and faces under a hole all land in slice n.
+function targetOf(hit){ const {w,d,layers}=state;
+  if(hit.floor) return {x:hit.x, y:state.all?0:state.layer, z:hit.z, del:false};
+  const [bx,by,bz]=hit.cell;
+  if(state.brush.t===C.EMPTY) return {x:bx, y:by, z:bz, del:true};
+  if(state.all){ const tx=bx+hit.n[0], ty=(hit.plate?1:hit.n[1])+by, tz=bz+hit.n[2];
+    if(tx<0||tz<0||ty<0||tx>=w||tz>=d||ty>=layers) return null; return {x:tx, y:ty, z:tz, del:false}; }
+  return {x:Math.min(w-1,Math.max(0,bx+hit.n[0])), y:state.layer, z:Math.min(d-1,Math.max(0,bz+hit.n[2])), del:false}; }
+function applyTarget(t){ const i=(t.y*state.d+t.z)*state.w+t.x;
+  state.cells[i]= t.del?C.EMPTY:state.brush.t; state.iso[i]= t.del?0:state.brush.iso;
+  syncVisual(); scheduleSim(); }
+let downXY=null;
+view.addEventListener("pointerdown",e=>{ downXY=e.target.closest("button")?null:[e.clientX,e.clientY]; });
+view.addEventListener("pointerup",e=>{ const d0=downXY; downXY=null; if(!d0||e.target.closest("button")) return;
+  if(Math.hypot(e.clientX-d0[0],e.clientY-d0[1])>6) return; const hit=pick(e); if(hit) applyTarget(targetOf(hit)); });
+view.addEventListener("pointermove",e=>{ if(!renderer||ptrs.size) return; const hit=pick(e); const t=hit&&targetOf(hit);
+  hl.visible=!!t; if(t) hl.position.set(t.x-(state.w-1)/2, t.y+0.5, t.z-(state.d-1)/2); });
+view.addEventListener("pointerleave",()=>{ if(hl) hl.visible=false; });
+
+/* ================= design code (mdp1) =================
+   mdp1.<w>.<d>.<layers>.<528 0|1>.<seed>.<cells>.<flags>
+   cells: 3 bits per cell (0 empty, 1 graphite, 2 concrete, 3 boron, 4 fuel, 5 fuel-water, 6 lithium,
+          7 source; detector cells are stored as 0), order layer→row→col, base64url.
+   flags: 1 byte per 4 cells — bits 0..3 "is detector", bits 4..7 "isotope source"; "0" when none. */
+function encodeDesign(){
+  const n=state.w*state.d*state.layers;
+  const codes=state.cells.map(t=>t===C.DET?0:t);
+  let any=0; const fb=new Uint8Array(Math.ceil(n/4));
+  for(let i=0;i<n;i++){
+    if(state.cells[i]===C.DET){ fb[i>>2]|=1<<(i&3); any=1; }
+    if(state.cells[i]===C.SRC&&state.iso[i]){ fb[i>>2]|=16<<(i&3); any=1; } }
+  return ["mdp1",state.w,state.d,state.layers,state.f528?1:0,state.seed>>>0,
+    mdShare.b64u.enc(mdShare.packBits(codes,3)),any?mdShare.b64u.enc(fb):"0"].join(".");
+}
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==8||p[0]!=="mdp1") return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const w=int(1,5,15), d=int(2,5,15), layers=int(3,1,5), m=int(4,0,1), seed=int(5,0,4294967295);
+  if([w,d,layers,m,seed].some(Number.isNaN)) return null;
+  const n=w*d*layers;
+  let bytes; try{ bytes=mdShare.b64u.dec(p[6]); }catch(e){ return null; }
+  const codes=mdShare.unpackBits(bytes,n,3); if(!codes||codes.some(v=>v>7)) return null;
+  let flags=null;
+  if(p[7]!=="0"){ try{ flags=mdShare.b64u.dec(p[7]); }catch(e){ return null; }
+    if(flags.length!==Math.ceil(n/4)) return null; }
+  const cells=codes.map((v,i)=>flags&&(flags[i>>2]>>(i&3))&1?C.DET:v);
+  const iso=codes.map((v,i)=>flags&&(flags[i>>2]>>(4+(i&3)))&1?1:0);
+  return {w,d,layers,f528:m===1,seed,cells,iso};
+}
+
+/* ================= UI ================= */
+function renderPresetButtons(){
+  const pk=NTM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!pk); $("pAtmLabel").textContent=pk?pk[1]:"Fork";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function renderCfg(){
+  renderPresetButtons();
+  const maxP=Math.round(state.f528?+cfg.maxProgress528:+cfg.maxProgress), maxLi=Math.round(state.f528?+cfg.liProgress528:+cfg.liProgress);
+  $("cfgHint").innerHTML=`range <b>${cfg.range}</b> · step 0.5 · ray flux <b>×${cfg.rayFlux}</b> · concrete <b>×${cfg.concreteMult}</b> · Pu <b>${fmt(maxP)}</b> · T <b>${fmt(maxLi)}</b> · dissipation <b>${cfg.dissipate}</b>/<b>${cfg.dissipateWater}</b>`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label] of CFG_FIELDS){ const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="any"; i.min="0";
+    i.onchange=()=>{ const val=+i.value; if(!(val>0)){ i.value=cfg[k]; return; } cfg[k]=val; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function renderPal(){
+  const p=$("pal"); if(p.childElementCount){ for(const b of p.children) b.setAttribute("aria-pressed",b.dataset.k===state.brush.t+":"+state.brush.iso); return; }
+  for(const q of PALETTE){ const b=document.createElement("button"); b.type="button"; b.dataset.k=q.t+":"+q.iso;
+    const i=document.createElement("i"); i.style.background=q.color; b.append(i,q.name);
+    b.onclick=()=>{ state.brush={t:q.t,iso:q.iso}; renderPal(); }; p.append(b); }
+}
+function renderLegend(){
+  $("legend").innerHTML=[[1,"graphite · rays pass"],[2,"concrete ×0.25"],[3,"boron absorbs"],[4,"fuel"],[5,"fuel · water-cooled"],[6,"lithium"],[7,"source 12×flux 1"],[8,"detector ≥10/t"]]
+    .map(([k,t])=>`<i style="background:${COLOR[k]}"></i>${t}`).join("");
+}
+function renderGrid(){
+  const g=$("pile"); g.innerHTML="";
+  g.style.setProperty("--cs",Math.max(14,Math.min(24,Math.floor(470/state.w)))+"px");
+  const y=state.layer;
+  for(let z=0;z<state.d;z++){ const r=document.createElement("div"); r.className="prow";
+    for(let x=0;x<state.w;x++){ const i=(y*state.d+z)*state.w+x, t=state.cells[i];
+      const b=document.createElement("button"); b.type="button"; b.className="pcell";
+      b.style.background=t?(t===C.SRC&&state.iso[i]?"#F5E66B":COLOR[t]):"var(--bg)";
+      b.title=`${CNAME[t]} · x ${x+1}, z ${z+1}, Y ${y+1}`;
+      b.setAttribute("aria-label",b.title);
+      b.onclick=()=>{ state.cells[i]=state.brush.t; state.iso[i]=state.brush.iso; syncVisual(); scheduleSim(); };
+      r.append(b); }
+    g.append(r); }
+}
+function renderLayerLabel(){ $("lyLab").textContent=`Y ${state.layer+1} / ${state.layers}`; $("lyAll").setAttribute("aria-pressed",state.all); }
+function renderHud(){
+  $("hudMain").innerHTML=S.puFastest!=null?`${big(S.puFastest)} <small>s → Pu</small>`:`— <small>${S.fuelCount?(S.srcCount?"no Pu in 100 s":"no source rod"):"no fuel rods"}</small>`;
+  $("hudSub").textContent=`peak ${fmt(S.heatMax)} heat · ${fmt(S.nPerFuel,1)} n/rod·t · ${S.fuelCount} fuel · ${S.srcCount} src`;
+}
+let S=null;
+function renderResults(){
+  const detAt=+cfg.detectAt;
+  const hero=S.puFastest!=null
+    ? `${big(S.puFastest)} <small>s · fastest rod · avg ${big(S.puAvg)} s${S.puMin>=0?` · first swap at ${secs(S.puMin*20)} in-sim`:" · extrapolated from the 100 s run"}</small>`
+    : `— <small>${S.fuelCount?(S.srcCount?"no fuel rod saw a neutron in 100 s — pack the rods and add sources":"no source rod — a lone fuel rod casts zero rays, react() returns at reaction ≤ 0"):"no fuel rods painted"}</small>`;
+  const cells=[["Seconds to plutonium",hero,"hero"]];
+  cells.push(
+    ["Neutrons / fuel rod",`${fmt(S.nPerFuel,2)} <small>n/t · per-tick spread ${fmt(S.nMin,2)}–${fmt(S.nMax,2)}</small>`],
+    ["Reaction / fuel rod",`${fmt(S.rxnPerFuel,2)} <small>n/t converted, after heat damping</small>`],
+    ["Rod heat",`${fmt(S.heatAvg)} <small>avg · peak ${fmt(S.heatMax)} · cap ${S.heatCap}${S.capRods?` · ${S.capRods} rods at cap (radon)`:" · no rod at cap"}</small>`],
+    ["Tritium (breeding rods)",S.lithCount?(S.tritFastest!=null?`${big(S.tritFastest)} <small>s to ${fmt(S.maxLi)} progress · ${S.liDone} done in-sim</small>`
+      :`— <small>${S.lithCount} Li rod${S.lithCount>1?"s":""} · ${fmt(S.nLithPer,2)} n/t avg → ${big(S.maxLi/Math.max(S.nLithPer,1e-9))} t</small>`):"— <small>none placed</small>"],
+    ["Detectors",S.detCount?`${S.dets.filter(dd=>dd.n>=detAt).length}/${S.detCount} <small>≥${detAt} n/t · peak avg ${big(Math.max(...S.dets.map(dd=>dd.n)),1)} n/t</small>`:"— <small>none placed</small>"],
+    ["Source contribution",S.nFuel?`${fmt(S.srcShare,0)}% <small>of ${big(S.nFuel)} neutrons in fuel came direct from ${S.srcCount} source rod${S.srcCount>1?"s":""} — the chain carries the rest</small>`:"— <small>no neutrons landed</small>"],
+    ["Boron shadow",`${big(S.boronRays)} <small>rays eaten by boron · ${big(S.airRays)} died in air · ${big(S.recvRays)} stops at receivers · ${big(S.raysCast)} cast</small>`],
+    ["Radiation",`flux/4 <small>rads per stream pass to anything standing in the beam — keep the pile shelled</small>`]);
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(!S.fuelCount) n.push(["warn","No fuel rods — nothing to multiply. Pick Fuel rod and fill the pile."]);
+  if(S.fuelCount&&!S.srcCount) n.push(["warn","No source rod. With zero neutrons, react() hits its early return and casts <b>zero</b> rays — a lone fuel rod never starts. Drop a source rod into the lattice."]);
+  if(S.capRods) n.push(["bad",`${S.capRods} rod${S.capRods>1?"s sit":" sits"} at ≥${S.heatCap} heat — the mod spawns dense radon gas and smoke at those blocks. More concrete, more water sleeves, or spread the lattice.`]);
+  if(S.srcCount&&S.fuelCount&&S.srcShare!=null&&S.srcShare<85) n.push(["good",`Only ${fmt(S.srcShare,0)}% of the neutrons in fuel come from the source rods: every reacting rod re-casts 12 rays, so the chain reaction carries the pile.`]);
+  if(S.srcShare!=null&&S.srcShare>=85) n.push(["warn",`${fmt(S.srcShare,0)}% of the neutrons come straight from the source rods — the fuel chain is barely active. Pull the rods closer together (rays die in air after the first gap).`]);
+  if(S.boronRays) n.push(["",`${big(S.boronRays)} rays absorbed by boron — that is your control-rod shadow; ${big(S.concreteHits)} concrete crossings quartered flux along the way.`]);
+  if(S.fuelDone) n.push(["good",`${S.fuelDone} fuel rod${S.fuelDone>1?"s":""} crossed ${fmt(S.maxP)} progress in the 100 s window and became a plutonium block.`]);
+  for(const dd of S.dets.slice(0,4)) n.push([dd.n>=detAt?"good":"",`detector at (${dd.x+1}, Y ${dd.y+1}, ${dd.z+1}): ${fmt(dd.n,1)} n/t average, tripped on ${fmt(dd.frac*100)}% of ticks${dd.frac>0?" — powered (meta bit 8), it stops absorbing beams":""}.`]);
+  n.push(["","Living things in a neutron stream take flux/4 rads per pass — the pile interior is lethal whenever it runs."]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  drawChart();
+}
+function drawChart(){
+  const c=$("chart"),dpr=Math.min(2,devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  if(!S) return;
+  const cs=getComputedStyle(document.documentElement),v=k=>cs.getPropertyValue(k).trim();
+  const muted=v("--muted"),line=v("--line"),acc=v("--accent"),heatC=v("--heat"),bad=v("--bad"),steam=v("--steam"),ink=v("--ink"),mono=v("--font-mono");
+  const P=S.hist.p,Ht=S.hist.h,T=S.T;
+  const yP=Math.max(S.maxP,...P)*1.08, yH=Math.max(S.heatCap,...Ht)*1.12;
+  const pad={l:52,r:48,t:12,b:22}, X=i=>pad.l+(i+1)/T*(w-pad.l-pad.r), Yp=x=>pad.t+(1-x/yP)*(h-pad.t-pad.b), Yh=x=>pad.t+(1-x/yH)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.lineWidth=1; g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=Yp(yP/1.08*f); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillText(fmt(yP/1.08*f),2,y+4); g.fillText(fmt(yH/1.12*f),w-pad.r+4,y+4); }
+  const cap=(Y,val,color,label)=>{ const y=Y(val); g.strokeStyle=color; g.setLineDash([4,3]); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke(); g.setLineDash([]);
+    g.fillStyle=color; g.fillText(label,pad.l+4,Math.max(10,y-3)); };
+  cap(Yp,S.maxP,bad,`${fmt(S.maxP)} → Pu`); cap(Yh,S.heatCap,steam,`cap ${S.heatCap} heat`);
+  const line2=(arr,Y,color)=>{ g.beginPath(); for(let i=0;i<arr.length;i++){ const x=X(i),y=Y(arr[i]); i?g.lineTo(x,y):g.moveTo(x,y); } g.strokeStyle=color; g.lineWidth=2; g.stroke(); };
+  line2(P,Yp,acc); line2(Ht,Yh,heatC);
+  g.fillStyle=ink; g.beginPath(); g.arc(X(T-1),Yp(P[T-1]||0),4,0,7); g.fill();
+  g.font="600 11px "+mono; const lbl=S.med?`${fmt(P[T-1]||0)} progress · ${fmt(Ht[T-1]||0)} HE`:"no fuel rod";
+  const tw=g.measureText(lbl).width; g.fillText(lbl,Math.min(w-pad.r-tw,Math.max(pad.l,X(T-1)-tw)),Math.max(12,Yp(P[T-1]||0)-8));
+  g.font="11px "+mono; g.fillStyle=muted; const tLbl=`${fmt(T/20)} s`; g.fillText(tLbl,w-pad.r-g.measureText(tLbl).width,h-5);
+}
+
+/* ================= wiring ================= */
+for(const [key,name,note,off] of NTM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,Math.round(+v||0)));
+const fWd=v=>{ const n=clamp(v,5,15); resizeGrid(n,n,state.layers); update(); };
+$("wd").oninput=e=>fWd(e.target.value); $("wdN").onchange=e=>fWd(e.target.value);
+const fL=v=>{ resizeGrid(state.w,state.d,clamp(v,1,5)); state.layer=state.layers-1; update(); };
+$("layers").oninput=e=>fL(e.target.value); $("layersN").onchange=e=>fL(e.target.value);
+const fSeed=v=>{ state.seed=clamp(v,0,4294967295); update(); };
+$("seed").oninput=e=>fSeed(e.target.value); $("seedN").onchange=e=>fSeed(e.target.value);
+$("seedR").onclick=()=>{ state.seed=Math.floor(Math.random()*4294967296); update(); };
+for(const b of $("f528").children) b.onclick=()=>{ state.f528=b.dataset.k==="1"; update(); };
+$("lyPrev").onclick=()=>{ state.layer=(state.layer-1+state.layers)%state.layers; syncVisual(); };
+$("lyNext").onclick=()=>{ state.layer=(state.layer+1)%state.layers; syncVisual(); };
+$("lyAll").onclick=()=>{ state.all=!state.all; renderLayerLabel(); };
+$("tNeu").onclick=()=>{ neuOn=!neuOn; $("tNeu").setAttribute("aria-pressed",neuOn); rebuild3D(); };
+$("pFill").onclick=()=>{ for(let z=0;z<state.d;z++)for(let x=0;x<state.w;x++){ const i=(state.layer*state.d+z)*state.w+x; state.cells[i]=state.brush.t; state.iso[i]=state.brush.iso; } update(); };
+$("pFillAll").onclick=()=>{ for(let i=0;i<state.cells.length;i++){ state.cells[i]=state.brush.t; state.iso[i]=state.brush.iso; } update(); };
+$("pClear").onclick=()=>{ for(let i=0;i<state.cells.length;i++){ state.cells[i]=C.EMPTY; state.iso[i]=0; } update(); };
+addEventListener("resize",drawChart);
+
+function applyDesign(d){ resizeGrid(d.w,d.d,d.layers); state.cells=d.cells; state.iso=d.iso; state.f528=d.f528; state.seed=d.seed;
+  state.all=false; state.layer=Math.min(state.layer,state.layers-1); update(); }
+const share=mdShare({prefix:"mdp1",isPreset:k=>!!PRESETS[k],encode:encodeDesign,decode:decodeDesign,preset:()=>cfgPreset,
+  apply:applyDesign,onPreset:k=>{ if(k!==cfgPreset) usePreset(k); },
+  loaded:d=>`Loaded a ${d.w}×${d.d}×${d.layers} pile.`});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+let simTimer=0;
+function syncVisual(){ renderGrid(); renderLayerLabel(); rebuild3D(); }
+// painting is optimistic: the block lands instantly, the Monte-Carlo (seconds on 15×15×5) settles colours after
+function scheduleSim(){ clearTimeout(simTimer); simTimer=setTimeout(()=>{ simTimer=0; update(); },160); }
+function update(){
+  clearTimeout(simTimer); simTimer=0;
+  S=simulate();
+  renderCfg(); renderPal(); renderResults(); renderHud(); syncVisual();
+  $("wd").value=state.w; $("wdN").value=state.w; $("layers").value=state.layers; $("layersN").value=state.layers;
+  $("seed").value=Math.min(9999,state.seed); $("seedN").value=state.seed;
+  for(const b of $("f528").children) b.setAttribute("aria-pressed",b.dataset.k===(state.f528?"1":"0"));
+  share.render();
+}
+
+if(share.atLoad.design) applyDesign(share.atLoad.design);
+renderLegend(); initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>

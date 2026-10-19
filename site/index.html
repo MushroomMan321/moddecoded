@@ -37,6 +37,8 @@ h1 span{color:#F2E36A}
 .pins li{display:flex;align-items:center;gap:8px}
 .pins li::before{content:"";width:6px;height:6px;background:#E2D03A;flex:none}
 .pins b{font-weight:600;color:#DDE6E2}
+.pins a{color:inherit;text-decoration:underline;text-decoration-color:#E2D03A;text-underline-offset:3px}
+.pins a:hover,.pins a:focus-visible{color:#fff}
 main{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:40px;padding:40px 16px 64px}
 main section{display:flex;flex-direction:column;gap:10px}
 h2{font-family:var(--font-display);font-weight:400;font-size:26px;line-height:1;margin:0 0 2px;letter-spacing:.02em}
@@ -87,6 +89,7 @@ footer a:hover{color:var(--accent-ink)}
       <li><b>Ryzer Gen</b> 0.1.2-alpha</li>
       <li><b>AE2</b> 19.2.17</li>
       <li><b>Advanced AE</b> 1.6.12</li>
+      <li><b><a href="/tools/ntm/">HBM's NTM</a></b> 1.7.10-1.0.27</li>
     </ul>
   </div>
 </header>
@@ -146,6 +149,36 @@ footer a:hover{color:var(--accent-ink)}
       <span class="mod">Advanced AE · <span class="nw">1.6.12</span></span>
       <span class="name">Quantum Computer Calculator</span>
       <p>Get the smallest Quantum Computer for a job's bytes and co-processors, with your pack's config. Storage, threads, parallel jobs, power and materials, and a schematic to build it.</p>
+    </a>
+    <a class="tool has-img" href="/tools/ntm/rbmk-reactor-calculator/">
+      <span class="thumb" data-model="rbmk"><img src="/img/tools/rbmk.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">RBMK Reactor Calculator</span>
+      <p>Paint a 15×15 graphite core, drop in 31 kinds of fuel rod, and the RBMK is simulated tick by tick: neutron streams, xenon poison, column heat, steam, and the AZ-5 tip that makes the scram dangerous.</p>
+    </a>
+    <a class="tool has-img" href="/tools/ntm/zirnox-reactor-calculator/">
+      <span class="thumb" data-model="zirnox"><img src="/img/tools/zirnox.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">ZIRNOX Reactor Calculator</span>
+      <p>Paint the 24-slot core and trade neighbour decay bonuses against CO2 pressure: steam, meltdown margin and rod life, down to the float rounding in the mod's own steam formula.</p>
+    </a>
+    <a class="tool has-img" href="/tools/ntm/fusion-reactor-calculator/">
+      <span class="thumb" data-model="ntmfusion"><img src="/img/tools/ntmfusion.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">Fusion Reactor Calculator</span>
+      <p>One of ten fusion recipes, any klystron rig: the ignition gate, the 43.75% share each receiver gets with four, the MHDT's 5M plasma cliff, and the steam, neutrons and EU that come out.</p>
+    </a>
+    <a class="tool has-img" href="/tools/ntm/graphite-pile-calculator/">
+      <span class="thumb" data-model="pile"><img src="/img/tools/pile.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">Graphite Pile Calculator</span>
+      <p>Build the pile layer by layer and run its 12-ray neutron Monte-Carlo: flux maps, concrete and boron shadowing, rod heat that self-damps, and the time to breed plutonium and tritium.</p>
+    </a>
+    <a class="tool has-img" href="/tools/ntm/research-reactor-calculator/">
+      <span class="thumb" data-model="research"><img src="/img/tools/research.webp" width="128" height="128" alt="" loading="lazy" decoding="async"></span>
+      <span class="mod">HBM's NTM · <span class="nw">1.7.10-1.0.27</span></span>
+      <span class="name">Research Reactor Calculator</span>
+      <p>Slide the control rod over a grid of plate fuels and watch the self-coupled cascade settle, melt down, or feed a breeder: equilibrium flux, temperature, and the highest safe level.</p>
     </a>
   </section>
 
@@ -246,7 +279,7 @@ async function build(M){
   const ctr=box.getCenter(new THREE.Vector3()); body.position.copy(ctr).negate();
   let rh=0; for(let i=0;i<pts.length;i+=3) rh=Math.max(rh,Math.hypot(pts[i]-ctr.x,pts[i+2]-ctr.z));
   const R=Math.hypot(rh,(box.max.y-box.min.y)/2);
-  const camera=new THREE.PerspectiveCamera(30,1,0.1,1000), elev=Math.asin(Math.min(0.9,-M.cam.dir[1])), d=R/Math.sin(15*Math.PI/180)*0.94;
+  const camera=new THREE.PerspectiveCamera(30,1,0.1,1000), elev=Math.asin(Math.min(0.9,-M.cam.dir[1])), d=R/Math.sin(15*Math.PI/180)*0.94*(M.z||1);
   camera.position.set(0,Math.sin(elev)*d,Math.cos(elev)*d); camera.lookAt(0,0,0);
   // start from the calculator's own camera angle, so the first frame matches the still
   pivot.rotation.y=-Math.atan2(M.cam.pos[0]-ctr.x,M.cam.pos[2]-ctr.z);

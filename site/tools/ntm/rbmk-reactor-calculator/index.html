@@ -1,0 +1,1084 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/ntm/rbmk-reactor-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>NTM RBMK Reactor Calculator</title>
+<meta name="description" content="HBM's Nuclear Tech Mod RBMK reactor calculator: paint fuel, graphite, control rods and boilers, simulate neutron streams, xenon poison and heat tick by tick from the NTM 1.0.27 (1.7.10) source, hit AZ-5, with presets for NTM:Space, NTM CE, Reforged and Final Edition.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-direction:column;gap:10px}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:60vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.core-wrap{overflow:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;background:var(--viewport-2);padding:8px;width:max-content}
+#core{display:block;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000;z-index:2}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;z-index:2}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar .grp{display:flex}
+.viewbar .grp button{border-radius:0}.viewbar .grp button:first-child{border-radius:4px 0 0 4px}.viewbar .grp button:last-child{border-radius:0 4px 4px 0}
+.viewbar .grp button+button{border-left:0}
+.view-hint{margin-top:-4px}
+.viewbar button:focus-visible,.pal button:focus-visible,.btn:focus-visible,.num:focus-visible,.seg button:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.wsHint{font-size:12px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+select{font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:6px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn.danger{border-color:var(--bad);color:var(--bad);font-weight:700}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 110px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.pal{display:flex;flex-wrap:wrap;gap:6px}
+.pal button{display:flex;align-items:center;gap:6px;font:600 12px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:5px 8px;cursor:pointer}
+.pal button i{width:12px;height:12px;border-radius:3px;border:1px solid rgba(255,255,255,.25)}
+.pal button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font:12px var(--font-mono);color:var(--muted)}
+.legend i{display:inline-block;width:14px;height:3px;border-radius:2px;vertical-align:middle;margin-right:6px}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.chart{width:100%;height:170px;display:block}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+.tip{position:fixed;z-index:20;pointer-events:none;background:rgba(16,16,20,.95);border:1px solid var(--line);border-radius:5px;padding:7px 9px;font:400 12.5px/1.45 var(--font-mono);color:var(--ink);max-width:300px;white-space:pre-line}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / <a href="/tools/ntm/">NTM</a> / RBMK Reactor Calculator</nav>
+  <header class="top">
+    <h1>HBM's NTM <span class="y">RBMK Reactor Calculator</span></h1>
+    <span class="src">Formulas from the HBM's Nuclear Tech Mod 1.7.10-1.0.27 source</span>
+  </header>
+  <p class="lede">Paint fuel, graphite, control rods, absorbers, reflectors, boilers and coolers onto the column grid and watch the mod's own per-tick loop run: four neutron streams per fueled rod, graphite moderation, xenon-135 poison, core→hull→column heat, boiler steam — every figure from <b>TileEntityRBMKRod · RBMKNeutronHandler · ItemRBMKRod · TileEntityRBMKBase</b>. Press <b>AZ-5</b> to see why the RBMK is famous.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D core view and column grid editor">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the RBMK core: one column per painted cell, with base, column stack, lid, control rods, fuel rods and steam drums. Cutaway clips the near half."></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="viewbar">
+          <div class="grp" id="ovSeg" role="group" aria-label="Overlay tint">
+            <button id="ovOff" type="button" aria-pressed="true">Grid</button>
+            <button id="ovHeat" type="button" aria-pressed="false">Heat</button>
+            <button id="ovFlux" type="button" aria-pressed="false">Flux</button>
+            <button id="ovNeut" type="button" aria-pressed="false">Neutrons</button>
+          </div>
+          <button id="tClip" type="button" aria-pressed="false">Cutaway</button>
+          <button id="tLids" type="button" aria-pressed="true">Lids</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Cutaway clips the near half so the column interiors show; Lids hides lid plates and rod drives.</p>
+      <div class="box">
+        <h2>Column grid</h2>
+        <div class="core-wrap"><canvas id="core" aria-label="Top-down RBMK column grid. Click or drag to paint the selected column type."></canvas></div>
+        <p class="hint">Each cell is one full RBMK column (the dialled column height tall). Pick a column type, pick a fuel rod, paint. Hover a cell for flux, rod temperatures, xenon and yield. The overlay tints show column heat, absorbed flux, and emitted neutrons — on the grid and on the 3D columns.</p>
+      </div>
+      <div class="box">
+        <h2>Run</h2>
+        <div class="btns">
+          <button class="btn" type="button" id="btnRun" aria-pressed="false">▶ Run (10 t/frame)</button>
+          <button class="btn danger" type="button" id="btnScram">AZ-5 — scram at playhead</button>
+        </div>
+        <p class="hint" id="playHint">The simulation runs in full up front (20,000 ticks = 1,000 s of game time); Run replays it as the live tick loop.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs and results">
+      <div class="sect">
+        <h2>Mod preset</h2>
+        <div class="seg" role="group" aria-label="Mod preset">
+          <button type="button" id="pDefault" aria-pressed="true">Original NTM</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Fork</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Fork" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Core layout</h2>
+        <div class="pal" id="pal" role="group" aria-label="Column palette"></div>
+        <div class="row"><label for="rodSel">Fuel rod</label><select id="rodSel" style="grid-column:2/4"></select></div>
+        <div class="row"><label for="gridW">Width</label><input type="range" id="gridW" min="3" max="15"><input class="num" id="gridWN" type="number" min="3" max="15" aria-label="Grid width"></div>
+        <div class="row"><label for="gridD">Depth</label><input type="range" id="gridD" min="3" max="15"><input class="num" id="gridDN" type="number" min="3" max="15" aria-label="Grid depth"></div>
+        <div class="row"><label for="colH">Column height</label><input type="range" id="colH" min="2" max="16" step="1"><input class="num" id="colHN" type="number" min="2" max="16" step="1" aria-label="Column height dial"></div>
+        <div class="btns">
+          <button class="btn" type="button" id="gFill">Fill with selected</button>
+          <button class="btn" type="button" id="gClear">Empty grid</button>
+        </div>
+        <p class="hint">A column is the base tileentity plus the dialled stack above it (rod at the core, lid on top, <code>RBMKBase.fillSpace</code>). Fuel cells take the rod chosen above.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Supplies</h2>
+        <div class="row"><label for="feed">Water feed</label><input type="range" id="feed" min="0" max="2000" step="10"><input class="num" id="feedN" type="number" min="0" max="2000" step="10" aria-label="Water feed per boiler mB/t"></div>
+        <div class="row"><label for="feedStopN">Water stops at</label><span class="wsHint">seconds into the run · blank = never</span><input class="num" id="feedStopN" type="number" min="0" max="1000" step="1" placeholder="never" aria-label="Water stops at, seconds into the run"></div>
+        <div class="row"><label for="steamSel">Steam type</label><select id="steamSel" style="grid-column:2/4">
+          <option value="0">Steam — cap 100 HE, ×100</option>
+          <option value="1">Hot steam — cap 300 HE, ×10</option>
+          <option value="2">Superhot — cap 450 HE, ×1</option>
+          <option value="3">Ultrahot — cap 600 HE, ×0.1</option>
+        </select></div>
+        <div class="row"><label for="gel">Cryogel supply</label><input type="range" id="gel" min="0" max="1000" step="10"><input class="num" id="gelN" type="number" min="0" max="1000" step="10" aria-label="Cryogel supply mB/t"></div>
+        <p class="hint">Water feeds each boiler's 10,000 mB tank per tick; pipes take the steam as fast as it's made. <b>Water stops at</b> cuts the feed at that second (a tank running dry, a pump losing power): the boilers run on what is left in their own tanks, then the columns climb. Each running cooler burns 50 mB/t of perfluoromethyl cold and pulls 200 HE off every column in its cached 5×5 — the supply slider runs the first <code>supply/50</code> coolers.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Control rods</h2>
+        <div class="row"><label for="level">Rod level (all columns)</label><input type="range" id="level" min="0" max="100"><input class="num" id="levelN" type="number" min="0" max="100" aria-label="Control rod level percent"></div>
+        <div class="btns"><button class="btn danger" type="button" id="btnAz5">AZ-5 — target 0</button></div>
+        <p class="hint">Level 100 = fully out (streams pass at ×1), 0 = fully inserted (streams stop dead). Rods travel at 0.00277/t × speed, drawing 5,000 EU/t from a 50,000 EU buffer (assumed supplied). Manual control rods add a <b>surge</b> while dropping: <code>sin((1−level)¹⁵π)·(start−target)·surgeMod</code> — reactivity peaks at level ≈ 0.046, the Chernobyl tip effect.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Dials</h2>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit dials — NTM ships these as world <b>game rules</b> (<code>dialPassiveCooling</code> …), not a config file</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <canvas class="chart" id="chart" aria-label="Steam, hottest column heat and total flux over time"></canvas>
+        <div class="legend"><span><i style="background:var(--steam)"></i>steam (mB/t)</span><span><i style="background:var(--heat)"></i>hottest column (HE)</span><span><i style="background:var(--accent)"></i>total flux (console)</span></div>
+        <canvas class="chart" id="chart2" aria-label="Steam output versus control rod level"></canvas>
+        <div class="legend"><span><i style="background:var(--steam)"></i>steam vs control rod level, steady at each point</span></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">The mod's per-tick loop, run for up to 20,000 ticks (1,000 s of game time). Heat is HBM HE; 1,500 HE in a column and the whole connected net melts.</p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load one.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Neutrons run in four cardinal streams</h3>
+        <p>Every fueled rod fires its output as four streams (N/E/S/W) up to the flux-range dial, walking column to column. Graphite multiplies the stream's fast ratio by (1 − moderator efficiency), so with the default eff 1 the first graphite block makes a fast stream fully slow — and the chain lives: fast emitters (rType FAST) feed the SLOW-absorbing fuels (slow + 0.5×fast), a loop that only closes through moderator between the rods.</p>
+<pre>ratio *= 1 − moderatorEfficiency   // per moderator block
+fluxIn: SLOW = slow + 0.5·fast · FAST = fast + 0.3·slow · ANY = total</pre>
+        <span class="ref">RBMKNeutronHandler.runStreamInteraction · TileEntityRBMKRod.fluxFromType</span>
+      </div>
+      <div class="fact">
+        <h3>A perfect reflector returns the whole stream</h3>
+        <p>With reflector efficiency 1 (the default), a stream that hits a reflector isn't reflected around the corner — it is handed straight back to the rod that emitted it, fully moderated. A core wrapped in reflectors self-amplifies every rod; drop the dial below 1 and the reflector just multiplies the flux and lets it continue.</p>
+<pre>if (reflectorEfficiency == 1) { originRod.receiveFlux(stream); return; }</pre>
+        <span class="ref">RBMKNeutronHandler.runStreamInteraction</span>
+      </div>
+      <div class="fact">
+        <h3>Xenon burns and breeds inside one number</h3>
+        <p>The poison value (0–100 %) is updated in one arithmetic chain: it first burns by flux²/50, the incoming flux is then multiplied by (1 − poison/100) — using the post-burn value, so a deep burn temporarily amplifies the flux — and the poison regrows by 0.5·flux. Strong flux destroys xenon, weak flux lets it pin at 100 % and choke the core. That's the 1/75 poison dynamic that makes lea/heu cores oscillate.</p>
+<pre>x  -= in² / xBurn          // xBurn 50
+in *= 1 − x / 100          // x as post-burn
+x  += in · xGen            // xGen 0.5, clamp [0,100]</pre>
+        <span class="ref">ItemRBMKRod.burn</span>
+      </div>
+      <div class="fact">
+        <h3>One rod self-limits with a sine heat ramp</h3>
+        <p>Only UZH registers the heat coefficient (start 1000, length 500). Above 1,000 HE core the output multiplier slides down a sine from 1 at 1,000 HE to 0 at 1,500 HE — a built-in negative feedback that caps the rod's core right below its 1,845 HE melting point. Every other rod's output ignores its own temperature.</p>
+<pre>prog = clamp((core − 1000) / 500, 0, 1)
+mult = sin((prog·π + π) / 2)     // 1 → 0 as core 1000 → 1500</pre>
+        <span class="ref">ItemRBMKRod.burn · ModItems rbmk_fuel_uzh</span>
+      </div>
+      <div class="fact">
+        <h3>1 heat above the cap becomes 1,000 mB of steam</h3>
+        <p>A boiler boils everything above its steam-type cap at 0.1 HE per mB of water, then multiplies by 100 ÷ factor. Plain steam: 1 HE → 10 mB water → 1,000 mB steam (cap 100). Ultrahot steam: cap 600, factor 1000 — 1 HE → 1 mB of steam from 10 mB of water. Hotter steam types trade a thousandfold steam volume for five hundred HE of extra cap headroom — they run cores that plain-steam boilers would flash over.</p>
+<pre>waterUsed = min(floor((colHeat − cap) / 0.1), feed)
+steam     = floor(waterUsed · 100 / factor)   // ×100, ×10, ×1, ×0.1</pre>
+        <span class="ref">TileEntityRBMKBoiler.onTick · getHeatFromSteam · getFactorFromSteam</span>
+      </div>
+      <div class="fact">
+        <h3>AZ-5: the tips make it surge on the way down</h3>
+        <p>Manual control rods report level + surge while moving downward, and sin((1−level)¹⁵π) peaks when level ≈ 0.046 — just above fully inserted. Scram from full out: the whole core sees a reactivity kick of up to (start−target)·surgeMod for the last few ticks of the drop, on top of the tips. That's the RBMK's fatal signature, transcribed exactly.</p>
+<pre>if (target &lt; start &amp;&amp; |level − target| &gt; 0.01)
+  surge = sin((1 − level)^15 · π) · (start − target) · surgeMod
+speed   = 0.00277 / tick · controlSpeed dial</pre>
+        <span class="ref">TileEntityRBMKControlManual.getMult · TileEntityRBMKControl</span>
+      </div>
+      <div class="fact">
+        <h3>Depletion raises the good fuels' reactivity</h3>
+        <p>Every absorbed neutron burns yield; enrichment = yield/max. RAISING-slope fuels (ueu, lep, mox…) run at enrichment + sin(enrichment·π)/2 — up to 1.5× at full enrichment, sliding to the linear curve as they deplete. A fresh graphite-moderated ueu core is a power curve that walks itself down over hundreds of thousands of ticks, not a cliff.</p>
+<pre>out = func(in · depMod(e)) · reactivityMod   // e = yield/maxYield
+depMod: RAISING e + sin(eπ)/2 · GENTLE e + sin(eπ)/3 · LINEAR e</pre>
+        <span class="ref">ItemRBMKRod.reactivityModByEnrichment · burn</span>
+      </div>
+      <div class="fact">
+        <h3>The dials are game rules, and hot rods are a trap</h3>
+        <p>Every RBMK tunable — passive cooling 2.5, heat flow 0.2, flux range 5, xenon on — is a world game rule (dialPassiveCooling, dialColumnHeatFlow…), clamped in RBMKDials.refresh; there is no toml. Forks ship their own defaults, which is why presets here carry rbmk.dial.* values. One constant lives in code: pulling a rod whose hull sits at ≥150 HE melts the column (forks raise it to 1,500). Melting fuel drops a corium stack plus FUEL debris.</p>
+<pre>pull rod with hull ≥ 150 HE → meltdown · meltdowns dial: dialDisableMeltdowns
+column heat &gt; 1500 → whole connected net melts</pre>
+        <span class="ref">RBMKDials · TileEntityRBMKRod.onBlockBreak / onMelt · TileEntityRBMKBase.meltdown</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=v=>!Number.isFinite(v)?"—":v===0?"0":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10?2:0);
+const secs=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"; };
+const F=Math.fround;
+/* ================= mod constants (NTM 1.0.27: ItemRBMKRod registrations ModItems 4014-4335, defaults ItemRBMKRod 26-41) =================
+   Rod fields: yield, reactivity R, selfRate, burn function, depletion function, heat coeff, HE per out-flux, melting point,
+   neutron types (nType absorbs / rType emits), xenon gen/burn, tint (colorTint ints, ModItems 3999-4012).
+   Defaults when unset: xGen .5, xBurn 50, heat 1.0, diffusion .02, melt 1000, nType SLOW / rType FAST, depFunc GENTLE_SLOPE, func LOG_TEN. */
+const RODS=[ // id, name, yield, R, self, func, dep, heat, melt, diff, n, r, xGen, xBurn, tint
+ ["ueu","UEU",1e8,15,0,"LOG_TEN","RAISING",.65,2865,.02,"SLOW","FAST",.5,50,"#868d82"],
+ ["meu","MEU",1e8,20,0,"LOG_TEN","RAISING",.65,2865,.02,"SLOW","FAST",.5,50,"#868d82"],
+ ["heu233","HEU-233",1e8,27.5,0,"LINEAR","GENTLE",1.25,2865,.02,"SLOW","FAST",.5,50,"#868d82"],
+ ["heu235","HEU-235",1e8,50,0,"SQUARE_ROOT","GENTLE",1,2865,.02,"SLOW","FAST",.5,50,"#868d82"],
+ ["uzh","UZH",5e7,30,0,"LOG_TEN","GENTLE",.75,1845,.1,"SLOW","FAST",.5,50,"#868d82",1000,500], // the only heatCoeff rod (ModItems 4057)
+ ["thmeu","Th-MEU",1e8,20,0,"PLATEU","BOOSTED",.65,3350,.02,"SLOW","FAST",.5,50,"#665448"],
+ ["lep","LEP",1e8,35,0,"LOG_TEN","RAISING",.75,2744,.02,"SLOW","FAST",.5,50,"#656e6b"],
+ ["mep","MEP",1e8,35,0,"SQUARE_ROOT","GENTLE",1,2744,.02,"SLOW","FAST",.5,50,"#656e6b"],
+ ["hep239","HEP-239",1e8,30,0,"LINEAR","GENTLE",1.25,2744,.02,"SLOW","FAST",.5,50,"#656e6b"],
+ ["hep241","HEP-241",1e8,40,0,"LINEAR","GENTLE",1.75,2744,.02,"SLOW","FAST",.5,50,"#656e6b"],
+ ["lea","LEA",1e8,60,10,"SQUARE_ROOT","RAISING",1.5,2386,.02,"SLOW","FAST",.5,50,"#a88a8f"],
+ ["mea","MEA",1e8,35,20,"ARCH","GENTLE",1.75,2386,.02,"SLOW","FAST",.5,50,"#a88a8f"],
+ ["hea241","HEA-241",1e8,65,15,"SQUARE_ROOT","GENTLE",1.85,2386,.02,"FAST","FAST",.5,50,"#a88a8f"],
+ ["hea242","HEA-242",1e8,45,0,"LINEAR","GENTLE",2,2386,.02,"SLOW","FAST",.5,50,"#a88a8f"],
+ ["men","MEN",1e8,30,0,"SQUARE_ROOT","RAISING",.75,2800,.02,"ANY","FAST",.5,50,"#757e73"],
+ ["hen","HEN",1e8,40,0,"SQUARE_ROOT","GENTLE",1,2800,.02,"FAST","FAST",.5,50,"#757e73"],
+ ["mox","MOX",1e8,40,0,"LOG_TEN","RAISING",1,2815,.02,"SLOW","FAST",.5,50,"#868d82"],
+ ["les","LES",1e8,50,0,"SQUARE_ROOT","GENTLE",1.25,2500,.02,"SLOW","SLOW",.5,50,"#2d9a94"],
+ ["mes","MES",1e8,75,0,"ARCH","GENTLE",1.5,2750,.02,"SLOW","FAST",.5,50,"#2d9a94"],
+ ["hes","HES",1e8,90,0,"LINEAR","LINEAR",1.75,3000,.02,"SLOW","FAST",.5,50,"#2d9a94"],
+ ["leaus","LE-AuS",1e8,30,0,"SIGMOID","LINEAR",1.5,7029,.02,"SLOW","FAST",.05,50,"#ffee00"],
+ ["heaus","HE-AuS",1e8,35,0,"LINEAR","GENTLE",1.5,5211,.02,"SLOW","FAST",.05,50,"#ffee00"],
+ ["po210be","Po-210/Be",2.5e7,0,50,"PASSIVE","LINEAR",.1,1287,.05,"SLOW","SLOW",0,50,"#563a26"],
+ ["ra226be","Ra-226/Be",1e8,0,20,"PASSIVE","LINEAR",.035,700,.5,"SLOW","SLOW",0,50,"#b3b6ad"],
+ ["pu238be","Pu-238/Be",5e7,40,40,"SQUARE_ROOT","GENTLE",.1,1287,.05,"SLOW","SLOW",.5,50,"#656e6b"],
+ ["balefire_gold","Balefire Gold",1e8,50,10,"ARCH","LINEAR",1,2000,.02,"SLOW","FAST",0,50,"#dc9613"],
+ ["flashlead","Flashlead",2.5e8,40,50,"ARCH","LINEAR",1,2050,.02,"SLOW","FAST",0,50,"#7b7b87"],
+ ["balefire","Balefire",1e8,100,35,"LINEAR","GENTLE",3,3652,.02,"SLOW","FAST",0,50,"#b2ff1b"],
+ ["zfb_bismuth","ZFB Bismuth",5e7,20,0,"SQUARE_ROOT","GENTLE",1.75,2744,.02,"SLOW","FAST",.5,50,"#aaa36a"],
+ ["zfb_pu241","ZFB Pu-241",5e7,20,0,"SQUARE_ROOT","GENTLE",1,2865,.02,"SLOW","FAST",.5,50,"#aaa36a"],
+ ["zfb_am_mix","ZFB Am Mix",5e7,20,0,"LINEAR","GENTLE",1.75,2744,.02,"SLOW","FAST",.5,50,"#aaa36a"],
+ ["drx","DRX",1e7,1000,10,"QUADRATIC","GENTLE",.1,1e5,.02,"SLOW","FAST",.5,50,"#d77276"],
+ ["voices","THE VOICES",1e6,100,0,"EXPERIMENTAL","GENTLE",1,1e5,.02,"SLOW","FAST",.5,50,"#304825"],
+];
+const ROD=Object.fromEntries(RODS.map(r=>[r[0],r]));
+// column types: 0 empty gap, 1 graphite moderator, 2 fuel, 3 control, 4 absorber, 5 reflector, 6 boiler, 7 cooler, 8 heater
+const TYPES=[["Empty (gap)","#1C2226"],["Graphite","#4A4E52"],["Fuel (rod)","#868d82"],["Control","#C05A5A"],["Absorber","#3A5A78"],
+  ["Reflector","#C8B36A"],["Boiler","#7FAEF0"],["Cooler","#7FE0F0"],["Heater","#E07840"]];
+// boiler caps/factors by steam type, TileEntityRBMKBoiler.getHeatFromSteam/getFactorFromSteam (142-164)
+const STEAM_CAP=[100,300,450,600], STEAM_FACTOR=[1,10,100,1000], STEAM_NAMES=["steam","hot steam","superhot","ultrahot"];
+
+// Dials = RBMKDials.RBMKKeys defaults (233-258); clamps per refresh() (52-96). Everything else is code constants.
+// columnHeight quirk: the gamerule stores (input − 1) (RBMKDials.java:63 getClampedInt 2..16 minus 1) and the neutron
+// handler adds 1 back (NeutronHandler.java:29) — so the dial value 2..16 IS the effective column height; we use it directly.
+const DEFAULTS={
+  passiveCooling:2.5, innerCooling:.1, columnHeatFlow:.2, diffusionMod:1, heatProvision:.2, columnHeight:4,
+  boilerHeatConsumption:.1, controlSpeed:1, reactivityMod:1, surgeMod:1, fluxRange:5, meltdowns:1,
+  moderatorEfficiency:1, absorberEfficiency:1, absorberHeatConversion:.05, reflectorEfficiency:1, depletion:1, xenon:1,
+  rodHullLimit:150, columnMaxHeat:1e4, columnBaseMax:1500, boilerPerMb:.1, coolerPerGel:200, coolerGelMb:50,
+};
+// [internal, config key, min, max, kind] — int kinds get Math.round; bool kinds render 0/1; text kinds (func/dep) are strings
+const CFG_SPEC=[
+ ["passiveCooling","rbmk.dial.passiveCooling",0,1e6],["innerCooling","rbmk.dial.innerCooling",0,1e6],
+ ["columnHeatFlow","rbmk.dial.columnHeatFlow",0,1],["diffusionMod","rbmk.dial.diffusionMod",0,1e6],
+ ["heatProvision","rbmk.dial.heatProvision",0,1],["columnHeight","rbmk.dial.columnHeight",2,16,"int"],
+ ["boilerHeatConsumption","rbmk.dial.boilerHeatConsumption",0,1e6],["controlSpeed","rbmk.dial.controlSpeed",0,1e6],
+ ["reactivityMod","rbmk.dial.reactivityMod",0,1e6],["surgeMod","rbmk.dial.surgeMod",0,1e6],
+ ["fluxRange","rbmk.dial.fluxRange",1,100,"int"],["meltdowns","rbmk.dial.meltdowns",0,1,"bool"],
+ ["moderatorEfficiency","rbmk.dial.moderatorEfficiency",0,1],["absorberEfficiency","rbmk.dial.absorberEfficiency",0,1],
+ ["absorberHeatConversion","rbmk.dial.absorberHeatConversion",0,1],["reflectorEfficiency","rbmk.dial.reflectorEfficiency",0,1],
+ ["depletion","rbmk.dial.depletion",0,1,"bool"],["xenon","rbmk.dial.xenon",0,1,"bool"],
+ ["rodHullLimit","rbmk.rodHullLimit",0,1e6],["columnMaxHeat","rbmk.columnMaxHeat",1,1e6],
+ ["columnBaseMax","rbmk.columnBaseMax",1,1e6],["boilerPerMb","rbmk.boilerPerMb",1e-4,1e3],
+ ["coolerPerGel","rbmk.coolerPerGel",0,1e6],["coolerGelMb","rbmk.coolerGelMb",1,1e6],
+];
+// rod fields: rbmk.fuel.<id>.<field> (packs.js uses .yield/.meltingPoint/.function/.heat)
+for(const r of RODS){ const id=r[0];
+  DEFAULTS[`yld_${id}`]=r[2]; DEFAULTS[`R_${id}`]=r[3]; DEFAULTS[`func_${id}`]=r[5]; DEFAULTS[`dep_${id}`]=r[6];
+  DEFAULTS[`ht_${id}`]=r[7]; DEFAULTS[`melt_${id}`]=r[8]; DEFAULTS[`dif_${id}`]=r[9]; DEFAULTS[`xg_${id}`]=r[12]; DEFAULTS[`xb_${id}`]=r[13];
+  CFG_SPEC.push([`yld_${id}`,`rbmk.fuel.${id}.yield`,1,1e12],[`R_${id}`,`rbmk.fuel.${id}.reactivity`,0,1e6],
+    [`func_${id}`,`rbmk.fuel.${id}.function`,0,0,"text"],[`dep_${id}`,`rbmk.fuel.${id}.depletion`,0,0,"text"],
+    [`ht_${id}`,`rbmk.fuel.${id}.heat`,0,1e4],[`melt_${id}`,`rbmk.fuel.${id}.meltingPoint`,1,1e7],
+    [`dif_${id}`,`rbmk.fuel.${id}.diffusion`,0,10],[`xg_${id}`,`rbmk.fuel.${id}.xGen`,0,1e4],[`xb_${id}`,`rbmk.fuel.${id}.xBurn`,1e-3,1e6]);
+}
+// boilerPerMb is the same dial as boilerHeatConsumption (Boiler.java:76) — carry both config spellings for pack presets
+const CFG_FIELDS=[...CFG_SPEC.map(s=>[s[0],s[1]]),["boilerHeatConsumption","rbmk.boilerPerMb"]];
+const {presets:PRESETS,list:NTM_PACKS}=mdPackPresets("hbm",DEFAULTS,CFG_FIELDS);
+let cfgPreset="default",cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("ntm-rbmk-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+function saveCfg(){ try{ localStorage.setItem("ntm-rbmk-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+/* ================= state ================= */
+const state={W:12,D:12,cells:null,rodMap:null,brush:1,rod:"ueu",level:100,steam:0,feed:500,feedStop:null,gel:0,az5At:null,maxTicks:20000};
+function resizeCells(w,d,old,oldRod,ow,od){ const c=new Uint8Array(w*d), r=new Int16Array(w*d).fill(-1);
+  if(old) for(let x=0;x<Math.min(w,ow);x++)for(let z=0;z<Math.min(d,od);z++){ c[x*d+z]=old[x*od+z]; r[x*d+z]=oldRod[x*od+z]; } return {c,r}; }
+function defaultLayout(){ // 12×12: graphite 8×8 core, 9 ueu checkerboard, ra226be source at centre, absorber ring, boilers + coolers
+  const {c,r}=resizeCells(12,12); const at=(x,z,v,rod)=>{ c[x*12+z]=v; r[x*12+z]=rod==null?-1:RODS.findIndex(q=>q[0]===rod); };
+  for(let x=2;x<=9;x++)for(let z=2;z<=9;z++) at(x,z,1);
+  for(const x of [3,5,7])for(const z of [3,5,7]) at(x,z,2,"ueu");
+  at(5,5,2,"ra226be");
+  for(let x=1;x<=10;x++){ at(x,1,4); at(x,10,4); } for(let z=2;z<=9;z++){ at(1,z,4); at(10,z,4); }
+  at(1,3,3); at(1,7,3); at(10,3,3); at(10,7,3);
+  at(5,0,6); at(6,0,6); at(5,11,6); at(6,11,6);
+  at(0,0,7); at(11,0,7); at(0,11,7); at(11,11,7);
+  state.W=12; state.D=12; state.cells=c; state.rodMap=r;
+}
+
+/* ================= model: the mod's tick loop, RBMKNeutronHandler + TileEntityRBMKRod + ItemRBMKRod + TileEntityRBMKBase =================
+   Per tick: rods consume last tick's received flux (burn: xenon, sin heat-coeff, reactivityFunc, depletion, core heat),
+   re-emit 4 cardinal streams, core→hull diffusion, hull→column provision, boiler boiling, cooler gel, absorber conversion,
+   column moveHeat + passive cooling, cap, meltdown scan, control-rod travel.
+   The mod iterates live tileentities (Gauss-Seidel style in-place heat moves); we snapshot per phase (Jacobi) — same fixed
+   point, deterministic. Cites are decompiled 1.0.27 file:line under com/hbm/. */
+const FUNC={PASSIVE:1,LOG_TEN:2,PLATEU:3,ARCH:4,SIGMOID:5,SQUARE_ROOT:6,LINEAR:7,QUADRATIC:8,EXPERIMENTAL:9};
+const DEPF={LINEAR:1,RAISING:2,BOOSTED:3,GENTLE:4,STATIC:5};
+function burnFunc(code,f,R,self){ switch(code){
+  case 1: return self*R; // unused: PASSIVE handled by caller (needs e)
+  case 2: return Math.log10(f+1)*0.5*R;
+  case 3: return (1-Math.pow(Math.E,-f/25))*R;
+  case 4: return Math.max((f-f*f/10000)/100*R,0);
+  case 5: return R/(1+Math.pow(Math.E,-(f-50)/10));
+  case 6: return Math.sqrt(f)*R/10;
+  case 7: return f/100*R;
+  case 8: return f*f/10000*R;
+  case 9: return f*(Math.sin(f)+1)*R;
+  default: return 0; } }
+function depMod(code,e){ switch(code){ // ItemRBMKRod.reactivityModByEnrichment (292-306)
+  case 1: return e;
+  case 2: return e+Math.sin(e*Math.PI)/2;
+  case 3: return e+Math.sin((e-1)*(e-1)*Math.PI);
+  case 4: return e+Math.sin(e*Math.PI)/3;
+  case 5: return 1;
+  default: return e; } }
+const rectify=v=>v>1e6?1e6:(v<20||Number.isNaN(v)?20:v); // ItemRBMKRod.rectify (165-175)
+
+function boilerTick(heat,steamType,feedFill,cfg){ // TileEntityRBMKBoiler 73-127; returns {sp,wu,heatOut}
+  const cap=STEAM_CAP[steamType], f=STEAM_FACTOR[steamType], hp=heat-cap;
+  if(!(hp>0)) return {sp:0,wu:0};
+  const bpm=+cfg.boilerPerMb;
+  let sp,wu;
+  if(steamType===3){ // ULTRAHOT path (81-86): steam from heat directly, water 10× steam
+    sp=Math.floor(hp/bpm*100/f); wu=Math.floor(sp/100*f);
+    if(feedFill<wu){ sp=Math.floor(feedFill*100/f); wu=Math.floor(sp/100*f); }
+  } else {
+    wu=Math.min(Math.floor(hp/bpm),Math.floor(feedFill)); sp=Math.floor(wu*100/f);
+  }
+  return {sp,wu};
+}
+
+function simulate(st,cfg){
+  const W=st.W,D=st.D,N=W*D,FR=Math.max(1,Math.round(+cfg.fluxRange)),H=Math.round(+cfg.columnHeight);
+  const meltdowns=+cfg.meltdowns>0, xenonOn=+cfg.xenon>0, deplOn=+cfg.depletion>0;
+  const modEff=+cfg.moderatorEfficiency, absEff=+cfg.absorberEfficiency, reflEff=+cfg.reflectorEfficiency, absConv=+cfg.absorberHeatConversion;
+  const reactMod=+cfg.reactivityMod, diffMod=+cfg.diffusionMod, heatProv=+cfg.heatProvision;
+  const pCool=+cfg.passiveCooling, pCoolIn=+cfg.innerCooling, flow=+cfg.columnHeatFlow;
+  const colMax=+cfg.columnMaxHeat, rodTEMax=+cfg.columnBaseMax, hullLimit=+cfg.rodHullLimit;
+  const ctrlSpeed=0.00277*(+cfg.controlSpeed), surgeMod=+cfg.surgeMod, gelPer=+cfg.coolerGelMb, gelPull=+cfg.coolerPerGel;
+  const cells=st.cells, rodMap=st.rodMap;
+  // per-rod parameter tables from cfg (rod fields override the table)
+  const RP=RODS.map(r=>({Y:+cfg[`yld_${r[0]}`],R:+cfg[`R_${r[0]}`],self:0,fc:FUNC[cfg[`func_${r[0]}`]]||FUNC[r[5]],
+    dc:DEPF[cfg[`dep_${r[0]}`]]||DEPF[r[6]],ht:+cfg[`ht_${r[0]}`],melt:+cfg[`melt_${r[0]}`],dif:+cfg[`dif_${r[0]}`],
+    xg:+cfg[`xg_${r[0]}`],xb:+cfg[`xb_${r[0]}`],nt:r[10],rt:r[11],hcS:r[15]||0,hcL:r[16]||0}));
+  RP.forEach((p,k)=>p.self=RODS[k][4]);
+  const isFuel=i=>cells[i]===2&&rodMap[i]>=0;
+  const boi=[]; const coo=[]; const hea=[]; const fuelL=[];
+  const fx=new Int16Array(N), fz=new Int16Array(N);
+  for(let i=0;i<N;i++){ fx[i]=Math.floor(i/D); fz[i]=i%D;
+    if(cells[i]===6) boi.push(i); else if(cells[i]===7) coo.push(i); else if(cells[i]===8) hea.push(i);
+    if(isFuel(i)) fuelL.push(i); }
+  const bf=new Float64Array(boi.length).fill(10000), bt=new Float64Array(boi.length); // boiler tanks (Boiler.java 49-50)
+  const feedStopT=st.feedStop==null?Infinity:st.feedStop*20;
+  const coolCache=coo.map(c=>{ const list=[]; const cx=Math.floor(c/D), cz=c%D;
+    for(let x=Math.max(0,cx-2);x<=Math.min(W-1,cx+2);x++)for(let z=Math.max(0,cz-2);z<=Math.min(D-1,cz+2);z++) list.push(x*D+z);
+    return list; });
+  let gelTimer=0; // cooler neighbour cache rescan cadence (Cooler.java 37-52: every 60 ticks)
+  const heat=new Float64Array(N).fill(20), fQ=new Float64Array(N), fF=new Float64Array(N);
+  const core=new Float64Array(N).fill(20), hull=new Float64Array(N).fill(20), yld=new Float64Array(N), xe=new Float64Array(N);
+  const outQ=new Float64Array(N), outR=new Float64Array(N), lastIn=new Float64Array(N);
+  for(let i=0;i<N;i++) if(isFuel(i)) yld[i]=RP[rodMap[i]].Y;
+  // control rods: global level; slider is steady state (start=target=level). AZ-5 sets target 0 from the level at az5At.
+  let cl=st.level/100, ct=cl, cs=cl;
+  const mult=()=>{ // TileEntityRBMKControlManual.getMult (45-52)
+    if(ct<cs&&Math.abs(cl-ct)>0.01) return cl+Math.sin(Math.pow(1-cl,15)*Math.PI)*(cs-ct)*surgeMod;
+    return cl; };
+  const MAXT=st.maxTicks, SAMPLE=Math.max(1,Math.ceil(MAXT/1000));
+  const hist=[]; let steamEnd=0, steamT=0, fluxEnd=0, radEnd=0, meltdownAt=null, meltCell=-1;
+  let steamAvgLast=0, fluxSamples=0, waterAvgLast=0, waterNow=0;
+  const DX=[1,-1,0,0], DZ=[0,0,1,-1];   // the four cardinal fluxDirs (TileEntityRBMKRod.fluxDirs 60)
+  let hotCool=0;
+  for(let t=1;t<=MAXT;t++){
+    if(st.az5At===t){ ct=0; cs=cl; }     // Manual.setTarget: startingLevel = current level, target = 0 (Manual 39-42)
+    const lm=mult();
+    // phase A: rod tick (TileEntityRBMKRod 110-181 + ItemRBMKRod.burn 120-163)
+    let totalFlux=0;
+    for(let n=0;n<fuelL.length;n++){
+      const i=fuelL[n], rd=rodMap[i];
+      if(rd<0){ fQ[i]=0; fF[i]=0; continue; }   // melted/unloaded column: streams pass through (Rod 113-125, 172-179)
+      const p=RP[rd], tot=fQ[i], fast=fF[i], slow=tot-fast;
+      lastIn[i]=tot; totalFlux+=tot; fQ[i]=0; fF[i]=0;   // lastFluxQuantity = received, then reset (Rod.java 166-169)
+      let inF=(p.nt==="SLOW" ? slow+0.5*fast : p.nt==="FAST" ? fast+0.3*slow : tot)+p.self; // fluxFromType 183-196 + selfRate
+      if(xenonOn){ let x=xe[i]; x-=inF*inF/p.xb; inF*=1-x/100; x+=inF*p.xg; xe[i]=x<0?0:(x>100?100:x); } // burn 122-136
+      let hmult=1;
+      if(p.hcS!==0&&core[i]>=p.hcS){ const pr=Math.min((core[i]-p.hcS)/p.hcL,1); hmult=Math.sin((pr*Math.PI+Math.PI)/2); } // 138-147
+      const e=yld[i]/p.Y, f=inF*depMod(p.dc,e*hmult);     // reactivityFunc(in, enrichment·mult), enrichment=yield/max (149, 316-318)
+      const out=(p.fc===1 ? p.self*e : burnFunc(p.fc,f,p.R,p.self))*reactMod;   // PASSIVE: selfRate·e (213-214); dialReactivityMod
+      if(deplOn){ const y=yld[i]-inF; yld[i]=y<0?0:y; }   // depletion: yield −= in (150-158)
+      core[i]=rectify(core[i]+out*p.ht);                  // core += out·heat (160-161)
+      outQ[i]=out; outR[i]=p.rt==="SLOW"?0:1;             // emitted stream ratio by rType (Rod 122-131), spreadFlux 198-218
+    }
+    fluxEnd=totalFlux;
+    // phase B: neutron streams (RBMKNeutronHandler.runStreamInteraction 216-364)
+    let rad=0;
+    for(let i=0;i<N;i++){
+      const q0=outQ[i]; if(!(q0>0)||!isFuel(i)) continue;
+      const cx=Math.floor(i/D), cz=i%D;
+      for(let d=0;d<4;d++){
+        let q=q0, r=outR[i], mc=0, x=cx, z=cz;
+        for(let s=1;s<=FR;s++){
+          x+=DX[d]; z+=DZ[d];
+          if(x<0||z<0||x>=W||z>=D){ rad+=q*0.05; break; }        // leaves the field: irradiate the block beyond the edge (329-337)
+          const j=x*D+z, ty=cells[j];
+          if(ty===0){ rad+=q*0.05; continue; }                    // gap, hits=0 (246-257; hits = opaque blocks in the stack, 366-377)
+          if(ty===1){ mc++; r*=1-modEff; continue; }              // moderator: ratio ×(1−modEff) (272-275, 401-403)
+          if(ty===2){ if(rodMap[j]>=0){ fQ[j]+=q; fF[j]+=q*r; break; } continue; } // fueled rod absorbs, stream ends (277-284)
+          if(ty===3){ if(!(lm>0)) break; q*=lm; continue; }       // control: level 0 blocks, else ×level (292-298)
+          if(ty===4){ heat[j]+=absConv*q; if(absEff===1) break; q*=absEff; continue; } // absorber (316-323)
+          if(ty===5){
+            if(r>0&&mc>0) r*=Math.pow(1-modEff,mc);               // re-apply moderation count (300-308)
+            if(reflEff===1){ fQ[i]+=q; fF[i]+=q*r; break; }       // eff 1: full stream returned to origin (310-313)
+            q*=reflEff; continue; }
+        }
+      }
+    }
+    radEnd=rad;
+    // phase C: rod core→hull diffusion, hull→column provision (ItemRBMKRod.updateHeat 177-187, provideHeat 189-208)
+    for(let i=0;i<N;i++){ const rd=rodMap[i]; if(!isFuel(i)) continue; const p=RP[rd];
+      if(core[i]>hull[i]){ const k=(core[i]-hull[i])/2*p.dif*diffMod; core[i]=rectify(core[i]-k); hull[i]=rectify(hull[i]+k); }
+      if(hull[i]>p.melt){ const avg=(heat[i]+hull[i]+core[i])/3; core[i]=avg; hull[i]=avg; heat[i]=avg; } // thermal merge → the column melts below
+      else if(hull[i]>heat[i]){ const ret=(hull[i]-heat[i])/2*heatProv; hull[i]-=ret; heat[i]+=ret; }
+    }
+    // phase D: boilers (TileEntityRBMKBoiler 65-128). Feed tank refills from the water net each tick (10k max, line 49/130).
+    let steamNow=0; waterNow=0;
+    for(let k=0;k<boi.length;k++){
+      bf[k]=Math.min(10000,bf[k]+(t<=feedStopT?st.feed:0));   // "Water stops at": the net stops refilling the tanks
+      const i=boi[k], bp=boilerTick(heat[i],st.steam,bf[k],cfg);
+      if(bp.wu>0||bp.sp>0){ bf[k]-=bp.wu; bt[k]=Math.min(1e6,bt[k]+bp.sp); steamNow+=bp.sp; waterNow+=bp.wu; heat[i]-=bp.wu*(+cfg.boilerPerMb); }
+    }
+    // phase E: coolers (TileEntityRBMKCooler 36-66): 50 mB gel/t → −200 HE to each cached 5×5 column, floor 20; cache rescans every 60 t
+    gelTimer--; if(gelTimer<=0){ gelTimer=60;
+      for(let k=0;k<coo.length;k++){ const c=coo[k], cx=Math.floor(c/D), cz=c%D, list=coolCache[k]; list.length=0;
+        for(let x=Math.max(0,cx-2);x<=Math.min(W-1,cx+2);x++)for(let z=Math.max(0,cz-2);z<=Math.min(D-1,cz+2);z++) list.push(x*D+z); } }
+    const active=Math.min(coo.length,Math.floor(st.gel/gelPer));
+    for(let k=0;k<active;k++) for(const j of coolCache[k]){ heat[j]-=gelPull; if(heat[j]<20) heat[j]=20; }
+    // phase F: heaters (TileEntityRBMKHeater 50-65): COOLANT eff .25 → TU_PER_DEGREE 500, 6,000 TU/step, 1,000 mB → hot coolant
+    hotCool=0;
+    for(const i of hea){ const tr=heat[i]-100; if(tr>0){ const ops=Math.floor(tr*500/6000);
+      if(ops>0){ heat[i]=Math.max(20,heat[i]-ops*6000/500*.25); hotCool+=ops*1000; } } }
+    // phase G: column moveHeat + passive cooling + cap (TileEntityRBMKBase.moveHeat 125-192, 210-215; cap Rod.java 162-164).
+    // Each column in turn pulls itself AND its four neighbours toward their shared average, in place, so a column moves
+    // up to five times a tick (checked in game 2026-10-18: a 4-boiler core holds its fuel columns at 113 HE, not 174)
+    for(let i=0;i<N;i++){
+      if(cells[i]===0) continue;
+      const x=Math.floor(i/D), z=i%D; let tot=heat[i], mem=1, nb=0; const nbs=[];
+      for(let d=0;d<4;d++){ const nx=x+DX[d], nz=z+DZ[d]; if(nx<0||nz<0||nx>=W||nz>=D) continue;
+        const j=nx*D+nz; if(cells[j]===0) continue; nb++; nbs.push(j); tot+=heat[j]; mem++; }
+      if(mem>1){ const avg=tot/mem; heat[i]+=(avg-heat[i])*flow; for(const j of nbs) heat[j]+=(avg-heat[j])*flow; }
+      heat[i]-=pCoolIn+(pCool-pCoolIn)*((4-Math.min(4,Math.max(0,nb)))/4);
+      if(heat[i]<20) heat[i]=20;
+    }
+    for(let i=0;i<N;i++) if(heat[i]>colMax) heat[i]=colMax;
+    // phase H: meltdown — column heat over the base max (1500) melts; the mod takes the whole connected net (Base.meltdown 361+)
+    if(meltdowns){ for(let i=0;i<N;i++){ if(cells[i]!==0&&heat[i]>rodTEMax){ meltdownAt=t; meltCell=i; break; } }
+      if(meltdownAt!=null){ hist.push({t,s:steamNow,h:heat[meltCell],f:totalFlux,x:xe[meltCell],c:core[meltCell],m:1}); break; } }
+    // control rod travel (TileEntityRBMKControl 84-97), speed 0.00277/t × dial, 5,000 EU/t from the 50k buffer (assumed supplied)
+    if(cl<ct){ cl+=ctrlSpeed; if(cl>ct) cl=ct; } else if(cl>ct){ cl-=ctrlSpeed; if(cl<ct) cl=ct; }
+    if(t%SAMPLE===0||t===MAXT){
+      let hMax=20; for(let i=0;i<N;i++) if(heat[i]>hMax) hMax=heat[i];
+      hist.push({t,s:steamNow,h:hMax,f:totalFlux,x:0,c:0});
+      steamT=steamNow;
+      if(t>MAXT-MAXT/10){ steamAvgLast+=steamNow; waterAvgLast+=waterNow; fluxSamples++; }
+    }
+  }
+  // final readouts
+  let hMax=20,cMax=20,hullMax=20,xMax=0,burn=0,nf=0,heatAvg=0,nCell=0;
+  for(let i=0;i<N;i++){
+    if(cells[i]!==0){ heatAvg+=heat[i]; nCell++; if(heat[i]>hMax) hMax=heat[i]; }
+    if(isFuel(i)){ const p=RP[rodMap[i]];
+      if(core[i]>cMax) cMax=core[i]; if(hull[i]>hullMax) hullMax=hull[i]; if(xe[i]>xMax) xMax=xe[i];
+      burn+=1-yld[i]/p.Y; nf++; } }
+  heatAvg=nCell?heatAvg/nCell:20;
+  return {hist, steam:fluxSamples?steamAvgLast/fluxSamples:steamT, water:fluxSamples?waterAvgLast/fluxSamples:waterNow, steamEnd:steamT, flux:fluxEnd, rad:radEnd,
+    heatMax:hMax, heatAvg, coreMax:cMax, hullMax, xenonMax:xMax, burn:nf?burn/nf:0, nf,
+    nBoil:boi.length, nCool:coo.length, nHeat:hea.length, meltdownAt, meltCell, ctrlLevel:cl, hotCool,
+    hullHazard:hullMax>=hullLimit, hullLimit, H, FR,
+    lastIn:Array.from(lastIn), heat:Array.from(heat), core:Array.from(core), hull:Array.from(hull), xe:Array.from(xe), yld:Array.from(yld)};
+}
+/* ================= three.js: column stacks (one column per painted cell: base y0, stack y1..H, lid, drum, rods) ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, clip, cut, BOXG, CYLG, rodGroup=null, rodIn=null, rodOut=null, rodHead=null;
+let groups={}, ctrlCells=[], shapeH=4, ACC, STEAMC, WHITE;
+let buildStart=0, buildBottom=0, buildTop=0, clipOn=false, lidsOn=true, rodLevel=1, FMAX=1, NMAX=1;
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0;
+const matCache={}, anims=[];
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plate(key,color,deco){ return tex(key,g=>{ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); if(deco) deco(g,b); }); }
+const T={
+  base:()=>plate("rbase","#3E444B",(g,b)=>{ g.fillStyle=shade(b,0.5); g.fillRect(4,4,8,8); g.fillStyle=shade(b,1.35); g.fillRect(5,5,6,6); g.fillStyle=shade(b,0.5); g.fillRect(6,6,4,4);
+    g.fillStyle=shade(b,1.4); [[1,1],[13,1],[1,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,2,2)); }),
+  graphite:()=>plate("graphite","#4A4E52",(g,b)=>{ g.fillStyle=shade(b,0.62); g.fillRect(0,5,16,1); g.fillRect(0,11,16,1); g.fillRect(8,0,1,5); g.fillRect(4,6,1,5); g.fillRect(12,6,1,5); g.fillRect(8,12,1,4); }),
+  fuelch:()=>plate("fuelch","#565C63",(g,b)=>{ g.fillStyle=shade(b,0.42); g.fillRect(5,0,6,16); g.fillStyle=shade(b,1.18); g.fillRect(6,0,4,16); g.fillStyle=shade(b,0.55); g.fillRect(6,7,4,1); }),
+  fuelrod:()=>plate("fuelrod","#D8DCE0",(g,b)=>{ g.fillStyle=shade(b,0.5); g.fillRect(0,3,16,2); g.fillRect(0,10,16,2); g.fillStyle=shade(b,1.35); g.fillRect(5,0,3,16); }),
+  control:()=>plate("ctrlch","#5A5F66",(g,b)=>{ g.fillStyle=shade(b,0.45); g.fillRect(5,5,6,6); g.fillStyle=shade(b,1.3); g.fillRect(6,6,4,4); g.fillStyle=shade(b,1.4); [[1,1],[13,1],[1,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,2,2)); }),
+  ctrlrod:()=>plate("ctrlrod","#2A2E33",(g,b)=>{ g.fillStyle=shade(b,1.6); g.fillRect(0,1,16,1); g.fillRect(0,7,16,1); g.fillRect(0,13,16,1); g.fillStyle=shade(b,1.2); g.fillRect(6,0,4,16); }),
+  ctrlsteel:()=>plate("ctrlsteel","#A8B0B8",(g,b)=>{ g.fillStyle=shade(b,1.35); g.fillRect(5,0,3,16); g.fillStyle=shade(b,0.72); g.fillRect(11,0,2,16); }),
+  ctrlhead:()=>plate("ctrlhd","#8A2E2E",(g,b)=>{ g.fillStyle="#E2D03A"; g.fillRect(0,3,16,2); g.fillStyle=shade(b,0.55); g.fillRect(4,7,8,5); }),
+  absorber:()=>plate("absorb","#3A5A78",(g,b)=>{ g.fillStyle=shade(b,0.62); g.fillRect(1,2,14,2); g.fillRect(1,7,14,2); g.fillRect(1,12,14,2); g.fillStyle=shade(b,1.4); g.fillRect(7,4,2,3); }),
+  reflector:()=>plate("reflect","#C8B36A",(g,b)=>{ g.fillStyle=shade(b,1.3); g.fillRect(6,6,4,4); g.fillStyle=shade(b,0.62); [[1,1],[12,1],[1,12],[12,12]].forEach(([x,y])=>g.fillRect(x,y,3,3)); }),
+  boiler:()=>plate("boipipe","#5A7A9E",(g,b)=>{ g.fillStyle=shade(b,0.5); for(const y of [0,4,8,12]) g.fillRect(0,y,16,1); g.fillStyle=shade(b,1.4); for(const x of [2,6,10,14]) g.fillRect(x,2,1,1); }),
+  boildrum:()=>plate("bodrum","#7FAEF0",(g,b)=>{ g.fillStyle=shade(b,1.3); g.fillRect(0,0,16,2); g.fillStyle=shade(b,0.5); g.fillRect(0,7,16,2); g.fillStyle=shade(b,1.35); g.fillRect(7,1,2,4); }),
+  boilpipe:()=>plate("bopipe","#9AA6AE",(g,b)=>{ g.fillStyle=shade(b,1.4); g.fillRect(5,0,2,16); g.fillStyle=shade(b,0.65); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); }),
+  cooler:()=>plate("cool","#4FA8B8",(g,b)=>{ g.fillStyle=shade(b,0.6); for(let x=1;x<15;x+=3) g.fillRect(x,1,1,14); g.fillStyle=shade(b,0.4); g.fillRect(6,6,4,4); g.fillStyle=shade(b,1.45); g.fillRect(7,7,2,2); }),
+  heater:()=>plate("heatp","#C06A38",(g,b)=>{ g.fillStyle=shade(b,1.4); for(const y of [2,6,10,13]) g.fillRect(3,y,10,1); g.fillStyle=shade(b,0.5); g.fillRect(3,2,1,12); g.fillRect(12,2,1,12); }),
+  lid:()=>plate("rbrid","#6B7178",(g,b)=>{ g.fillStyle=shade(b,1.3); g.fillRect(4,4,8,8); g.fillStyle=shade(b,0.55); g.fillRect(6,6,4,4); g.fillStyle=shade(b,1.45); [[1,1],[13,1],[1,13],[13,13]].forEach(([x,y])=>g.fillRect(x,y,2,2)); }),
+};
+const CYLK=new Set(["boiler","fuelrod","boildrum","boilpipe","ctrlrod","ctrlsteel"]);
+const LIDK=new Set(["lid","boildrum","boilpipe","ctrlhead"]);
+const TINTK=new Set(["graphite","fuelch","fuelrod","control","absorber","reflector","boiler","cooler","heater"]);
+const SC={lid:[1,0.3,1],boiler:[0.62,1,0.62],fuelrod:[0.42,1,0.42],boildrum:[0.62,0.5,0.62],boilpipe:[0.16,0.45,0.16]};
+const BODY=["","graphite","fuelch","control","absorber","reflector","boiler","cooler","heater"];
+function mat(k){ if(matCache[k]) return matCache[k]; const t=new THREE.CanvasTexture(T[k]()); t.magFilter=t.minFilter=THREE.NearestFilter;
+  return matCache[k]=new THREE.MeshLambertMaterial({map:t,clippingPlanes:[clip,cut]}); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,900);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0); cut=new THREE.Plane(new THREE.Vector3(0,0,-1),999);
+  BOXG=new THREE.BoxGeometry(1,1,1); CYLG=new THREE.CylinderGeometry(0.5,0.5,1,12);
+  ACC=new THREE.Color(0xE2D03A); STEAMC=new THREE.Color(0x7FAEF0); WHITE=new THREE.Color(1,1,1);
+  root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize();
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms. Auto-spin after 2.5 s idle.
+const orbit={theta:0.6,phi:1.02,radius:30,target:{x:0,y:2,z:0},goal:null,idle:0,pan:false};
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(160,Math.max(4,orbit.goal.r*f)); else orbit.radius=Math.min(160,Math.max(4,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+// frame the whole grid with margin
+function framing(){ const H=Math.round(+cfg.columnHeight); return {x:0,y:(H+1.3)/2-0.5,z:0,r:Math.max(state.W,state.D)*1.45+H*0.8+8}; }
+/* key "x,z,s": s=0 base, 1..H stack block, H+1 lid, H+2 steam drum, H+3 drum pipe, 100+y fuel rod string inside the channel */
+const m4=new THREE.Matrix4();
+const posOf=key=>{ const p=key.split(","), s=+p[2], H=shapeH;
+  const y=s===0?0.5:s>100?s-100+0.5:s<=H?s+0.5:s===H+1?H+1.15:s===H+2?H+1.55:H+2.02;
+  return [+p[0]-state.W/2+0.5,y,+p[1]-state.D/2+0.5]; };
+function blockMap(){ const map=new Map(), H=Math.round(+cfg.columnHeight);
+  for(let x=0;x<state.W;x++)for(let z=0;z<state.D;z++){ const i=x*state.D+z, ty=state.cells[i]; if(!ty) continue;
+    map.set(`${x},${z},0`,"base");
+    for(let y=1;y<=H;y++){ map.set(`${x},${z},${y}`,BODY[ty]); if(ty===2&&state.rodMap[i]>=0) map.set(`${x},${z},${100+y}`,"fuelrod"); }
+    map.set(`${x},${z},${H+1}`,"lid");
+    if(ty===6){ map.set(`${x},${z},${H+2}`,"boildrum"); map.set(`${x},${z},${H+3}`,"boilpipe"); } }
+  return map; }
+function buildInstanced(map,skip){
+  for(const g in groups){ root.remove(groups[g]); groups[g].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  groups={}; rodIn=rodOut=rodHead=null; if(rodGroup){ root.remove(rodGroup); rodGroup=null; }
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  for(const k in buckets){ const keys=buckets[k], mesh=new THREE.InstancedMesh(CYLK.has(k)?CYLG:BOXG,mat(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); const s=SC[k]; if(s) m4.scale(new THREE.Vector3(s[0],s[1],s[2])); mesh.setMatrixAt(i,m4); });
+    mesh.userData={keys,kind:k}; const g=LIDK.has(k)?"lids":"core"; (groups[g]=groups[g]||new THREE.Group()).add(mesh); }
+  for(const g in groups) root.add(groups[g]); if(groups.lids) groups.lids.visible=lidsOn; }
+function heatRGB(q){ const t=Math.max(0,Math.min(1,(q-20)/1480)); return [(30+225*t)/255,(40+120*(t<0.5?t*2:1-(t-0.5)*2)*0.9+60*t)/255,(50-30*t)/255]; }
+function tint3D(){
+  if(!renderer) return; const col=new THREE.Color();
+  for(const g in groups) for(const mesh of groups[g].children){ const ud=mesh.userData; if(!ud||!ud.keys) continue;
+    for(let n=0;n<ud.keys.length;n++){ const p=ud.keys[n].split(","), ci=+p[0]*state.D+ +p[1], k=ud.kind;
+      if(overlay==="heat"&&S&&TINTK.has(k)){ const c=heatRGB(S.heat[ci]); col.setRGB(c[0],c[1],c[2]); }
+      else if(overlay==="flux"&&S&&TINTK.has(k)) col.copy(WHITE).lerp(ACC,Math.sqrt(Math.min(1,S.lastIn[ci]/FMAX))*0.92);
+      else if(overlay==="neut"&&S&&TINTK.has(k)) col.copy(WHITE).lerp(STEAMC,Math.sqrt(Math.min(1,cellsOut(ci)/NMAX))*0.92);
+      else if((k==="fuelch"||k==="fuelrod")&&state.rodMap[ci]>=0) col.set(RODS[state.rodMap[ci]][14]);
+      else col.copy(WHITE);
+      mesh.setColorAt(n,col); }
+    mesh.instanceColor.needsUpdate=true; } }
+// control rods: insertion (1−level)·H inside the column (visible in cutaway), lifted shaft + drive above the lid
+function rebuildRods(){
+  if(rodIn){ rodIn.dispose(); rodOut.dispose(); rodHead.dispose(); rodIn=rodOut=rodHead=null; }
+  if(rodGroup){ root.remove(rodGroup); rodGroup=null; }
+  if(!renderer||!ctrlCells.length) return;
+  rodGroup=new THREE.Group();
+  rodIn=new THREE.InstancedMesh(CYLG,mat("ctrlrod"),ctrlCells.length);
+  rodOut=new THREE.InstancedMesh(CYLG,mat("ctrlsteel"),ctrlCells.length);
+  rodHead=new THREE.InstancedMesh(BOXG,mat("ctrlhead"),ctrlCells.length);
+  rodGroup.add(rodIn,rodOut,rodHead); root.add(rodGroup); updateRods(rodLevel); }
+function updateRods(lv){
+  if(!renderer||!rodIn) return; const H=shapeH, lidTop=H+1.3;
+  for(let c=0;c<ctrlCells.length;c++){ const x=ctrlCells[c][0], z=ctrlCells[c][1], px=x-state.W/2+0.5, pz=z-state.D/2+0.5;
+    const hin=(1-lv)*H; m4.makeTranslation(px,H+1-hin/2,pz); m4.scale(new THREE.Vector3(0.62,hin,0.62)); rodIn.setMatrixAt(c,m4);
+    const hout=lv*(H+1.6); m4.makeTranslation(px,lidTop+hout/2,pz); m4.scale(new THREE.Vector3(0.24,hout,0.24)); rodOut.setMatrixAt(c,m4);
+    m4.makeTranslation(px,lidTop+hout+0.17,pz); m4.scale(new THREE.Vector3(0.42,0.34,0.42)); rodHead.setMatrixAt(c,m4); }
+  rodIn.instanceMatrix.needsUpdate=true; rodOut.instanceMatrix.needsUpdate=true; rodHead.instanceMatrix.needsUpdate=true; }
+// playhead control-rod level: steady at the slider, or falling at the mod's 0.00277/t from the AZ-5 tick
+function levelAt(t){ const c0=state.level/100; if(state.az5At==null||t<=state.az5At) return c0;
+  return Math.max(0,c0-0.00277*(+cfg.controlSpeed)*(t-state.az5At)); }
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(){
+  if(!renderer) return;
+  const H=Math.round(+cfg.columnHeight), shape=`${state.W}|${state.D}|${H}`, map=blockMap();
+  shapeH=H; ctrlCells=[]; for(let x=0;x<state.W;x++)for(let z=0;z<state.D;z++) if(state.cells[x*state.D+z]===3) ctrlCells.push([x,z]);
+  clearSwaps();
+  if(!shownMap||shape!==shownShape){
+    buildInstanced(map); buildBottom=-0.5; buildTop=H+2.7; buildStart=performance.now();
+    const g=framing();
+    if(!shownShape){ orbit.target={x:g.x,y:g.y,z:g.z}; orbit.radius=g.r; orbit.goal=null; } else orbit.goal={...g};
+    shownMap=map; shownShape=shape; }
+  else {
+    const removed=[], added=[];
+    for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+    for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+    shownMap=map;
+    if(!removed.length&&!added.length){ }
+    else if(reduce||removed.length+added.length>400) buildInstanced(map);
+    else {
+      buildInstanced(map,new Set(added.map(a=>a[0])));
+      swapGroup=new THREE.Group(); root.add(swapGroup);
+      const now=performance.now(), show=k=>()=>LIDK.has(k)?lidsOn:true;
+      const mk=(k,key)=>{ const m=new THREE.Mesh(CYLK.has(k)?CYLG:BOXG,mat(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); const s=SC[k]; if(s) m.scale.set(s[0],s[1],s[2]); return m; };
+      for(const [key,k] of removed){ const m=mk(k,key); swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,base:m.scale.toArray(),show:show(k)}); }
+      const ys=added.map(([key])=>posOf(key)[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(500,(y1-y0)*45); let end=now;
+      for(const [key,k] of added){ const m=mk(k,key); m.visible=false; const t0=now+140+(y1>y0?((m.position.y-y0)/(y1-y0))*span:0); end=Math.max(end,t0+240);
+        swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:240,y:m.position.y,base:m.scale.toArray(),show:show(k)}); }
+      settleTimer=setTimeout(()=>{ buildInstanced(shownMap); rebuildRods(); tint3D(); clearSwaps(); },end-now+40); } }
+  rebuildRods(); tint3D(); }
+const Mesh3=k=>new THREE.Mesh(CYLK.has(k)?CYLG:BOXG,mat(k));
+
+/* ================= UI ================= */
+const core=$("core"); let overlay="off", painting=false, S=null, ph=0, playing=false, playT=0;
+function cellPx(){ return Math.max(10,Math.min(30,Math.floor(430/Math.max(state.W,state.D)))); }
+function heatColor(q){ // 20..1500 HE ramp: dark → accent → red
+  const t=Math.max(0,Math.min(1,(q-20)/1480));
+  const r=Math.round(30+225*t), g=Math.round(40+120*(t<.5?t*2:1-(t-.5)*2)*0.9+60*t), b=Math.round(50-30*t);
+  return `rgb(${r},${g},${b})`; }
+function drawCore(){
+  const W=state.W, D=state.D, p=cellPx(), dpr=Math.min(2,devicePixelRatio||1);
+  core.width=(W*p+2)*dpr; core.height=(D*p+2)*dpr; core.style.width=(W*p+2)+"px"; core.style.height=(D*p+2)+"px";
+  const g=core.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.imageSmoothingEnabled=false;
+  g.fillStyle="#0F1417"; g.fillRect(0,0,W*p+2,D*p+2);
+  let fMax=1, nMax=1;
+  if(S) for(let i=0;i<W*D;i++){ if(S.lastIn[i]>fMax) fMax=S.lastIn[i]; const q=cellsOut(i); if(q>nMax) nMax=q; }
+  for(let x=0;x<W;x++)for(let z=0;z<D;z++){
+    const i=x*D+z, X=1+x*p, Z=1+z*p, ty=state.cells[i];
+    if(ty===0){ g.fillStyle="#1C2226"; g.fillRect(X,Z,p-1,p-1); }
+    else{
+      g.fillStyle=ty===2&&state.rodMap[i]>=0?RODS[state.rodMap[i]][14]:TYPES[ty][1];
+      g.fillRect(X,Z,p-1,p-1);
+      if(ty===2&&state.rodMap[i]>=0){ // nType dot (top-left) / rType dot (top-right): fast = orange, slow = blue, any = green
+        const r=RODS[state.rodMap[i]];
+        g.fillStyle=r[10]==="FAST"?"#F08A5D":r[10]==="ANY"?"#5CC48A":"#7FAEF0"; g.fillRect(X+1,Z+1,3,3);
+        g.fillStyle=r[11]==="FAST"?"#F08A5D":"#7FAEF0"; g.fillRect(X+p-5,Z+1,3,3);
+      }
+      if(ty===3&&S){ const lv=Math.round((S.ctrlLevel)*100); g.fillStyle="#1A1E21"; g.fillRect(X+2,Z+p-4,p-5,Math.max(1,(p-6)*lv/100)); }
+    }
+    if(S&&overlay!=="off"){
+      let v=0;
+      if(overlay==="heat") v=Math.max(0,Math.min(1,(S.heat[i]-20)/1480));
+      else if(overlay==="flux") v=Math.pow(S.lastIn[i]/fMax,0.5);
+      else v=Math.pow(cellsOut(i)/nMax,0.5);
+      if(v>0){ g.globalAlpha=0.18+0.72*v;
+        g.fillStyle=overlay==="heat"?heatColor(S.heat[i]):overlay==="flux"?"#E2D03A":"#7FAEF0";
+        g.fillRect(X,Z,p-1,p-1); g.globalAlpha=1; }
+    }
+  }
+}
+function cellsOut(i){ // emitted neutrons: last tick's rod output is not kept; use lastIn as proxy for non-fuel, core rod burn proxy:
+  if(!S||state.cells[i]!==2||state.rodMap[i]<0) return 0;
+  const p=RODS[state.rodMap[i]], e=Math.max(0,Math.min(1,S.yld[i]/p[2]));
+  const f=S.lastIn[i]*(p[10]==="SLOW"?1:p[10]==="FAST"?1:1); // approximation of emission for the neutrons overlay
+  return f+ (S.heat[i]>S.lastIn[i]?S.lastIn[i]*0.4:0) + (p[4]||0)*e;
+}
+const tip=$("tip");
+function tipAt(i,e){
+  const ty=state.cells[i], nm=TYPES[ty][0];
+  let txt=nm;
+  if(S){
+    txt+=`\nheat ${fmt(S.heat[i])} HE · flux in ${big(S.lastIn[i])}`;
+    if(ty===2&&state.rodMap[i]>=0){ const r=RODS[state.rodMap[i]];
+      txt+=`\n${r[1]}: core ${fmt(S.core[i])} · hull ${fmt(S.hull[i])} HE\nxenon ${fmt(S.xe[i],1)} % · yield left ${fmt(100*S.yld[i]/r[2],1)} %`; }
+    if(ty===3) txt+=`\nlevel ${fmt(S.ctrlLevel*100)} % (stream ×${fmt(S.ctrlLevel,3)})`;
+  }
+  tip.textContent=txt; tip.hidden=false;
+  const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY-h-8;
+  if(x+w>innerWidth-8) x=e.clientX-w-14; if(y<8) y=e.clientY+18;
+  tip.style.left=x+"px"; tip.style.top=y+"px";
+}
+core.addEventListener("pointerdown",e=>{ painting=true; core.setPointerCapture(e.pointerId); paintAt(e); });
+core.addEventListener("pointermove",e=>{ if(painting) paintAt(e); else { const i=cellAt(e); if(i>=0) tipAt(i,e); else tip.hidden=true; } });
+core.addEventListener("pointerup",()=>{ painting=false; });
+core.addEventListener("pointercancel",()=>{ painting=false; });
+core.addEventListener("pointerleave",()=>{ tip.hidden=true; });
+function cellAt(e){ const r=core.getBoundingClientRect(), p=cellPx();
+  const x=Math.floor((e.clientX-r.left-1)/p), z=Math.floor((e.clientY-r.top-1)/p);
+  if(x<0||z<0||x>=state.W||z>=state.D) return -1; return x*state.D+z; }
+function paintAt(e){
+  const i=cellAt(e); if(i<0) return;
+  const v=state.brush;
+  const rod=v===2?(RODS.findIndex(r=>r[0]===state.rod)):-1;
+  if(state.cells[i]===v&&(v!==2||state.rodMap[i]===rod)) return;
+  state.cells[i]=v; state.rodMap[i]=rod; drawCore(); schedule();
+}
+
+/* results, notes, charts */
+function renderResults(){
+  if(!S) return;
+  const molten=S.meltdownAt!=null;
+  $("hudMain").innerHTML=molten?"Meltdown":`${big(S.steam)} <small>mB/t ${STEAM_NAMES[state.steam]}</small>`;
+  $("hudSub").textContent=`${fmt(ph)} t · hottest ${fmt(S.heatMax)} HE · flux ${big(S.flux)} · rods ${fmt(S.ctrlLevel*100)} %`;
+  const worth=S.meltdownAt!=null?null:runScanPoint(0);
+  const cells=[["Steam out",molten?"—":`${big(S.steam)} <small>mB/t ${STEAM_NAMES[state.steam]} (${S.nBoil} boiler${S.nBoil===1?"":"s"})</small>`,"hero"]];
+  cells.push(
+    ["Total flux",`${big(S.flux)} <small>Σ rod flux, console-style (Console 97)</small>`],
+    ...(S.nBoil>0?[["Water in",molten?"—":`${big(S.water)} <small>mB/t the ${S.nBoil} boiler${S.nBoil===1?"":"s"} drink at steady state${+state.feed*S.nBoil<S.water*1.02?" — the feed is short":""}</small>`]]:[]),
+    ["Column heat",`${fmt(S.heatAvg)} <small>HE avg · ${fmt(S.heatMax)} HE max · melts at ${fmt(+cfg.columnBaseMax)}</small>`],
+    ["Hottest rod",`${fmt(S.coreMax)} <small>HE core · ${fmt(S.hullMax)} HE hull${S.hullHazard?` · over the ${fmt(S.hullLimit)} rod-pull limit!`:""}</small>`],
+    ["Xenon poison",`${fmt(S.xenonMax,1)} <small>% max · ${S.xenonMax>90?"pinned — the core is choking":S.xenonMax>50?"heavy":"light"}</small>`],
+    ["Burn-up",`${fmt(S.burn*100,2)} <small>% of fresh yield burned</small>`],
+    ["Neutron escape",`${big(S.rad)} <small>rad/t at lidless gaps + field edges (flux×0.05)</small>`],
+    ["Meltdown",molten?`at ${secs(S.meltdownAt)} <small>column ${Math.floor(S.meltCell/state.D)+1},${S.meltCell%state.D+1} — corium + FUEL debris</small>`:`stable <small>no column over ${fmt(+cfg.columnBaseMax)} HE</small>`],
+    ["Control rod worth",worth==null?"—":`${big(Math.max(0,S.steam-worth))} <small>mB/t between level ${fmt(state.level)} and 0</small>`]);
+  if(S.nHeat>0) cells.push(["Hot coolant",`${big(S.hotCool)} <small>mB/t from ${S.nHeat} heater${S.nHeat===1?"":"s"}</small>`]);
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(S.nf===0) n.push(["warn","No fueled columns — paint a Fuel column with a rod selected. Fuel with no neutron source (selfRate 0) stays dead until a Ra-226/Be, Po-210/Be or AM rod seeds the chain."]);
+  if(molten) n.push(["bad",`Meltdown at ${secs(S.meltdownAt)}: column ${Math.floor(S.meltCell/state.D)+1},${S.meltCell%state.D+1} passes ${fmt(+cfg.columnBaseMax)} HE. The whole connected net goes (TileEntityRBMKBase.meltdown) — melting fuel drops a corium stack plus FUEL debris. Add water, push rods in, put moderators between fast rods, or run hotter steam so boilers start boiling higher.`]);
+  else if(S.heatMax>0.8*+cfg.columnBaseMax) n.push(["warn",`Hottest column at ${fmt(100*S.heatMax/(+cfg.columnBaseMax))}% of the limit. The RBMK has no emergency cooling beyond ${fmt(+cfg.coolerGelMb)} mB/t per cooler — keep margin.`]);
+  if(S.nBoil>0&&S.steam===0&&!molten&&S.nf>0) n.push(["bad","The boilers make nothing: no water feed, or no column above the "+fmt(STEAM_CAP[state.steam])+" HE steam cap. Water-starved boilers are how RBMK cores cook — heat input keeps going, cooling stops."]);
+  if(S.nf>0&&S.steam===0&&S.nBoil===0) n.push(["warn","No boiler columns: the core makes heat with nothing to sell. Passive cooling alone sheds "+fmt(+cfg.innerCooling)+"–"+fmt(+cfg.passiveCooling)+" HE/t per column."]);
+  if(S.rad>0&&S.flux>0) n.push(["",`${big(S.rad)} rad/t escapes: every neutron stream crossing a gap or leaving the field irradiates at flux×0.05. Ring the core with absorbers (eff 1 stops streams dead) to reclaim it.`]);
+  if(S.xenonMax>90&&+cfg.xenon>0) n.push(["warn",`Xenon pinned at ${fmt(S.xenonMax,0)} % — incoming flux is cut to a trickle (×(1−x/100)). Raise flux: the poison burns by in²/50 and a strong core burns its own shadow away.`]);
+  if(state.level<100&&S.nf>0) n.push(["good",`Control rods at ${fmt(S.ctrlLevel*100)} % pass streams at ×${fmt(S.ctrlLevel,3)} per control column crossed (getMult = level).`]);
+  if(S.hullHazard) n.push(["bad",`Rod hulls sit at ${fmt(S.hullMax)} HE — over the ${fmt(S.hullLimit)} HE rod-pull limit: an autoloader or player pulling a rod melts that column (TileEntityRBMKRod 98-107). Fork presets raise the limit to 1,500.`]);
+  if(!molten&&S.steam>0&&S.nf>0) n.push(["good",`Steady ${big(S.steam)} mB/t of ${STEAM_NAMES[state.steam]}: ${fmt(S.flux)} flux, ${fmt(S.heatAvg)} HE average column. The graph is the mod's own tick loop.`]);
+  $("notes").innerHTML=n.filter(x=>x.length).map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+  drawChart(); drawChart2();
+}
+function drawChart(){
+  const c=$("chart"), dpr=Math.min(2,devicePixelRatio||1), w=c.clientWidth, h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  if(!S||!S.hist.length) return;
+  const cs=getComputedStyle(document.documentElement), v=k=>cs.getPropertyValue(k).trim();
+  const muted=v("--muted"), line=v("--line"), heatC=v("--heat"), steamC=v("--steam"), bad=v("--bad"), acc=v("--accent"), ink=v("--ink"), mono=v("--font-mono");
+  const H=S.hist, tMax=Math.max(20,H[H.length-1].t), yS=Math.max(100,...H.map(p=>p.s))*1.08, yH=Math.max(900,...H.map(p=>p.h))*1.08;
+  const pad={l:46,r:48,t:12,b:22}, X=t=>pad.l+t/tMax*(w-pad.l-pad.r), Ys=x=>pad.t+(1-x/yS)*(h-pad.t-pad.b), Yh=x=>pad.t+(1-x/yH)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.lineWidth=1; g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=pad.t+(1-f)*(h-pad.t-pad.b); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillStyle=steamC; g.fillText(big(yS/1.08*f),2,y+4); g.fillStyle=heatC; g.textAlign="right"; g.fillText(fmt(yH/1.08*f),w-2,y+4); g.textAlign="left"; }
+  g.fillStyle=bad; const lim=+cfg.columnBaseMax; if(lim<yH){ g.strokeStyle=bad; g.setLineDash([4,3]); g.beginPath(); g.moveTo(pad.l,Yh(lim)+.5); g.lineTo(w-pad.r,Yh(lim)+.5); g.stroke(); g.setLineDash([]); g.fillText("melt "+fmt(lim),pad.l+4,Yh(lim)-3); }
+  g.fillStyle=muted; const tLbl=tMax<=2000?`${fmt(tMax/20)} s`:`${fmt(tMax/1200)} min`; g.fillText(tLbl,w-pad.r-g.measureText(tLbl).width,h-5);
+  g.beginPath(); H.forEach((p,i)=>i?g.lineTo(X(p.t),Ys(p.s)):g.moveTo(X(p.t),Ys(p.s))); g.strokeStyle=steamC; g.lineWidth=2; g.stroke();
+  g.beginPath(); H.forEach((p,i)=>i?g.lineTo(X(p.t),Yh(p.h)):g.moveTo(X(p.t),Yh(p.h))); g.strokeStyle=heatC; g.lineWidth=2; g.stroke();
+  const yF=x=>pad.t+(1-x/Math.max(10,...H.map(p=>p.f))*0.9)*(h-pad.t-pad.b);
+  g.beginPath(); H.forEach((p,i)=>i?g.lineTo(X(p.t),yF(p.f)):g.moveTo(X(p.t),yF(p.f))); g.strokeStyle=acc; g.lineWidth=1.2; g.stroke();
+  if(state.az5At!=null&&state.az5At<tMax){ const x=X(state.az5At); g.strokeStyle=ink; g.setLineDash([5,3]); g.beginPath(); g.moveTo(x,pad.t); g.lineTo(x,h-pad.b); g.stroke(); g.setLineDash([]);
+    g.fillStyle=ink; g.fillText("AZ-5",Math.min(w-pad.r-30,x+3),pad.t+10); }
+  if(state.feedStop!=null&&state.feedStop*20<tMax){ const x=X(state.feedStop*20); g.strokeStyle=steamC; g.setLineDash([2,3]); g.beginPath(); g.moveTo(x,pad.t); g.lineTo(x,h-pad.b); g.stroke(); g.setLineDash([]);
+    g.fillStyle=steamC; g.fillText("water off",Math.min(w-pad.r-52,x+3),pad.t+34); }
+  if(S.meltdownAt!=null){ const x=X(S.meltdownAt); g.strokeStyle=bad; g.beginPath(); g.moveTo(x,pad.t); g.lineTo(x,h-pad.b); g.stroke();
+    g.fillStyle=bad; g.fillText("melt",Math.min(w-pad.r-26,x+3),pad.t+22); }
+  const px=X(Math.min(ph,tMax)); g.fillStyle="rgba(255,255,255,.25)"; g.fillRect(px,pad.t,1,h-pad.t-pad.b);
+}
+function drawChart2(){
+  const c=$("chart2"), dpr=Math.min(2,devicePixelRatio||1), w=c.clientWidth, h=c.clientHeight; if(!w) return;
+  c.width=w*dpr; c.height=h*dpr; const g=c.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.clearRect(0,0,w,h);
+  if(!SCAN.length) return;
+  const cs=getComputedStyle(document.documentElement), v=k=>cs.getPropertyValue(k).trim();
+  const muted=v("--muted"), line=v("--line"), steamC=v("--steam"), acc=v("--accent"), mono=v("--font-mono");
+  const yS=Math.max(10,...SCAN.map(p=>p.s))*1.08, pad={l:46,r:14,t:12,b:22};
+  const X=lv=>pad.l+lv/100*(w-pad.l-pad.r), Ys=x=>pad.t+(1-x/yS)*(h-pad.t-pad.b);
+  g.font="11px "+mono; g.strokeStyle=line; g.fillStyle=muted;
+  for(const f of [0,0.5,1]){ const y=pad.t+(1-f)*(h-pad.t-pad.b); g.beginPath(); g.moveTo(pad.l,y+.5); g.lineTo(w-pad.r,y+.5); g.stroke();
+    g.fillText(big(yS*f),2,y+4); }
+  for(const lv of [0,25,50,75,100]) g.fillText(lv+"%",Math.min(w-24,X(lv)-8),h-5);
+  g.beginPath(); SCAN.forEach((p,i)=>i?g.lineTo(X(p.lv),Ys(p.s)):g.moveTo(X(p.lv),Ys(p.s))); g.strokeStyle=steamC; g.lineWidth=2; g.stroke();
+  for(const p of SCAN){ g.fillStyle=steamC; g.beginPath(); g.arc(X(p.lv),Ys(p.s),2.4,0,7); g.fill(); }
+  g.fillStyle=acc; g.fillText("current "+fmt(state.level)+"%",Math.min(w-90,Math.max(pad.l,X(state.level)-30)),pad.t+10);
+  g.strokeStyle=acc; g.beginPath(); g.moveTo(X(state.level),pad.t); g.lineTo(X(state.level),h-pad.b); g.stroke();
+}
+/* ================= wiring ================= */
+function renderPresetButtons(){
+  const pk=NTM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!pk); $("pAtmLabel").textContent=pk?pk[1]:"Fork";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of NTM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+
+function renderCfg(){
+  $("cfgHint").innerHTML=`dials are <b>game rules</b> (no toml): flux range <b>${cfg.fluxRange}</b> · column <b>${cfg.columnHeight}</b> · mod/abs/refl eff <b>${cfg.moderatorEfficiency}/${cfg.absorberEfficiency}/${cfg.reflectorEfficiency}</b> · meltdowns <b>${+cfg.meltdowns?"on":"off"}</b> · xenon <b>${+cfg.xenon?"on":"off"}</b> · rod-pull limit <b>${fmt(+cfg.rodHullLimit)}</b> HE`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label,min,max,kind] of CFG_SPEC){
+    const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.id="cfg-"+k;
+    if(kind==="text"){ i.type="text"; i.spellcheck=false; } else { i.type="number"; i.min=min; i.max=max; i.step="any"; }
+    i.onchange=()=>{
+      if(kind==="text"){ const map=k.startsWith("func_")?FUNC:DEPF;
+        let val=String(i.value).trim().toUpperCase(); if(map===DEPF) val=val.replace(/_SLOPE$/,"");
+        if(!(val in map)){ i.value=cfg[k]; return; } cfg[k]=val; }
+      else { let v=+i.value; if(!Number.isFinite(v)){ i.value=cfg[k]; return; }
+        v=Math.min(+max,Math.max(+min,v)); if(kind==="int") v=Math.round(v); cfg[k]=v; }
+      cfgPreset="custom"; saveCfg(); update(); };
+    g.append(l,i);
+  }
+  for(const [k] of CFG_SPEC) $("cfg-"+k).value=cfg[k];
+}
+function renderPal(){
+  const p=$("pal");
+  if(!p.childElementCount) TYPES.forEach(([nm,color],k)=>{ const b=document.createElement("button"); b.type="button"; b.dataset.k=k;
+    const i=document.createElement("i"); i.style.background=color; b.append(i,nm); b.onclick=()=>{ state.brush=k; renderPal(); }; p.append(b); });
+  for(const b of p.children) b.setAttribute("aria-pressed",+b.dataset.k===state.brush);
+  const sel=$("rodSel"); if(!sel.childElementCount) for(const r of RODS){ const o=document.createElement("option"); o.value=r[0]; o.textContent=r[1]; sel.append(o); }
+  sel.value=state.rod;
+}
+function syncInputs(){
+  $("gridW").value=state.W; $("gridWN").value=state.W; $("gridD").value=state.D; $("gridDN").value=state.D;
+  $("colH").value=Math.round(+cfg.columnHeight); $("colHN").value=Math.round(+cfg.columnHeight);
+  $("feed").value=state.feed; $("feedN").value=state.feed; $("feedStopN").value=state.feedStop==null?"":state.feedStop; $("gel").value=state.gel; $("gelN").value=state.gel;
+  $("level").value=state.level; $("levelN").value=state.level; $("steamSel").value=state.steam;
+}
+const bind=(id,key,a,b)=>{ const f=v=>{ state[key]=Math.min(b,Math.max(a,Math.round(+v||0))); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
+bind("feed","feed",0,2000);
+$("feedStopN").oninput=()=>{ const v=$("feedStopN").value.trim(); state.feedStop=v===""||isNaN(+v)?null:Math.max(0,Math.min(1000,Math.round(+v))); schedule(); }; bind("gel","gel",0,1000); bind("level","level",0,100);
+const setDim=(key,v)=>{ const nw=Math.min(15,Math.max(3,Math.round(+v||3))); if(nw===state[key]) return;
+  const r=resizeCells(key==="W"?nw:state.W, key==="D"?nw:state.D, state.cells, state.rodMap, state.W, state.D);
+  state[key]=nw; state.cells=r.c; state.rodMap=r.r; update(); };
+$("gridW").oninput=e=>setDim("W",e.target.value); $("gridWN").onchange=e=>setDim("W",e.target.value);
+$("gridD").oninput=e=>setDim("D",e.target.value); $("gridDN").onchange=e=>setDim("D",e.target.value);
+const setH=v=>{ const nv=Math.min(16,Math.max(2,Math.round(+v||4))); if(nv===Math.round(+cfg.columnHeight)) return; cfg.columnHeight=nv; cfgPreset="custom"; saveCfg(); update(); };
+$("colH").oninput=e=>setH(e.target.value); $("colHN").onchange=e=>setH(e.target.value);
+$("steamSel").onchange=e=>{ state.steam=Math.min(3,Math.max(0,+e.target.value|0)); update(); };
+$("rodSel").onchange=e=>{ state.rod=e.target.value; const k=RODS.findIndex(r=>r[0]===state.rod);
+  for(let i=0;i<state.cells.length;i++) if(state.cells[i]===2) state.rodMap[i]=k; update(); };
+$("gFill").onclick=()=>{ const rod=state.brush===2?RODS.findIndex(r=>r[0]===state.rod):-1;
+  state.cells.fill(state.brush); state.rodMap.fill(rod); update(); };
+$("gClear").onclick=()=>{ state.cells.fill(0); state.rodMap.fill(-1); update(); };
+for(const [id,key] of [["ovOff","off"],["ovHeat","heat"],["ovFlux","flux"],["ovNeut","neut"]])
+  $(id).onclick=()=>{ overlay=key; for(const b of $("ovSeg").querySelectorAll("button")) b.setAttribute("aria-pressed",b.id===id); drawCore(); tint3D(); };
+$("tClip").onclick=e=>{ clipOn=!clipOn; e.target.setAttribute("aria-pressed",clipOn); if(cut) cut.constant=clipOn?0:999; };
+$("tLids").onclick=e=>{ lidsOn=!lidsOn; e.target.setAttribute("aria-pressed",lidsOn); if(groups.lids) groups.lids.visible=lidsOn; };
+
+/* run loop: the sim runs in full up front; Run streams the playhead 10 ticks per frame over the recorded history */
+let SCAN=[];
+function scanAt(lv){ const S2=simulate({...state,level:lv,az5At:null,maxTicks:1600},cfg); return S2.meltdownAt!=null?0:S2.steam; }
+function buildScan(){ SCAN=[]; for(let lv=0;lv<=100;lv+=5) SCAN.push({lv,s:scanAt(lv)}); }
+function runScanPoint(lv){ const q=Math.round(lv/5)*5; const p=SCAN.find(o=>o.lv===q); return p?p.s:scanAt(q); }
+let timer=0;
+function schedule(){ clearTimeout(timer); timer=setTimeout(run,60); share.render(); }
+function run(){ S=simulate(state,cfg); buildScan(); ph=0; rodLevel=state.level/100;
+  FMAX=1; NMAX=1; for(let i=0;i<state.cells.length;i++){ if(S.lastIn[i]>FMAX) FMAX=S.lastIn[i]; const q=cellsOut(i); if(q>NMAX) NMAX=q; }
+  drawCore(); renderResults(); rebuild3D(); }
+function update(){ renderPresetButtons(); renderCfg(); renderPal(); syncInputs(); run(); }
+function lastT(){ return S&&S.hist.length?S.hist[S.hist.length-1].t:0; }
+$("btnRun").onclick=()=>{ playing=!playing; if(playing&&ph>=lastT()) ph=0;
+  $("btnRun").setAttribute("aria-pressed",playing); $("btnRun").textContent=playing?"⏸ Pause":"▶ Run (10 t/frame)"; };
+$("btnScram").onclick=()=>{ state.az5At=Math.max(1,Math.floor(ph)); schedule(); };
+$("btnAz5").onclick=()=>{ state.az5At=1; ph=0; schedule(); };
+let lastFrameT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastFrameT)/1000); lastFrameT=t;
+  if(playing){ ph+=10; if(ph>=lastT()){ ph=lastT(); playing=false; $("btnRun").setAttribute("aria-pressed","false"); $("btnRun").textContent="▶ Run (10 t/frame)"; }
+    drawChart();
+    if(S){ const i=histAt(ph); rodLevel=levelAt(ph);
+      $("hudSub").textContent=`${fmt(ph)} t · steam ${big(i?i.s:S.steam)} · hottest ${fmt(i?i.h:S.heatMax)} HE · flux ${big(i?i.f:S.flux)} · rods ${fmt(rodLevel*100)} %`;
+      updateRods(rodLevel); } }
+  if(renderer){
+    if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce) orbit.theta+=dt*0.1; }
+    if(orbit.goal){ const g=orbit.goal, e=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+      for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*e; left+=Math.abs(g[k]-obj[key]); }
+      if(left<0.01) orbit.goal=null; }
+    const o=orbit.target;
+    camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+    const p=reduce?1:Math.min(1,(t-buildStart)/1100); clip.constant=buildBottom+(buildTop-buildBottom)*(1-Math.pow(1-p,3));
+    for(let i=anims.length-1;i>=0;i--){ const b=anims[i]; if(t<b.t0){ b.mesh.visible=false; continue; }
+      const q=Math.min(1,(t-b.t0)/b.dur), s0=b.base; b.mesh.visible=b.show();
+      if(b.kind==="in"){ const k=1-Math.pow(1-q,3); b.mesh.position.y=b.y+(1-k)*2.5; b.mesh.scale.set(s0[0]*(0.4+0.6*k),s0[1]*(0.4+0.6*k),s0[2]*(0.4+0.6*k)); }
+      else b.mesh.scale.set(s0[0]*Math.max(0.001,1-q),s0[1]*Math.max(0.001,1-q),s0[2]*Math.max(0.001,1-q));
+      if(q>=1){ if(b.kind==="out"&&b.mesh.parent) b.mesh.parent.remove(b.mesh); anims.splice(i,1); } }
+    renderer.render(scene,camera); }
+  requestAnimationFrame(frame);
+}
+function histAt(t){ if(!S||!S.hist.length) return null; const H=S.hist; let lo=0,hi=H.length-1;
+  while(lo<hi){ const m=(lo+hi)>>1; if(H[m].t<t) lo=m+1; else hi=m; } return H[lo]; }
+addEventListener("resize",()=>{ drawChart(); drawChart2(); });
+
+/* design code (mdr2): mdr2.<w>.<d>.<H>.<cells b64 4 bits/cell>.<rods b64 6 bits per fuel cell>.<level>.<steamtype>.<feed>.<gel>[.<water stops at, s>]
+   cells: 0 air gap, 1 graphite, 2 fuel, 3 control, 4 absorber, 5 reflector, 6 boiler, 7 cooler, 8 heater (4 bits, LSB-first).
+   rods: fuel cells in index order, rod palette index + 1 (1..33), 6 bits. H = column height dial (2..16). */
+function encodeDesign(){
+  const rodVals=[]; for(let i=0;i<state.cells.length;i++) if(state.cells[i]===2) rodVals.push(state.rodMap[i]+1);
+  return ["mdr2",state.W,state.D,Math.round(+cfg.columnHeight),
+    mdShare.b64u.enc(mdShare.packBits(Array.from(state.cells),4)), mdShare.b64u.enc(mdShare.packBits(rodVals,6)),
+    state.level,state.steam,state.feed,state.gel,...(state.feedStop!=null?[state.feedStop]:[])].join(".");
+}
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if((p.length!==10&&p.length!==11)||p[0]!=="mdr2") return null;
+  const int=(i,a,b)=>{ const v=/^-?\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const W=int(1,3,15), D=int(2,3,15), H=int(3,2,16);
+  let cellsB,rodB; try{ cellsB=mdShare.b64u.dec(p[4]); rodB=mdShare.b64u.dec(p[5]); }catch(e){ return null; }
+  const codes=mdShare.unpackBits(cellsB,W*D,4); if(!codes||codes.some(v=>v>8)) return null;
+  const nf=codes.filter(v=>v===2).length;
+  const rodVals=mdShare.unpackBits(rodB,nf,6); if(!rodVals||rodVals.some(v=>v<1||v>RODS.length)) return null;
+  const level=int(6,0,100), steam=int(7,0,3), feed=int(8,0,5000), gel=int(9,0,5000);
+  const feedStop=p.length===11?int(10,0,1000):null;   // optional: "Water stops at" (s)
+  if([W,D,H,level,steam,feed,gel,feedStop].some(Number.isNaN)) return null;
+  const cells=Uint8Array.from(codes), rodMap=new Int16Array(W*D).fill(-1);
+  let k=0; for(let i=0;i<W*D;i++) if(codes[i]===2) rodMap[i]=rodVals[k++]-1;
+  return {W,D,H,cells,rodMap,level,steam,feed,gel,feedStop};
+}
+function applyDesign(d){
+  state.W=d.W; state.D=d.D; state.cells=d.cells; state.rodMap=d.rodMap;
+  state.level=d.level; state.steam=d.steam; state.feed=d.feed; state.feedStop=d.feedStop??null; state.gel=d.gel; state.az5At=null;
+  cfg.columnHeight=d.H; update();
+}
+const share=mdShare({prefix:"mdr2", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:applyDesign, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); },
+  loaded:d=>`Loaded a ${d.W}×${d.D} core with ${Array.from(d.rodMap).filter(v=>v>=0).length} fueled columns.`});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+defaultLayout();
+renderPresetButtons();
+initGL();
+if(share.atLoad.design) applyDesign(share.atLoad.design); else update();
+requestAnimationFrame(frame);
+share.live();
+})();
+</script>
+</body>
+</html>
