@@ -31,7 +31,8 @@ TOOLS = {
     # air-cooled, so the card shows the reactor and its lasers rather than a turbine three times its size
     "fusion": "/tools/mekanism/fusion-reactor-calculator/#d=mdz1.a.98.5.17.17.18.14.28.4.345.0",
     "tank": "/tools/mekanism/dynamic-tank-calculator/",
-    "ore": "/tools/mekanism/ore-processing-calculator/",
+    # the page opens on a bare 2x line; the card shows the full 5x line with Ultimate factories (/mek/5x, mod defaults)
+    "ore": "/tools/mekanism/ore-processing-calculator/#d=mdo1.5.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp",
     "airship": "/tools/create-aeronautics/airship-calculator/",
     "cpu": "/tools/applied-energistics-2/crafting-cpu-calculator/",
     "quantum": "/tools/applied-energistics-2/quantum-computer-calculator/",

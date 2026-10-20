@@ -523,10 +523,10 @@ const MACHINE_PRESETS={
   full:{name:"Speed + energy",make:id=>UPG(0,MACH[id].kind==="rate"?4:8,8,8)},
   factory:{name:"Ultimate factories",make:id=>UPG(MACH[id].fac?4:0,MACH[id].kind==="rate"?4:8,8,8)},
 };
-const state={tier:5,metal:"i",mode:"m",rate:60,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
-  preset:"factory",st:{},sup:{s:4,e:8,o2:"s",hcl:"p",acid:"p"}};
+const state={tier:2,metal:"i",mode:"m",rate:60,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
+  preset:"bare",st:{},sup:{s:4,e:8,o2:"s",hcl:"p",acid:"p"}};
 const setPreset=k=>{ state.preset=k; for(const id of ORDER) state.st[id]=MACHINE_PRESETS[k].make(id); };
-setPreset("factory");
+setPreset("bare");
 const view3={cables:true,support:true,side:0,guide:false,step:0,mat:"all",curve:"crystal"};
 
 /* ================= the model ================= */
@@ -1261,7 +1261,7 @@ function renderResultsHud(Mo){ const met=METALS[state.metal];
   $("hudMain").innerHTML=`${big(Mo.ingots*3600)} <small>${met.name.toLowerCase()} ingots/hour</small>`;
   $("hudSub").textContent=`Step ${view3.step+1}: ${Mo.t}x · ${pl(Mo.allMachines,"machine")} · ${big(toFE(Mo.J))} FE/t`; }
 
-// start: the 5x line for a minute of Fortune III mining; a design in the link replaces it
+// start: the most basic line, 2x with single machines and no upgrades, for a minute of Fortune III mining; a design in the link replaces it
 if(share.atLoad.design) Object.assign(state,share.atLoad.design);
 initGL(); update(); share.live();
 })();
