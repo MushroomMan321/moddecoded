@@ -129,7 +129,8 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
 .card.isnew{border-left:3px solid var(--accent)}
 .card.hot{border-color:#7A4C2A}
 .card-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.card-h img{width:18px;height:18px;image-rendering:pixelated;border-radius:2px;flex:0 0 18px}
+.sw{display:inline-block;width:16px;height:16px;flex:0 0 16px;border-radius:2px;background:var(--line) 0 0/600% 100% no-repeat;image-rendering:pixelated}
+.card-h .sw{width:18px;height:18px;flex-basis:18px}
 .card-h b{font-size:14px}
 .card-h .n{margin-left:auto;font:400 26px/1 var(--font-readout);color:var(--accent-ink)}
 .tag{font:600 10.5px var(--font-mono);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:0 5px}
@@ -148,7 +149,6 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
 .guide .stepname{font:400 22px/1 var(--font-readout);color:var(--accent-ink)}
 .parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
 .parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
-.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px}
 .parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
 .parts li.add .n{color:var(--good)}
 .guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -418,6 +418,7 @@ power: machine usage × busy slots</pre>
   <footer>
     <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
     <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+    <p>Machine textures are drawn from <a href="https://github.com/mekanism/Mekanism">Mekanism</a>'s own block models and textures, used under the <a href="/img/mekanism/LICENSE">MIT license</a>.</p>
   </footer>
 </div>
 
@@ -748,10 +749,16 @@ const chestTex=face=>tex("chest:"+face,g=>{ plateDraw(g,"chest"+face,"#9C6B30");
 // one 48×16 atlas per block (side | front | top) on a single material; ATLAS_GEO maps each box face onto its tile
 function atlas(key,side,front,top){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=48; c.height=16;
   const g=c.getContext("2d"); g.drawImage(side,0,0); g.drawImage(front,16,0); g.drawImage(top,32,0); return texCache[key]=c; }
-const machineAtlas=(b,f)=>atlas(`atlas:${b}:${f||0}`,machineTex(b,"side",f),machineTex(b,"front",f),machineTex(b,"top",f));
 const chestAtlas=()=>atlas("atlas:chest",chestTex("side"),chestTex("front"),chestTex("top"));
-const swatchCache={};
-function swatch(base,f){ const k=base+":"+(f||0); return swatchCache[k]||(swatchCache[k]=machineTex(base,"front",f).toDataURL()); }
+// Mekanism's own blocks: site/img/mekanism/blocks/<block>.png, six 32 px sides (front, back, left, right, top, bottom of a
+// machine facing south) drawn from the jar's models and textures by scripts/mek-block-tiles.py (MIT, see img/mekanism/LICENSE)
+const blockName=(base,f)=>f&&MACH[base].fac?`${FAC[f].key}_${MACH[base].fac}_factory`:MACH[base].bom;
+const stripUrl=(base,f)=>`/img/mekanism/blocks/${blockName(base,f)}.png`;
+function swatch(base,f){ return stripUrl(base,f); }
+const sw=url=>`<i class="sw" style="background-image:url('${url}')"></i>`;
+// the drawn look-alike in the same six-side layout, used if an image fails to load
+function fallbackStrip(b,f){ const key=`strip:${b}:${f||0}`; if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=96; c.height=16;
+  const g=c.getContext("2d"); ["front","side","side","side","top","side"].forEach((face,i)=>g.drawImage(machineTex(b,face,f),i*16,0)); return texCache[key]=c; }
 
 /* ================= three.js ================= */
 const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -804,6 +811,16 @@ function frame(t){
   renderer.render(scene,camera); requestAnimationFrame(frame);
 }
 const BOX=()=>BOX.g||(BOX.g=new THREE.BoxGeometry(1,1,1));
+// block strips: faces +x (right) → tile 3, −x (left) → 2, +y → 4, −y → 5, +z (front) → 0, −z (back) → 1
+const STRIP_GEO=()=>{ if(STRIP_GEO.g) return STRIP_GEO.g; const g=new THREE.BufferGeometry().copy(new THREE.BoxGeometry(1,1,1)), uv=g.attributes.uv, tile=[3,2,4,5,0,1];
+  for(let f=0;f<6;f++) for(let v=0;v<4;v++){ const i=f*4+v; uv.setX(i,(tile[f]+uv.getX(i))/6); }
+  g.clearGroups(); return STRIP_GEO.g=g; };
+const blockMats={}, loader=()=>blockMats.loader||(blockMats.loader=new THREE.TextureLoader());
+function blockMat(b,f){ const k=blockName(b,f); if(blockMats[k]) return blockMats[k];
+  const m=new THREE.MeshLambertMaterial({alphaTest:0.5});
+  const near=t=>{ t.magFilter=t.minFilter=THREE.NearestFilter; return t; };
+  m.map=near(loader().load(stripUrl(b,f),undefined,undefined,()=>{ m.map=near(new THREE.CanvasTexture(fallbackStrip(b,f))); m.needsUpdate=true; }));
+  return blockMats[k]=m; }
 // BoxGeometry faces in order +x, −x, +y, −y, +z, −z: the front (+z) gets tile 1, the top tile 2, every other face tile 0
 const ATLAS_GEO=()=>{ if(ATLAS_GEO.g) return ATLAS_GEO.g; const g=new THREE.BufferGeometry().copy(new THREE.BoxGeometry(1,1,1)), uv=g.attributes.uv;
   for(let f=0;f<6;f++){ const tile=f===4?1:f===2?2:0; for(let v=0;v<4;v++){ const i=f*4+v; uv.setX(i,(tile+uv.getX(i))/3); } }
@@ -835,7 +852,7 @@ function rebuild3D(Mo,prev){
   const mBuckets={};
   for(const [k,c] of C){ if(c.k!=="m"||!show(c)) continue; const b=baseOf(c.role), key=b+":"+(c.fac||0); (mBuckets[key]=mBuckets[key]||[]).push(c); }
   for(const key in mBuckets){ const [b,f]=key.split(":"), list=mBuckets[key], F=+f;
-    const mesh=new THREE.InstancedMesh(ATLAS_GEO(),mat(machineAtlas(b,F)),list.length);
+    const mesh=new THREE.InstancedMesh(STRIP_GEO(),blockMat(b,F),list.length);
     list.forEach((c,i)=>{ m4.makeTranslation(c.x,c.y,c.z); mesh.setMatrixAt(i,m4); });
     mesh.userData.cells=list; add(mesh); pickables.push(mesh); }
   // chests
@@ -959,7 +976,7 @@ function buildCards(){
   const box=$("cards"); box.innerHTML="";
   for(const id of ORDER){ const m=MACH[id], c=document.createElement("div"); c.className="card"; c.id="card-"+id; c.dataset.id=id;
     const sel=(k,label,n)=>`<label>${label}<select data-k="${k}">${Array.from({length:n+1},(_,i)=>`<option value="${i}">${i}</option>`).join("")}</select></label>`;
-    c.innerHTML=`<div class="card-h"><img alt="" src="${swatch(id,0)}"><b class="nm"></b><span class="tag"></span><span class="n"></span></div>
+    c.innerHTML=`<div class="card-h">${sw(swatch(id,0))}<b class="nm"></b><span class="tag"></span><span class="n"></span></div>
       <div class="card-c">${m.fac?`<label>Machine<select data-k="f"><option value="0">Single machine</option>${FAC.slice(1).map((t,i)=>`<option value="${i+1}">${t.name} factory (${t.slots})</option>`).join("")}</select></label>`:""}
       ${sel("s","Speed",8)}${m.kind==="rate"?sel("e","Energy",8):sel("e","Energy",8)}${m.chem?sel("c","Chemical",8):""}
       <label>Count<input type="number" min="1" step="1" data-k="n" placeholder="auto" aria-label="Machine count (blank for auto)"></label></div>
@@ -974,7 +991,7 @@ function renderCards(Mo){
   const met=METALS[state.metal];
   for(const id of ORDER){ const c=$("card-"+id), g=Mo.stages.find(s=>s.id===id); c.hidden=!g; if(!g) continue;
     const u=g.u, b=c.querySelector(".nm"); b.textContent=machineName(id,u.f);
-    c.querySelector("img").src=swatch(id,MACH[id].fac?u.f:0);
+    c.querySelector(".sw").style.backgroundImage=`url('${swatch(id,MACH[id].fac?u.f:0)}')`;
     c.querySelector(".tag").textContent=g.isFront?`takes the ${Mo.src.feed==="ore"?"ore":Mo.src.feed==="raw"?"raw ore":"raw blocks"}`:`${STAGE_TIER[id]}x`;
     c.querySelector(".n").textContent="×"+fmt(g.count);
     c.classList.toggle("isnew",STAGE_TIER[id]===state.tier&&state.tier>2||state.tier===2&&id==="enrich");
@@ -993,7 +1010,7 @@ function renderCards(Mo){
 function renderGasCards(Mo){
   const box=$("gasCards"), rows=[], S=Mo.sup;
   const pick=(key,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button type="button" data-g="${key}" data-v="${v}" aria-pressed="${state.sup[key]===v}">${l}</button>`).join("")}</div>`;
-  const card=(id,title,body,stat)=>`<div class="card"><div class="card-h"><img alt="" src="${swatch(id,0)}"><b>${title}</b></div><div class="card-c">${body}</div><p class="card-s">${stat}</p></div>`;
+  const card=(id,title,body,stat)=>`<div class="card"><div class="card-h">${sw(swatch(id,0))}<b>${title}</b></div><div class="card-c">${body}</div><p class="card-s">${stat}</p></div>`;
   if(Mo.dem.o2>0){ const g=S.o2;
     rows.push(card("sep",`Oxygen · ${sig(perT(Mo.dem.o2))} mB/t`,pick("o2",[["s","Electrolytic Separators"],["f","Flint in the gas slot"]]),
       g.src==="s"?`<span><b>${fmt(g.units)}</b> separator${g.units>1?"s":""}, 8 speed upgrades each</span><span><b>${fmt(g.load*100)}%</b> busy</span><span><b>${big(toFE(g.J))}</b> FE/t</span><span><b>${sig(perT(g.water))}</b> mB/t water</span><span>${sig(perT(g.h2))} mB/t hydrogen spare</span>`
@@ -1093,7 +1110,7 @@ const RAW_NAME={osmium:"Osmium ingots",iron:"Iron ingots",copper:"Copper ingots"
   obsidian:"Obsidian",lava:"Lava buckets",fluorite:"Fluorite gems",log:"Oak logs"};
 function rawOf(P){ const R={}; for(const p of P.values()){ const b=p.bom&&BOM[p.bom]; if(!b) continue; for(const [k,v] of Object.entries(b)) R[k]=(R[k]||0)+v*p.n; } return R; }
 function diffParts(A,B){ const out=new Map(); for(const [k,p] of A){ const q=B&&B.get(k), n=p.n-(q?q.n:0); if(n>0) out.set(k,{...p,n}); } return out; }
-const partsHtml=(P,add)=>[...P.values()].sort((a,b)=>(b.img?1:0)-(a.img?1:0)).map(p=>`<li class="${add?"add":""}">${p.img?`<img src="${p.img}" alt="">`:`<span style="width:16px"></span>`}<span>${esc(p.name)}</span><span class="n">${add?"+":""}${fmt(Math.ceil(p.n))}</span></li>`).join("")||`<li><span class="hint">Nothing new</span></li>`;
+const partsHtml=(P,add)=>[...P.values()].sort((a,b)=>(b.img?1:0)-(a.img?1:0)).map(p=>`<li class="${add?"add":""}">${p.img?sw(p.img):`<span style="width:16px;flex:0 0 16px"></span>`}<span>${esc(p.name)}</span><span class="n">${add?"+":""}${fmt(Math.ceil(p.n))}</span></li>`).join("")||`<li><span class="hint">Nothing new</span></li>`;
 function sideTable(Mo,ids){
   const rows=[];
   for(const id of ids){ const faces=facesFor(id,stageInName(Mo,id)), name=ROLE[id]?MACH[ROLE[id]].name:machineName(id,MACH[id].fac?state.st[id].f:0);
