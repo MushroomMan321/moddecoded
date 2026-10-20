@@ -1,0 +1,1270 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/mekanism/ore-processing-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Mekanism Ore Processing Calculator</title>
+<meta name="description" content="Mekanism ore processing calculator for 2x, 3x, 4x and 5x: machines needed, FE/t, oxygen, hydrogen chloride and sulfuric acid, a 3D build with side config, each tier built on top of the last, and raw ore vs silk touch, from the Mekanism 10.7.19 source code with ATM10 presets.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --surface-2:#1D2420; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:76ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:62vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000;max-width:calc(100% - 20px)}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;left:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;pointer-events:none}
+.viewbar button{pointer-events:auto;font:600 12px var(--font-mono);background:rgba(10,14,16,.78);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.stepbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.stepbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.78);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.stepbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.stepbar button:disabled{opacity:.35;cursor:default}
+.stepbar span{min-width:116px;text-align:center}
+.legend{position:absolute;left:10px;bottom:44px;display:flex;flex-wrap:wrap;gap:4px 10px;max-width:calc(100% - 20px);font:500 11.5px var(--font-mono);color:#DDE6E2;background:rgba(10,14,16,.78);border:1px solid rgba(255,255,255,.14);border-radius:4px;padding:5px 8px;pointer-events:none}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.tip{position:absolute;z-index:3;pointer-events:none;max-width:280px;font:12px/1.45 var(--font-body);color:#E5E9E3;background:rgba(10,14,16,.92);border:1px solid rgba(255,255,255,.2);border-radius:5px;padding:7px 9px}
+.tip b{display:block;font-size:12.5px;margin-bottom:2px}
+.tip .sides{font:11.5px/1.5 var(--font-mono);color:#C9D2CE}
+.tip .sides i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+.view-hint{margin-top:-4px}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+h3{font-size:15px;margin:0}
+.row{display:grid;grid-template-columns:130px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:100px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,select:focus-visible,.chk input:focus-visible,.linkbtn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+select{font:600 13px var(--font-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;max-width:100%}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.seg.big button{font:400 24px/1 var(--font-readout);padding:6px 16px}
+.inline{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.inline label{font-size:14px;color:var(--muted)}
+.chk{display:flex;align-items:flex-start;gap:8px;font-size:14px;color:var(--ink);cursor:pointer}
+.chk input{margin-top:3px;accent-color:var(--accent)}
+.chk small{display:block;color:var(--muted);font-size:12.5px}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.hint b{color:var(--ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.linkbtn{font:600 12px var(--font-mono);background:none;border:0;color:var(--accent-ink);padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 130px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.cfg-grid .cfg-chk{grid-column:1/-1;font-family:inherit;font-size:14px;color:var(--ink);margin-top:4px}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+/* stage cards */
+.cards{display:flex;flex-direction:column;gap:8px}
+.card{border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:9px 10px;display:flex;flex-direction:column;gap:7px}
+.card.isnew{border-left:3px solid var(--accent)}
+.card.hot{border-color:#7A4C2A}
+.card-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card-h img{width:18px;height:18px;image-rendering:pixelated;border-radius:2px;flex:0 0 18px}
+.card-h b{font-size:14px}
+.card-h .n{margin-left:auto;font:400 26px/1 var(--font-readout);color:var(--accent-ink)}
+.tag{font:600 10.5px var(--font-mono);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:0 5px}
+.card-c{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center}
+.card-c label{display:flex;align-items:center;gap:5px;font-size:12.5px;color:var(--muted)}
+.card-c select{font-size:12.5px;padding:3px 4px}
+.card-c input{width:62px;font:600 12.5px var(--font-mono);color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:3px 5px;text-align:right}
+.card-s{font:12px/1.5 var(--font-mono);color:var(--muted);margin:0;display:flex;flex-wrap:wrap;gap:2px 12px}
+.card-s b{color:var(--ink);font-weight:600}
+.bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--good)}
+.bar i.hi{background:var(--warn)}.bar i.over{background:var(--bad)}
+/* guide */
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:5px}
+.guide ol b{font-weight:700}
+.guide .stepname{font:400 22px/1 var(--font-readout);color:var(--accent-ink)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.parts li.add .n{color:var(--good)}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:560px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.sidecfg{width:100%;border-collapse:collapse;font-size:12.5px}
+.sidecfg th,.sidecfg td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line);vertical-align:top}
+.sidecfg th{font-weight:600;color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em}
+.sidecfg td i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+/* wide sections */
+.wide{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:10px}
+.wide h2{font-size:28px}
+.wide .sub{margin:0;color:var(--muted);max-width:80ch}
+.tblwrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px}
+table.t{width:100%;border-collapse:collapse;font-size:13.5px;min-width:560px}
+table.t th,table.t td{padding:7px 10px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums;white-space:nowrap}
+table.t th:first-child,table.t td:first-child{text-align:left}
+table.t th{font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;background:var(--surface)}
+table.t td{font-family:var(--font-mono);font-size:12.5px}
+table.t td:first-child{font-family:var(--font-body);font-size:13.5px}
+table.t tr.on td{background:var(--accent-soft)}
+table.t td.best{color:var(--good);font-weight:600}
+table.t small{color:var(--muted)}
+.chart{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:6px}
+.mat-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+@media (max-width:720px){.mat-cols{grid-template-columns:minmax(0,1fr)}}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+@media (max-width:520px){.view{aspect-ratio:1/1}.viewbar{gap:4px}.viewbar button{font-size:11px;padding:4px 6px}#tSide{max-width:none}.hud .big{font-size:32px}.legend{bottom:40px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Mekanism / Ore Processing Calculator</nav>
+  <header class="top">
+    <h1>Mekanism <span class="y">Ore Processing Calculator</span></h1>
+    <span class="src">Recipes and formulas from the Mekanism 1.21.1-10.7.19.85 source</span>
+  </header>
+  <p class="lede">Pick 2x, 3x, 4x or 5x and how fast ore comes in, and see every machine the line needs, its power, its oxygen, hydrogen chloride and sulfuric acid, and a 3D build you can copy, side config included. Each tier is built on top of the last, so the build guide walks you from 2x up. Every number comes from Mekanism's own recipes, machine classes and upgrade formulas, and the ATM10 presets add the pack's own recipe changes. Timings, power and gas use were checked in game.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the ore processing line"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="stepbar" id="stepbar" hidden>
+          <button type="button" id="sDown" aria-label="Previous step">◀</button>
+          <span id="sLabel" aria-live="polite"></span>
+          <button type="button" id="sUp" aria-label="Next step">▶</button>
+        </div>
+        <div class="legend" id="legend" hidden></div>
+        <div class="tip" id="tip" hidden></div>
+        <div class="viewbar">
+          <button id="tCables" aria-pressed="true" type="button">Cables</button>
+          <button id="tSupport" aria-pressed="true" type="button">Gas plant</button>
+          <button id="tSide" aria-pressed="false" type="button" title="Side config: cycle through items, chemicals, fluids and energy">Sides: off</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Point at a block to see what it is and how its sides are set.</p>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build 2x first, then add each tier in front of it. Step through with ◀ ▶ on the 3D view; new blocks in each step are outlined in yellow.</p>
+        <div id="gBody"></div>
+      </div>
+      <div class="box">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/Mekanism/general.toml, machine-usage.toml and the pack's KubeJS</summary>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Ore and tier</h2>
+        <div class="seg big" role="group" aria-label="Processing tier" id="tierSeg"></div>
+        <div class="inline"><label for="metal">Ore</label><select id="metal"></select></div>
+        <p class="hint" id="tierHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Ore coming in</h2>
+        <div class="seg" role="group" aria-label="Where the ore comes from">
+          <button type="button" id="mMine" aria-pressed="true">Mining</button>
+          <button type="button" id="mDm" aria-pressed="false">Digital Miner</button>
+          <button type="button" id="mTarget" aria-pressed="false">Ingot target</button>
+        </div>
+        <div id="srcMine">
+          <div class="row"><label for="rate">Ore per minute</label><input type="range" id="rate" min="1" max="600" step="1"><input class="num" id="rateN" type="number" min="0.1" step="any" aria-label="Ore blocks mined per minute"></div>
+        </div>
+        <div id="srcTarget" hidden>
+          <div class="row"><label for="target">Ingots per hour</label><input type="range" id="target" min="100" max="200000" step="100"><input class="num" id="targetN" type="number" min="1" step="any" aria-label="Ingots per hour"></div>
+        </div>
+        <div id="srcDm" hidden>
+          <div class="row"><label for="dmS">Speed upgrades</label><input type="range" id="dmS" min="0" max="8" step="1"><input class="num" id="dmSN" type="number" min="0" max="8" aria-label="Digital Miner speed upgrades"></div>
+          <label class="chk"><input type="checkbox" id="dmSilk"><span>Silk Touch on<small>The Digital Miner has no Fortune. Silk Touch uses 12× the power but brings back ore blocks.</small></span></label>
+        </div>
+        <div id="mineHow">
+          <div class="inline"><label>Mined with</label>
+            <div class="seg" role="group" aria-label="Mining enchantment" id="mineSeg"></div>
+          </div>
+        </div>
+        <label class="chk" id="blocksWrap"><input type="checkbox" id="blocks"><span>Craft raw ore into raw ore blocks first<small>One machine operation then takes 9 raw ore and twice the gas per tick.</small></span></label>
+        <p class="hint" id="srcHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Machines</h2>
+        <div class="seg" role="group" aria-label="Machine setup" id="presetSeg"></div>
+        <p class="hint">Counts are worked out for you. Type a count to match a line you've already built: the calculator then shows what holds it back.</p>
+        <div class="cards" id="cards"></div>
+      </div>
+
+      <div class="sect" id="gasSect">
+        <h2>Gas supply</h2>
+        <div class="cards" id="gasCards"></div>
+        <div class="inline">
+          <label for="supS">Gas plant speed upgrades</label><select id="supS"></select>
+          <label for="supE">Energy upgrades</label><select id="supE"></select>
+        </div>
+        <p class="hint" id="supHint">Infusers and rotaries do 2^speed operations a tick, but each operation costs more power with every speed upgrade past half the energy upgrades. 4 speed with 8 energy is as fast as they go at no extra power per mB.</p>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this line</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact line. Paste a design code above to load it.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="wide" id="curveSect">
+    <h2>What speed upgrades cost</h2>
+    <p class="sub" id="curveSub"></p>
+    <div class="inline"><label for="curveStage">Machine</label><select id="curveStage"></select></div>
+    <svg class="chart" id="curve" viewBox="0 0 640 250" role="img" aria-label="Machines needed and power for 0 to 8 speed upgrades"></svg>
+    <p class="hint" id="curveNote"></p>
+  </section>
+
+  <section class="wide">
+    <h2>Is the next tier worth it?</h2>
+    <p class="sub">The same ore coming in, processed at each tier with the machines and upgrades you picked above.</p>
+    <div class="tblwrap"><table class="t" id="tierTbl"></table></div>
+    <p class="hint" id="tierNote"></p>
+  </section>
+
+  <section class="wide">
+    <h2>Raw ore or Silk Touch?</h2>
+    <p class="sub" id="rawSub"></p>
+    <div class="tblwrap"><table class="t" id="rawTbl"></table></div>
+    <p class="hint" id="rawNote"></p>
+  </section>
+
+  <section class="wide">
+    <h2>Materials</h2>
+    <div class="seg" role="group" aria-label="Materials for" id="matSeg">
+      <button type="button" id="matAll" aria-pressed="true">Whole line</button>
+      <button type="button" id="matStep" aria-pressed="false">Just this tier's additions</button>
+    </div>
+    <div class="mat-cols">
+      <div><h3>Parts</h3><ul class="parts" id="matParts"></ul></div>
+      <div><h3>Raw materials</h3><ul class="parts" id="matRaw"></ul><p class="hint" style="margin-top:8px">Every part broken down to what you mine or smelt, through the cheapest crafting route in ATM10's recipes (Metallurgic Infuser steps included). Lava buckets come back empty.</p></div>
+    </div>
+  </section>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Raw ore isn't 5x</h3>
+        <p>Every recipe that takes an ore block has a raw ore version that gives less. An ore block makes 2, 3, 4 or 5 ingots; raw ore makes 1⅓, 2, 2⅔ or 3⅓. Fortune III averages 2.2 raw ore per block, so mining with Fortune still wins: 7⅓ ingots per block at "5x".</p>
+<pre>dissolution:  1 ore   → 1,000 mB slurry → 5 crystals
+              3 raw   → 2,000 mB slurry → 10 crystals
+              1 block → 6,000 mB slurry → 30 crystals</pre>
+        <span class="ref">data/mekanism/recipe/processing/*/slurry/dirty</span>
+      </div>
+      <div class="fact">
+        <h3>ATM10 rewrites four recipes</h3>
+        <p>ATM10, ATM10: Aeronautics, All the Mons and ATM10 Lite replace four of Mekanism's recipes for every metal they process, in a KubeJS script. An ore block makes 4½, 6 or 9 ingots at 3x, 4x and 5x there, not 3, 4 and 5. In-game, 64 clumps crushed into 128 dirty dust, 64 dirty dust enriched into 48 dust, 64 crystals made 128 shards, and a washer used 20,100 mB of dirty slurry and 100,525 mB of water for 12,057 mB clean.</p>
+<pre>washing:   5 dirty + 25 water → 3 clean
+injecting: 1 crystal     → 2 shards
+crushing:  1 clump       → 2 dirty dust
+enriching: 4 dirty dust  → 3 dust</pre>
+        <span class="ref">kubejs/server_scripts/mods/Mekanism/ore_processing.js</span>
+      </div>
+      <div class="fact">
+        <h3>Raw ore blocks are 9 raw ore per operation</h3>
+        <p>A Block of Raw Iron goes through the first machine in one operation, at the same ratio as 9 raw ore, for 2 mB of gas a tick instead of 1. Crafting raw ore into blocks first means 9× fewer front machines and 4.5× less gas there. In-game, a Block of Raw Iron made 18 clumps for 364 mB of oxygen, 2.0× what one raw iron used.</p>
+<pre>purifying:  1 raw   + 1 O₂/t → 2 clumps
+            1 block + 2 O₂/t → 18 clumps</pre>
+        <span class="ref">clump/from_raw_block.json · shard/from_raw_block.json</span>
+      </div>
+      <div class="fact">
+        <h3>Speed upgrades: faster, hungrier</h3>
+        <p>Each speed upgrade divides the time by the upgrade multiplier to the ⅛ power, but power per tick goes up twice as fast. With no energy upgrades, 8 speed upgrades make each item cost 10× the power (16× in ATM10). In-game on ATM10's 16, a Purification Chamber and a Crystallizer with 8 speed and 8 energy upgrades took 12 ticks an item, at exactly 38,400 and 76,800 J.</p>
+<pre>ticks  = base × M^(−speed/8)
+power  = usage × M^((2·speed − energy)/8)  per tick
+M = maxUpgradeMultiplier (10; ATM10 sets 16)</pre>
+        <span class="ref">MekanismUtils.getTicks · getEnergyPerTick</span>
+      </div>
+      <div class="fact">
+        <h3>Gas per item goes up with speed too</h3>
+        <p>Purification, injection and dissolution draw gas every tick they run. Speed upgrades raise the draw by M^(2·speed/8) while only shortening the operation by M^(speed/8), so each item uses more gas. Eight chemical upgrades cancel 8 speed upgrades exactly.</p>
+<pre>gas per tick ≈ amount × M^((2·speed − chemical)/8)
+gas per item = that × ticks</pre>
+        <span class="ref">MekanismUtils.getGasPerTickMeanMultiplier</span>
+      </div>
+      <div class="fact">
+        <h3>The gas draw is random</h3>
+        <p>Each tick the machine draws a Poisson-distributed amount, capped at 3× the mean. With no upgrades that averages about 0.91 mB a tick, not 1: a Purification Chamber uses about 181 mB of oxygen per item. In-game it used 180 mB per raw iron with no upgrades, and 193 mB with 8 speed, energy and chemical upgrades (the formula says 191).</p>
+<pre>used = amount × inversePoisson(mean)
+cap  = 3 × ceil(mean)</pre>
+        <span class="ref">StatUtils.inversePoisson · usage.randomizedConsumption</span>
+      </div>
+      <div class="fact">
+        <h3>Crystallizers are the slow step</h3>
+        <p>A Dissolution Chamber finishes an ore in 100 ticks, enough slurry for 5 crystals. A Crystallizer takes 200 ticks per crystal. With the same upgrades you need 10 crystallizers for every dissolution chamber (6 in ATM10, where washing turns 5 mB into 3), and crystallizers have no factory.</p>
+<pre>dissolution:  100 ticks → 5 crystals' worth
+crystallizer: 200 ticks → 1 crystal (200 mB)</pre>
+        <span class="ref">TileEntityChemicalDissolutionChamber · TileEntityChemicalCrystallizer</span>
+      </div>
+      <div class="fact">
+        <h3>Washers, separators and infusers double</h3>
+        <p>These run several operations a tick: 2^speed of them. Each operation still pays the speed power formula, so a washer's power per mB of slurry still climbs with every upgrade. Electrolytic Separators are the exception: 400 J per operation whatever you fit. In-game, washers with 4 and 8 speed upgrades washed exactly 16 and 256 operations a tick.</p>
+<pre>washer ops/tick = 2^speed   (1 mB slurry + 5 mB water each;
+                             ATM10: 5 mB + 25 mB → 3 mB)
+separator: 400 J per op, fixed</pre>
+        <span class="ref">TileEntityChemicalWasher · TileEntityElectrolyticSeparator</span>
+      </div>
+      <div class="fact">
+        <h3>Items straight into the gas slot</h3>
+        <p>The gas slot on these machines converts items. Flint gives 10 mB of oxygen, salt 2 mB of hydrogen chloride, sulfur dust 2 mB of sulfuric acid. Through a Chemical Oxidizer and two infusers, one sulfur dust makes 100 mB of acid instead of 2.</p>
+<pre>flint  → 10 O₂     salt → 2 HCl
+sulfur → 2 H₂SO₄   (or 100 via the oxidizer)</pre>
+        <span class="ref">recipe/chemical_conversion · ChemicalInventorySlot.fillOrConvert</span>
+      </div>
+      <div class="fact">
+        <h3>Factories cost the same per item</h3>
+        <p>A factory is several single machines in one block: each slot runs at the machine's speed and draws the machine's power, and the upgrades in the factory apply to every slot. Factories save space and upgrades, not power.</p>
+<pre>slots: Basic 3 · Advanced 5 · Elite 7 · Ultimate 9
+power: machine usage × busy slots</pre>
+        <span class="ref">TileEntityFactory · FactoryTier · blocktype.Factory</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const big=v=>!Number.isFinite(v)?"—":v>=1e9?fmt(v/1e9,2)+"B":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v,v<10&&v%1?2:0);
+const sig=v=>!Number.isFinite(v)?"—":v>=100?fmt(v):v>=10?fmt(v,1):v>=1?fmt(v,2):v>0?fmt(v,3):"0";
+const pl=(n,one,many)=>`${fmt(n)} ${n===1?one:(many||one+"s")}`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ================= config (general.toml, machine-usage.toml) ================= */
+const USAGE_KEYS=["enrichmentChamber","crusher","energizedSmelter","purificationChamber","chemicalInjectionChamber","chemicalDissolutionChamber","chemicalWasher","chemicalCrystallizer","chemicalInfuser","chemicalOxidizer","rotaryCondensentrator"];
+const DEFAULTS={maxUpgradeMultiplier:10, ticksPerMine:80, feConversionRate:2.5, atmOre:0, enrichmentChamber:50, crusher:50, energizedSmelter:50, purificationChamber:200,
+  chemicalInjectionChamber:400, chemicalDissolutionChamber:400, chemicalWasher:200, chemicalCrystallizer:400, chemicalInfuser:200, chemicalOxidizer:200, rotaryCondensentrator:50};
+const CFG_FIELDS=[["maxUpgradeMultiplier","general.maxUpgradeMultiplier"],["ticksPerMine","digital_miner.ticksPerMine"],["feConversionRate","general.feConversionRate"],
+  ...USAGE_KEYS.map(k=>[k,"usage."+k]),["atmOre","kubejs.atmOreProcessing"]];
+// Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
+const {presets:PRESETS, list:ATM_PACKS}=mdPackPresets("mekanism",DEFAULTS,CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("mek-ore-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+
+/* ================= recipes (data/mekanism/recipe/processing/<metal>) ================= */
+// metals Mekanism processes; raw = average raw ore per ore block before Fortune (copper ore drops 2-5)
+const METALS={i:{id:"iron",name:"Iron",raw:1},g:{id:"gold",name:"Gold",raw:1},c:{id:"copper",name:"Copper",raw:3.5},o:{id:"osmium",name:"Osmium",raw:1},
+  t:{id:"tin",name:"Tin",raw:1},l:{id:"lead",name:"Lead",raw:1},u:{id:"uranium",name:"Uranium",raw:1}};
+// minecraft:apply_bonus ore_drops: count × (max(0, nextInt(level+2) − 1) + 1)
+const FORTUNE=[1,4/3,1.75,2.2];
+// the first machine at each tier: [items in, products out] per operation (products are mB of slurry at 5x)
+const FRONT={1:{ore:[1,1],raw:[1,1],block:[1,9]},2:{ore:[1,2],raw:[3,4],block:[1,12]},3:{ore:[1,3],raw:[1,2],block:[1,18]},
+  4:{ore:[1,4],raw:[3,8],block:[1,24]},5:{ore:[1,1000],raw:[3,2000],block:[1,6000]}};
+// Ratios after the front machine. ATM10, ATM10: Aeronautics, All the Mons and ATM10 Lite replace four of them in
+// kubejs/server_scripts/mods/Mekanism/ore_processing.js (all four checked in game on ATM10: Aeronautics, 2026-10-20).
+//   wash: [dirty slurry in, clean slurry out, water] per operation · shards per crystal · dirty dust per clump · enrich: [dirty dust in, dust out]
+const CHAINS={mek:{wash:[1,1,5],shards:1,dirty:1,enrich:[1,1]}, atm:{wash:[5,3,25],shards:2,dirty:2,enrich:[4,3]}};
+const chain=()=>cfg.atmOre?CHAINS.atm:CHAINS.mek;
+// ingots per product of the front machine: dust at 2x, clump at 3x, shard at 4x, mB of dirty slurry at 5x
+function perProduct(t,c){ const clump=c.dirty*c.enrich[1]/c.enrich[0]; return t<=2?1:t<=4?clump:c.wash[1]/c.wash[0]/200*c.shards*clump; }
+// ingots per item fed in, 1x..5x (Mekanism alone: ore 1-5, raw 1, 4/3, 2, 8/3, 10/3, raw block 9-30)
+function Y(c=chain()){ const out={}; for(const f of ["ore","raw","block"]) out[f]=[1,2,3,4,5].map(t=>FRONT[t][f][1]/FRONT[t][f][0]*perProduct(t,c)); return out; }
+const yfmt=v=>v.toLocaleString(undefined,{maximumFractionDigits:2});
+const ORDER=["dissolve","wash","crystal","inject","purify","crush","enrich","smelt"];
+const IDX=Object.fromEntries(ORDER.map((k,i)=>[k,i]));
+const STAGE_TIER={dissolve:5,wash:5,crystal:5,inject:4,purify:3,crush:3,enrich:2,smelt:1};
+const FRONT_ID={1:"smelt",2:"enrich",3:"purify",4:"inject",5:"dissolve"};
+const GAS_OF={dissolve:"acid",inject:"hcl",purify:"o2"};
+const GAS={o2:{name:"Oxygen",short:"O₂"},hcl:{name:"Hydrogen chloride",short:"HCl"},acid:{name:"Sulfuric acid",short:"H₂SO₄"}};
+const OUT_NAME={dissolve:"dirty slurry",wash:"clean slurry",crystal:"crystals",inject:"shards",purify:"clumps",crush:"dirty dust",enrich:"dust",smelt:"ingots"};
+
+/* ================= machines (Mekanism 10.7.19.85) ================= */
+// kind progress: one operation takes `base` ticks (TileEntityProgressMachine); rate: 2^speed operations every tick
+const MACH={
+  dissolve:{name:"Chemical Dissolution Chamber",short:"Dissolution",kind:"progress",base:100,use:"chemicalDissolutionChamber",chem:true,bom:"chemical_dissolution_chamber"},
+  wash:{name:"Chemical Washer",short:"Washer",kind:"rate",use:"chemicalWasher",bom:"chemical_washer"},
+  crystal:{name:"Chemical Crystallizer",short:"Crystallizer",kind:"progress",base:200,use:"chemicalCrystallizer",bom:"chemical_crystallizer"},
+  inject:{name:"Chemical Injection Chamber",short:"Injection",kind:"progress",base:200,use:"chemicalInjectionChamber",chem:true,fac:"injecting",bom:"chemical_injection_chamber"},
+  purify:{name:"Purification Chamber",short:"Purification",kind:"progress",base:200,use:"purificationChamber",chem:true,fac:"purifying",bom:"purification_chamber"},
+  crush:{name:"Crusher",short:"Crusher",kind:"progress",base:200,use:"crusher",fac:"crushing",bom:"crusher"},
+  enrich:{name:"Enrichment Chamber",short:"Enrichment",kind:"progress",base:200,use:"enrichmentChamber",fac:"enriching",bom:"enrichment_chamber"},
+  smelt:{name:"Energized Smelter",short:"Smelter",kind:"progress",base:200,use:"energizedSmelter",fac:"smelting",bom:"energized_smelter"},
+  sep:{name:"Electrolytic Separator",short:"Separator",kind:"rate",fixedJ:400,bom:"electrolytic_separator"},   // 2 × hydrogen energy density (200 J)
+  infuser:{name:"Chemical Infuser",short:"Infuser",kind:"rate",use:"chemicalInfuser",bom:"chemical_infuser"},
+  oxid:{name:"Chemical Oxidizer",short:"Oxidizer",kind:"progress",base:100,use:"chemicalOxidizer",bom:"chemical_oxidizer"},
+  rotary:{name:"Rotary Condensentrator",short:"Rotary",kind:"rate",use:"rotaryCondensentrator",bom:"rotary_condensentrator"},
+};
+const FAC=[null,{name:"Basic",key:"basic",slots:3,col:"#75FF89"},{name:"Advanced",key:"advanced",slots:5,col:"#FF383C"},
+  {name:"Elite",key:"elite",slots:7,col:"#30FFF9"},{name:"Ultimate",key:"ultimate",slots:9,col:"#A460D9"}];
+const FAC_NAME={injecting:"Injecting",purifying:"Purifying",crushing:"Crushing",enriching:"Enriching",smelting:"Smelting"};
+const machineName=(id,f)=>f&&MACH[id].fac?`${FAC[f].name} ${FAC_NAME[MACH[id].fac]} Factory`:MACH[id].name;
+
+// E[StatUtils.inversePoisson(mean)]: the algorithm walks a Stirling-approximated Poisson CDF up to 3 × ceil(mean)
+const poissonMemo=new Map();
+function poissonMean(m){
+  if(!(m>0)) return 0; if(m>600) return m; if(poissonMemo.has(m)) return poissonMemo.get(m);
+  const bound=3*Math.ceil(m), lc=Math.log(1/Math.sqrt(2*Math.PI)), lm=Math.log(m); let E=0, lp=0;   // lp = log of the running sum p (starts at 1)
+  for(let k=0;k<bound;k++){ E+=Math.max(0,1-Math.exp(lp-m)); const j=k+1, lt=lc-0.5*Math.log(j)+j*(lm+1-Math.log(j));
+    lp=lp>lt?lp+Math.log1p(Math.exp(lt-lp)):lt+Math.log1p(Math.exp(lp-lt)); }
+  poissonMemo.set(m,E); return E;
+}
+// One machine's numbers with upgrades u = {f: factory tier, s: speed, e: energy, c: chemical}
+function stats(id,u){
+  const m=MACH[id], M=cfg.maxUpgradeMultiplier, s=u.s||0, e=u.e||0, c=m.chem?(u.c||0):0;
+  if(m.kind==="rate"){ const opt=Math.trunc(Math.pow(2,s)), ept=m.fixedJ??Math.ceil(cfg[m.use]*Math.pow(M,(2*s-e)/8));
+    return {opsPerSec:20*opt, energyPerOp:ept, ticks:1, opsPerTick:opt, ept, slots:1, peak:20*opt*ept}; }
+  const slots=u.f&&m.fac?FAC[u.f].slots:1;
+  const td=m.base*Math.pow(M,-s/8), ticks=Math.max(1,Math.trunc(td)), opt=td>=1?1:Math.trunc(Math.max(1,1/td));   // getTicks, getOperationsPerTick
+  const ept=Math.ceil(cfg[m.use]*Math.pow(M,(2*s-e)/8));                                                          // getEnergyPerTick
+  const gm=m.chem?Math.pow(M,(2*s-c)/8):0;                                                                         // getGasPerTickMeanMultiplier
+  return {opsPerSec:20*slots*opt/ticks, energyPerOp:ept*ticks, ticks, opsPerTick:opt, ept, slots, gasMean:gm, gasPerOp:m.chem?poissonMean(gm)*ticks:0, peak:20*slots*opt*ept};
+}
+
+/* ================= state ================= */
+const UPG=(f,s,e,c)=>({f,s,e,c,n:null});
+const MACHINE_PRESETS={
+  bare:{name:"No upgrades",make:id=>UPG(0,0,0,0)},
+  speed:{name:"Speed only",make:id=>UPG(0,8,0,0)},
+  full:{name:"Speed + energy",make:id=>UPG(0,MACH[id].kind==="rate"?4:8,8,8)},
+  factory:{name:"Ultimate factories",make:id=>UPG(MACH[id].fac?4:0,MACH[id].kind==="rate"?4:8,8,8)},
+};
+const state={tier:5,metal:"i",mode:"m",rate:60,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
+  preset:"factory",st:{},sup:{s:4,e:8,o2:"s",hcl:"p",acid:"p"}};
+const setPreset=k=>{ state.preset=k; for(const id of ORDER) state.st[id]=MACHINE_PRESETS[k].make(id); };
+setPreset("factory");
+const view3={cables:true,support:true,side:0,guide:false,step:0,mat:"all",curve:"crystal"};
+
+/* ================= the model ================= */
+// where the ore comes from: ore blocks per second and what goes into the first machine
+function supply(){
+  const met=METALS[state.metal], dm=state.mode==="d";
+  const silk=dm?state.dmSilk:state.mine==="s", fort=dm||silk?0:state.fortune;
+  const drops=silk?1:met.raw*FORTUNE[fort];                     // items per ore block mined
+  const feed=silk?"ore":state.blocks?"block":"raw";
+  const perBlock=feed==="block"?drops/9:drops;                    // items into the line per ore block
+  const dmTicks=Math.max(1,Math.trunc(cfg.ticksPerMine*Math.pow(cfg.maxUpgradeMultiplier,-state.dmS/8)));   // TileEntityDigitalMiner delay
+  let bps;
+  if(state.mode==="m") bps=state.rate/60;
+  else if(dm) bps=20/dmTicks;
+  else bps=state.target/3600/(perBlock*Y()[feed][state.tier-1]);
+  return {silk,fort,drops,feed,perBlock,bps,dmTicks,F:bps*perBlock};
+}
+function flows(t,feed,F){
+  const c=chain(), [k,y]=FRONT[t][feed], front=FRONT_ID[t], ops={}, amt={}; ops[front]=F/k; if(GAS_OF[front]) amt[front]=feed==="block"?2:1;
+  const P=F*y/k; let clumps=P, items=P, slurry=0;
+  if(t===5){ slurry=P; ops.wash=P/c.wash[0]; const crystals=P*c.wash[1]/c.wash[0]/200; ops.crystal=crystals; ops.inject=crystals; amt.inject=1;
+    clumps=crystals*c.shards; ops.purify=clumps; amt.purify=1; }
+  else if(t===4){ ops.purify=P; amt.purify=1; }
+  if(t>=3){ ops.crush=clumps; ops.enrich=clumps*c.dirty/c.enrich[0]; items=clumps*c.dirty*c.enrich[1]/c.enrich[0]; }
+  ops.smelt=items;
+  return {ops,amt,ingots:items,slurry};
+}
+function model(t,src){
+  src=src||supply();
+  const fl=flows(t,src.feed,src.F);
+  const stages=ORDER.filter(id=>STAGE_TIER[id]<=t).map(id=>{
+    const u=state.st[id], s=stats(id,u), req=fl.ops[id]||0, need=req/s.opsPerSec, auto=Math.max(1,Math.ceil(need-1e-9));
+    const count=u.n!=null?Math.max(1,u.n):auto;
+    return {id,u,s,req,need,auto,count,cap:count*s.opsPerSec,amt:fl.amt[id]||0,gas:GAS_OF[id],isFront:FRONT_ID[t]===id};
+  });
+  // a stage short of machines holds the whole line back
+  let limit=1, slow=null; for(const g of stages) if(g.req>0&&g.cap/g.req<limit){ limit=g.cap/g.req; slow=g; }
+  const dem={o2:0,hcl:0,acid:0}; let J=0, water=0, peak=0;
+  for(const g of stages){ g.ops=g.req*limit; g.load=g.cap?g.ops/g.cap:0; g.J=g.s.energyPerOp*g.ops; g.peak=g.count*g.s.peak;
+    g.gasRate=g.gas?g.amt*g.s.gasPerOp*g.ops:0; if(g.gas) dem[g.gas]+=g.gasRate; g.water=g.id==="wash"?chain().wash[2]*g.ops:0;
+    J+=g.J; water+=g.water; peak+=g.peak; }
+  const sup=supportModel(dem);
+  const machines=stages.reduce((a,g)=>a+g.count,0);
+  return {t,src,stages,limit,slow,dem,sup,ingots:fl.ingots*limit,slurry:fl.slurry*limit,J:J+sup.J,lineJ:J,water:water+sup.water,peak:peak+sup.peak,
+    machines, allMachines:machines+sup.machines, oreIn:src.bps*limit};
+}
+// gas plants (all built from rate machines except the oxidizer)
+function supportModel(dem){
+  const M=cfg.maxUpgradeMultiplier, s=state.sup.s, e=state.sup.e, R=20*Math.trunc(Math.pow(2,s));
+  const ept=use=>Math.ceil(cfg[use]*Math.pow(M,(2*s-e)/8));
+  const eInf=ept("chemicalInfuser"), eRot=ept("rotaryCondensentrator"), oxS=Math.min(8,Math.max(s,e)), ox=stats("oxid",{s:oxS,e}), SEP=400;
+  const out={o2:null,hcl:null,acid:null,J:0,water:0,peak:0,machines:0,items:[]}, up=x=>Math.ceil(x-1e-9);
+  const A=dem.acid, H=dem.hcl, O=dem.o2;
+  if(A>0){ if(state.sup.acid==="p"){
+      // per mB of acid: 1 infuser op (SO₃ + vapor), 1 rotary op (water → vapor), ½ infuser op (O₂ + 2 SO₂ → 2 SO₃), ½ separator op, 1/100 oxidizer op
+      const units=Math.max(up(A/R),up(A/2/R),up(A/100/ox.opsPerSec));
+      const J=A*eInf+A*eRot+A/2*eInf+A/100*ox.energyPerOp+A/2*SEP;
+      out.acid={src:"p",units,J,water:2*A,sulfur:A/100,load:{inf2:A/(units*R),rot:A/(units*R),inf1:A/2/(units*R),sep:A/2/(units*R),ox:A/100/(units*ox.opsPerSec)},
+        machines:{sep:units,infuser:2*units,rotary:units,oxid:units}, peak:units*(2*R*eInf+R*eRot+R*SEP+ox.peak)};
+    } else out.acid={src:"s",units:0,J:0,water:0,sulfur:A/2,machines:{},peak:0}; }
+  if(H>0){ if(state.sup.hcl==="p"){
+      // per mB of HCl: 1 infuser op, 1 brine separator op (10 brine → 1 Cl), ½ water separator op (2 water → 2 H₂)
+      const units=Math.max(up(H/R),up(H/2/R));
+      out.hcl={src:"p",units,J:H*eInf+H*SEP+H/2*SEP,water:H,brine:10*H,load:{inf:H/(units*R),cl:H/(units*R),h2:H/2/(units*R)},
+        machines:{sep:2*units,infuser:units}, peak:units*(R*eInf+2*R*SEP)};
+    } else out.hcl={src:"s",units:0,J:0,water:0,salt:H/2,machines:{},peak:0}; }
+  if(O>0){ if(state.sup.o2==="s"){ const R8=20*256, units=up(O/R8);   // always 8 speed upgrades: a separator's 400 J per operation never changes
+      out.o2={src:"s",units,J:O*SEP,water:2*O,h2:2*O,load:O/(units*R8),machines:{sep:units},peak:units*R8*SEP};
+    } else out.o2={src:"f",units:0,J:0,water:0,flint:O/10,machines:{},peak:0}; }
+  for(const k of ["o2","hcl","acid"]){ const g=out[k]; if(!g) continue; out.J+=g.J; out.water+=g.water; out.peak+=g.peak;
+    out.machines+=Object.values(g.machines).reduce((a,b)=>a+b,0); }
+  out.R=R; out.ox=ox; out.oxS=oxS; out.eInf=eInf; out.eRot=eRot;
+  return out;
+}
+const toFE=Js=>Js/20/cfg.feConversionRate;          // J per second → FE per tick
+const perT=x=>x/20;                                    // per second → per tick
+
+/* ================= side config ================= */
+// Mekanism DataType colors (EnumColor rgb). Machines face south: left = west, right = east (RelativeSide)
+const DT={INPUT:["Input","#C9071F"],INPUT_1:["Left input","#C9071F"],INPUT_2:["Right input","#FFA160"],OUTPUT:["Output","#366BD0"],OUTPUT_1:["Left output","#366BD0"],
+  OUTPUT_2:["Right output","#00F3D0"],ENERGY:["Energy","#59C15F"],NONE:["None","#8A8A8A"]};
+const TTYPES=[["item","Items"],["chem","Chemicals"],["fluid","Fluids"],["energy","Energy"]];
+const SIDES=["front","back","left","right","top","bottom"];
+const SIDE_NAME={front:"Front",back:"Back",left:"Left",right:"Right",top:"Top",bottom:"Bottom"};
+const SIDE_DIR={front:[0,0,1],back:[0,0,-1],left:[-1,0,0],right:[1,0,0],top:[0,1,0],bottom:[0,-1,0]};
+const DIR_SIDE=d=>SIDES.find(s=>{ const v=SIDE_DIR[s]; return v[0]===d[0]&&v[1]===d[1]&&v[2]===d[2]; });
+const EN={top:{energy:["ENERGY","power"]}};
+function facesFor(role,inName){
+  const item=(a,b)=>({left:{item:["INPUT",a]},right:{item:["OUTPUT",b]}});
+  switch(role){
+    case "dissolve": return {left:{item:["INPUT",inName]},right:{chem:["OUTPUT","dirty slurry"]},bottom:{chem:["INPUT","sulfuric acid"]},...EN};
+    case "wash": return {left:{chem:["INPUT","dirty slurry"]},right:{chem:["OUTPUT","clean slurry"]},bottom:{fluid:["INPUT","water"]},...EN};
+    case "crystal": return {left:{chem:["INPUT","clean slurry"]},right:{item:["OUTPUT","crystals"]},...EN};
+    case "inject": return {...item(inName,"shards"),bottom:{chem:["INPUT","hydrogen chloride"]},...EN};
+    case "purify": return {...item(inName,"clumps"),bottom:{chem:["INPUT","oxygen"]},...EN};
+    case "crush": return {...item(inName,"dirty dust"),...EN};
+    case "enrich": return {...item(inName,"dust"),...EN};
+    case "smelt": return {...item(inName,"ingots"),...EN};
+    case "sepO2": return {right:{fluid:["INPUT","water"]},bottom:{chem:["OUTPUT_2","oxygen"]},...EN};
+    case "sepH2": return {left:{fluid:["INPUT","water"]},right:{chem:["OUTPUT_1","hydrogen"]},...EN};
+    case "sepCl": return {right:{fluid:["INPUT","brine"]},left:{chem:["OUTPUT_2","chlorine"]},...EN};
+    case "infHCl": return {left:{chem:["INPUT_1","hydrogen"]},right:{chem:["INPUT_2","chlorine"]},bottom:{chem:["OUTPUT","hydrogen chloride"]},...EN};
+    case "sepAcid": return {left:{fluid:["INPUT","water"]},right:{chem:["OUTPUT_2","oxygen"]},...EN};
+    case "inf1": return {left:{chem:["INPUT_1","oxygen"]},back:{chem:["INPUT_2","sulfur dioxide"]},right:{chem:["OUTPUT","sulfur trioxide"]},...EN};
+    case "inf2": return {left:{chem:["INPUT_1","sulfur trioxide"]},right:{chem:["INPUT_2","water vapor"]},bottom:{chem:["OUTPUT","sulfuric acid"]},...EN};
+    case "rotary": return {right:{fluid:["INPUT","water"]},left:{chem:["OUTPUT","water vapor"]},...EN};
+    case "oxid": return {back:{item:["INPUT","sulfur dust"]},front:{chem:["OUTPUT","sulfur dioxide"]},...EN};
+  }
+  return {};
+}
+const ROLE={sepO2:"sep",sepH2:"sep",sepCl:"sep",sepAcid:"sep",infHCl:"infuser",inf1:"infuser",inf2:"infuser",rotary:"rotary",oxid:"oxid"};
+const ROLE_NOTE={sepO2:"water → oxygen (hydrogen tank set to Dump)",sepH2:"water → hydrogen (oxygen tank set to Dump)",sepCl:"brine → chlorine (sodium tank set to Dump)",
+  sepAcid:"water → oxygen (hydrogen tank set to Dump)",infHCl:"hydrogen + chlorine → hydrogen chloride",inf1:"oxygen + sulfur dioxide → sulfur trioxide",
+  inf2:"sulfur trioxide + water vapor → sulfuric acid",rotary:"water → water vapor (decondensentrating)",oxid:"sulfur dust → sulfur dioxide"};
+const baseOf=role=>ROLE[role]||role;
+const feedName=(feed,met)=>feed==="ore"?`${met.name} Ore`:feed==="raw"?`Raw ${met.name}`:`Block of Raw ${met.name}`;
+function stageInName(Mo,id){ const i=Mo.stages.findIndex(g=>g.id===id); return i<=0?feedName(Mo.src.feed,METALS[state.metal]):OUT_NAME[Mo.stages[i-1].id]; }
+
+/* ================= transmitter tiers (tiers.toml defaults) ================= */
+const TIER_NAMES=["Basic","Advanced","Elite","Ultimate"];
+const TCAP={energy:[8000,128000,1024000,8192000],chem:[4000,16000,256000,1024000],fluid:[2000,8000,32000,128000],item:[1,1,1,1]};
+const TNAME={item:"Logistical Transporter",chem:"Pressurized Tube",fluid:"Mechanical Pipe",energy:"Universal Cable"};
+const TBOM={item:"logistical_transporter",chem:"pressurized_tube",fluid:"mechanical_pipe",energy:"universal_cable"};
+function tierFor(tt,perTick){ const c=TCAP[tt]; for(let i=0;i<4;i++) if(perTick<=c[i]) return i; return 3; }
+
+function tiersFor(Mo){ const flowT=Math.max(perT(Mo.dem.o2),perT(Mo.dem.hcl),perT(Mo.dem.acid),perT(Mo.slurry));
+  return {energy:tierFor("energy",Mo.J/20),chem:tierFor("chem",flowT),fluid:tierFor("fluid",perT(Mo.water)),item:0}; }
+
+/* ================= layout: the line along x, machines in rows along z ================= */
+// y = 0 machines and connectors, y = −1 gas tubes and water pipes under the machines, y = +1 cables. Gas plants sit behind (z < 0).
+function layout(Mo,cap){
+  cap=cap||Infinity;
+  const C=new Map(), labels=[], K=(x,y,z)=>x+","+y+","+z;
+  const put=(x,y,z,o)=>{ const k=K(x,y,z); if(!C.has(k)) C.set(k,{x,y,z,...o}); };
+  const n={}; for(const g of Mo.stages) n[g.id]=Math.min(g.count,cap);
+  const ids=Mo.stages.map(g=>g.id), sup=Mo.sup;
+  const tiers=Mo.tiers||tiersFor(Mo);
+  const T=(tt,o)=>({k:"t",tt,tier:tiers[tt],...o});
+  for(const g of Mo.stages){ const x=2*IDX[g.id], inName=stageInName(Mo,g.id), faces=facesFor(g.id,inName);
+    for(let z=0;z<n[g.id];z++) put(x,0,z,{k:"m",role:g.id,fac:MACH[g.id].fac?g.u.f:0,faces,u:g.u});
+    labels.push({x,y:2.1+(IDX[g.id]%2)*0.8,z:(n[g.id]-1)/2,text:`${MACH[g.id].short} ×${g.count}`,kind:"stage"}); }
+  // connectors between stages: transporters, or tubes where slurry flows
+  for(let i=0;i<ids.length-1;i++){ const a=ids[i], b=ids[i+1], x=2*IDX[a]+1, len=Math.max(n[a],n[b]), chem=a==="dissolve"||a==="wash";
+    for(let z=0;z<len;z++) put(x,0,z,T(chem?"chem":"item",{what:OUT_NAME[a]})); }
+  const f=ids[0], xf=2*IDX[f];
+  for(let z=0;z<n[f];z++) put(xf-1,0,z,T("item",{what:feedName(Mo.src.feed,METALS[state.metal]),pull:z===0}));
+  put(xf-2,0,0,{k:"chest",what:"in"}); labels.push({x:xf-2,y:1.15,z:0,text:Mo.src.feed==="block"?"Raw blocks in":"Ore in"});
+  for(let z=0;z<n.smelt;z++) put(15,0,z,T("item",{what:"ingots"}));
+  put(16,0,0,{k:"chest",what:"out"}); labels.push({x:16,y:1.15,z:0,text:"Ingots out"});
+  // cables over every machine, joined along the front row, power comes in at the east end
+  for(const g of Mo.stages){ const x=2*IDX[g.id]; for(let z=0;z<n[g.id];z++) put(x,1,z,T("energy")); }
+  for(let x=xf-1;x<=17;x++) put(x,1,0,T("energy",x===17?{label:"Power in"}:{}));
+  labels.push({x:17.6,y:1,z:0,text:"Power in"});
+  // washer water, under the washers
+  if(n.wash){ for(let z=-2;z<n.wash;z++) put(2,-1,z,T("fluid",{what:"water"})); labels.push({x:2,y:-1,z:-2.7,text:"Water"}); }
+  // gas: a tube row under each gas stage, running back to its plant
+  let zb=-2; const bands=[];
+  const plant=(g,kind)=>{ const x=2*IDX[g.id]; for(let z=0;z<n[g.id];z++) put(x,-1,z,T("chem",{what:GAS[g.gas].name.toLowerCase()}));
+    if(!kind) return; const b={x,kind,start:zb}; bands.push(b); return b; };
+  for(const g of Mo.stages){ if(!g.gas||Mo.dem[g.gas]<=0) continue;
+    const s=sup[g.gas], x=2*IDX[g.id], role=(r,o)=>({k:"m",role:r,faces:facesFor(r),sup:g.gas,u:{s:state.sup.s,e:state.sup.e},...o});
+    if(g.gas==="o2"?s.src!=="s":s.src!=="p"){ plant(g); labels.push({x,y:-1.2,z:-0.9,text:g.gas==="o2"?"Flint in slot":g.gas==="hcl"?"Salt in slot":"Sulfur in slot",kind:"small"}); continue; }
+    plant(g,true); const units=cap===Infinity?s.units:Math.min(s.units,12);
+    let z=zb;
+    if(g.gas==="o2"){ for(let u=0;u<units;u++,z--){ put(x,0,z,role("sepO2",{u:{s:8,e:0}})); put(x+1,0,z,T("fluid",{what:"water"})); put(x,1,z,T("energy")); }
+      put(x+1,0,z,T("fluid",{what:"water"})); labels.push({x:x+1,y:0,z:z-0.7,text:"Water"}); }
+    else if(g.gas==="hcl"){ for(let u=0;u<units;u++,z--){ put(x-1,0,z,role("sepH2")); put(x,0,z,role("infHCl")); put(x+1,0,z,role("sepCl"));
+        put(x-2,0,z,T("fluid",{what:"water"})); put(x+2,0,z,T("fluid",{what:"brine"})); for(const dx of [-1,0,1]) put(x+dx,1,z,T("energy")); }
+      put(x-2,0,z,T("fluid",{what:"water"})); put(x+2,0,z,T("fluid",{what:"brine"})); labels.push({x:x-2,y:0,z:z-0.7,text:"Water"}); labels.push({x:x+2,y:0,z:z-0.7,text:"Brine"}); }
+    else { for(let u=0;u<units;u++){ put(x-2,0,z,role("sepAcid")); put(x-1,0,z,role("inf1")); put(x,0,z,role("inf2")); put(x+1,0,z,role("rotary"));
+        put(x-1,0,z-1,role("oxid",{u:{s:sup.oxS,e:state.sup.e}})); put(x-1,0,z-2,T("item",{what:"sulfur dust"}));
+        for(let dz=0;dz<3;dz++){ put(x-3,0,z-dz,T("fluid",{what:"water"})); put(x+2,0,z-dz,T("fluid",{what:"water"})); }
+        for(const dx of [-2,-1,0,1]) put(x+dx,1,z,T("energy")); put(x-1,1,z-1,T("energy")); z-=3; }
+      put(x-3,0,z,T("fluid",{what:"water"})); put(x+2,0,z,T("fluid",{what:"water"}));
+      labels.push({x:x-3,y:0,z:z-0.7,text:"Water"}); labels.push({x:x-1,y:0.9,z:z+1,text:"Sulfur dust in"}); }
+    const end=z; for(let zz=-1;zz>=end+1;zz--){ put(x,-1,zz,T("chem",{what:GAS[g.gas].name.toLowerCase()})); put(x,1,zz,T("energy")); }
+    zb=end-1; }
+  return {C,labels,tiers,K};
+}
+
+/* ================= textures ================= */
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; draw(c.getContext("2d")); return texCache[key]=c; }
+function plateDraw(g,key,color){ const R=rng(key), b=hexRgb(color); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(b,0.9+R()*0.16); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(b,1.25); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(b,0.6); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); }
+const STEEL="#868D94";
+const LOOK={dissolve:"#9A6BE0",wash:"#3E8FE0",crystal:"#47D1C8",inject:"#C2D23C",purify:"#E05656",crush:"#AEB4BA",enrich:"#4A7FEA",smelt:"#F09A30",
+  sep:"#8FCB5A",infuser:"#E07A3A",oxid:"#E8D24A",rotary:"#5AA9E6"};
+function trim(g,tc){ if(!tc) return; g.fillStyle=tc; g.fillRect(1,1,14,1); g.fillRect(1,14,14,1); }
+function machineTex(base,face,f){
+  const tc=f?FAC[f].col:null, col=LOOK[base];
+  return tex(`m:${base}:${face}:${f||0}`,g=>{ plateDraw(g,`m${base}${face}`,STEEL);
+    if(face==="front"){ g.fillStyle="#14191C"; g.fillRect(3,3,10,9); const c=hexRgb(col);
+      g.fillStyle=col;
+      switch(base){
+        case "enrich": for(let y=4;y<11;y+=2) g.fillRect(4,y,8,1); break;
+        case "crush": g.fillRect(4,5,3,3); g.fillRect(9,5,3,3); g.fillStyle=shade(c,0.6); g.fillRect(5,9,6,2); break;
+        case "smelt": g.fillRect(5,7,6,4); g.fillStyle="#FFE08A"; g.fillRect(7,5,2,4); break;
+        case "purify": g.fillRect(7,4,2,7); g.fillRect(4,6,8,2); break;
+        case "inject": g.fillRect(7,4,2,2); g.fillRect(6,6,4,3); g.fillRect(7,9,2,1); break;
+        case "dissolve": g.fillRect(4,8,8,3); g.fillStyle=shade(c,1.3); g.fillRect(5,5,2,2); g.fillRect(9,4,2,2); break;
+        case "wash": g.fillRect(4,6,8,1); g.fillRect(4,9,8,1); g.fillStyle=shade(c,1.3); g.fillRect(5,7,2,2); g.fillRect(9,8,2,2); break;
+        case "crystal": g.fillRect(7,4,2,7); g.fillRect(5,6,6,3); break;
+        case "sep": g.fillStyle="#E8EEF2"; g.fillRect(4,4,3,7); g.fillStyle=col; g.fillRect(9,4,3,7); break;
+        case "infuser": g.fillRect(4,5,2,6); g.fillRect(7,4,2,7); g.fillRect(10,5,2,6); break;
+        case "oxid": g.fillRect(4,8,8,3); g.fillStyle="#FFF4B8"; g.fillRect(6,5,4,3); break;
+        case "rotary": g.fillRect(5,4,6,7); g.fillStyle="#14191C"; g.fillRect(7,6,2,3); break;
+      }
+      g.fillStyle=shade(hexRgb(STEEL),0.55); g.fillRect(3,12,10,1);
+    } else if(face==="top"){ g.fillStyle=shade(hexRgb(STEEL),0.62); for(let y=4;y<12;y+=2) g.fillRect(4,y,8,1); g.fillStyle=col; g.fillRect(7,2,2,1); }
+    else { g.fillStyle=shade(hexRgb(STEEL),0.72); g.fillRect(3,3,10,1); g.fillRect(3,12,10,1); g.fillRect(3,3,1,10); g.fillRect(12,3,1,10); g.fillStyle=col; g.fillRect(7,7,2,2); }
+    trim(g,tc); });
+}
+const chestTex=face=>tex("chest:"+face,g=>{ plateDraw(g,"chest"+face,"#9C6B30"); g.fillStyle="#5E3E17"; g.fillRect(0,5,16,1);
+  if(face==="front"){ g.fillStyle="#C9C9C9"; g.fillRect(7,4,2,4); } });
+// one 48×16 atlas per block (side | front | top) on a single material; ATLAS_GEO maps each box face onto its tile
+function atlas(key,side,front,top){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=48; c.height=16;
+  const g=c.getContext("2d"); g.drawImage(side,0,0); g.drawImage(front,16,0); g.drawImage(top,32,0); return texCache[key]=c; }
+const machineAtlas=(b,f)=>atlas(`atlas:${b}:${f||0}`,machineTex(b,"side",f),machineTex(b,"front",f),machineTex(b,"top",f));
+const chestAtlas=()=>atlas("atlas:chest",chestTex("side"),chestTex("front"),chestTex("top"));
+const swatchCache={};
+function swatch(base,f){ const k=base+":"+(f||0); return swatchCache[k]||(swatchCache[k]=machineTex(base,"front",f).toDataURL()); }
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, groups=[], pickables=[], halo=null, labelGroup=null, overlayGroup=null;
+const matCache={};
+function mat(canvas){ const key=canvas.__k||(canvas.__k=Math.random().toString(36).slice(2)); if(matCache[key]) return matCache[key];
+  const t=new THREE.CanvasTexture(canvas); t.magFilter=t.minFilter=THREE.NearestFilter; return matCache[key]=new THREE.MeshLambertMaterial({map:t}); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,1500);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.7); sun.position.set(9,16,12); scene.add(sun);
+  root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// orbit camera: left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms; goal eases to a new framing
+const orbit={theta:0.42,phi:0.88,radius:40,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const ptrs=new Map(); let dragged=0;
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(400,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(400,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); dragged=0; orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); hideTip(); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId);
+  if(!p){ if(e.pointerType==="mouse") hover(e); return; }
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; dragged+=10; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0; dragged+=Math.abs(dx)+Math.abs(dy);
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.15,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ const was=ptrs.has(e.pointerId); ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; if(was&&dragged<6&&e.type==="pointerup") hover(e,true); };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("pointerleave",()=>{ if(!ptrs.size) hideTip(); });
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+let lastT=performance.now(), bounds={cx:0,cy:0,cz:0,r:20};
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*6), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(halo){ halo.material.opacity=reduce?0.35:0.22+0.18*Math.sin(t/260); }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+const BOX=()=>BOX.g||(BOX.g=new THREE.BoxGeometry(1,1,1));
+// BoxGeometry faces in order +x, −x, +y, −y, +z, −z: the front (+z) gets tile 1, the top tile 2, every other face tile 0
+const ATLAS_GEO=()=>{ if(ATLAS_GEO.g) return ATLAS_GEO.g; const g=new THREE.BufferGeometry().copy(new THREE.BoxGeometry(1,1,1)), uv=g.attributes.uv;
+  for(let f=0;f<6;f++){ const tile=f===4?1:f===2?2:0; for(let v=0;v<4;v++){ const i=f*4+v; uv.setX(i,(tile+uv.getX(i))/3); } }
+  g.clearGroups(); return ATLAS_GEO.g=g; };
+const TC={item:0x2E3236,chem:0xD6DCE0,fluid:0x3F6E99,energy:0x4A4A4A};
+const tmat={};
+function tMat(tt,tier){ const k=tt+tier; if(tmat[k]) return tmat[k]; const c=new THREE.Color(TC[tt]), tc=new THREE.Color(FAC[tier+1].col);
+  c.lerp(tc,tt==="chem"?0.18:tt==="energy"?0.22:0.3); return tmat[k]=new THREE.MeshLambertMaterial({color:c,transparent:tt==="chem",opacity:tt==="chem"?0.9:1}); }
+const labelCache={};
+function labelSprite(text,kind){ const lk=kind+"|"+text; if(labelCache[lk]){ const s=new THREE.Sprite(labelCache[lk].m); s.scale.copy(labelCache[lk].s); s.renderOrder=10; return s; }
+  const c=document.createElement("canvas"), fs=kind==="stage"?30:24, g=c.getContext("2d");
+  g.font=`600 ${fs}px JetBrains Mono, monospace`; const w=Math.ceil(g.measureText(text).width)+20, h=fs+16; c.width=w; c.height=h;
+  g.font=`600 ${fs}px JetBrains Mono, monospace`; g.fillStyle=kind==="stage"?"rgba(58,54,20,0.92)":"rgba(10,14,16,0.85)"; g.strokeStyle=kind==="stage"?"#E2D03A":"rgba(255,255,255,0.3)";
+  g.lineWidth=2; g.beginPath(); g.rect(1,1,w-2,h-2); g.fill(); g.stroke(); g.fillStyle=kind==="stage"?"#F2E36A":"#DDE6E2"; g.textBaseline="middle"; g.fillText(text,10,h/2+1);
+  const t=new THREE.CanvasTexture(c); t.minFilter=THREE.LinearFilter; const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true}));
+  const k=kind==="stage"?0.0135:0.012; s.scale.set(w*k,h*k,1); s.renderOrder=10; labelCache[lk]={m:s.material,s:s.scale.clone()}; return s; }
+
+let L=null, shownKey="";
+function rebuild3D(Mo,prev){
+  if(!renderer) return;
+  for(const g of groups){ root.remove(g); g.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups=[]; pickables=[]; halo=null;
+  L=layout(Mo,48); const C=L.C, isNew=new Set();
+  if(prev){ const P=layout(prev,48).C; for(const [k,c] of C){ const p=P.get(k); if(!p||p.k!==c.k||p.role!==c.role||p.tt!==c.tt||p.k==="m"&&p.fac!==c.fac) isNew.add(k); } }
+  const cell=(x,y,z)=>C.get(x+","+y+","+z);
+  const show=c=>(view3.cables||c.tt!=="energy")&&(view3.support||c.z>-2);
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3(1,1,1);
+  const add=(o)=>{ root.add(o); groups.push(o); };
+  // machines, one instanced mesh per (machine, factory tier); BoxGeometry faces: +x right, −x left, +y top, −y bottom, +z front, −z back
+  const mBuckets={};
+  for(const [k,c] of C){ if(c.k!=="m"||!show(c)) continue; const b=baseOf(c.role), key=b+":"+(c.fac||0); (mBuckets[key]=mBuckets[key]||[]).push(c); }
+  for(const key in mBuckets){ const [b,f]=key.split(":"), list=mBuckets[key], F=+f;
+    const mesh=new THREE.InstancedMesh(ATLAS_GEO(),mat(machineAtlas(b,F)),list.length);
+    list.forEach((c,i)=>{ m4.makeTranslation(c.x,c.y,c.z); mesh.setMatrixAt(i,m4); });
+    mesh.userData.cells=list; add(mesh); pickables.push(mesh); }
+  // chests
+  const chests=[...C.values()].filter(c=>c.k==="chest");
+  if(chests.length){ const mesh=new THREE.InstancedMesh(ATLAS_GEO(),mat(chestAtlas()),chests.length), s88=new THREE.Vector3(0.88,0.88,0.88);
+    chests.forEach((c,i)=>{ m4.compose(new THREE.Vector3(c.x,c.y-0.06,c.z),q.set(0,0,0,1),s88); mesh.setMatrixAt(i,m4); }); mesh.userData.cells=chests; add(mesh); pickables.push(mesh); }
+  // transmitters: a core plus an arm toward every neighbour it connects to
+  const coreG=new THREE.BoxGeometry(0.34,0.34,0.34), armG=new THREE.BufferGeometry().copy(new THREE.BoxGeometry(0.26,0.26,0.5)); armG.translate(0,0,0.25);   // a plain BufferGeometry, so the card exporter keeps the offset
+  const cores={}, arms={};
+  const DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  for(const [k,c] of C){ if(c.k!=="t"||!show(c)) continue; const key=c.tt+c.tier; (cores[key]=cores[key]||[]).push(c);
+    for(const d of DIRS){ const n=cell(c.x+d[0],c.y+d[1],c.z+d[2]); if(!n) continue; let ok=false;
+      if(n.k==="t") ok=n.tt===c.tt&&show(n);
+      else if(n.k==="m"){ const side=DIR_SIDE([-d[0],-d[1],-d[2]]), fc=n.faces[side]; ok=!!(fc&&fc[c.tt])&&show(n); }
+      else if(n.k==="chest") ok=c.tt==="item";
+      if(ok) (arms[key]=arms[key]||[]).push([c,d]); } }
+  const thin=new THREE.Vector3(0.62,0.62,0.62), thinArm=new THREE.Vector3(0.62,0.62,1);
+  for(const key in cores){ const list=cores[key], tt=list[0].tt, tier=list[0].tier, mesh=new THREE.InstancedMesh(coreG,tMat(tt,tier),list.length);
+    list.forEach((c,i)=>{ m4.compose(new THREE.Vector3(c.x,c.y,c.z),q.set(0,0,0,1),tt==="energy"?thin:sc); mesh.setMatrixAt(i,m4); }); mesh.userData.cells=list; add(mesh); pickables.push(mesh); }
+  const fwd=new THREE.Vector3(0,0,1);
+  for(const key in arms){ const list=arms[key], tt=list[0][0].tt, tier=list[0][0].tier, mesh=new THREE.InstancedMesh(armG,tMat(tt,tier),list.length);
+    list.forEach(([c,d],i)=>{ q.setFromUnitVectors(fwd,v.set(d[0],d[1],d[2])); m4.compose(new THREE.Vector3(c.x,c.y,c.z),q,tt==="energy"?thinArm:sc); mesh.setMatrixAt(i,m4); }); add(mesh); }
+  // new in this build step: a pulsing yellow shell around each new block
+  const nw=[...isNew].map(k=>C.get(k)).filter(c=>show(c)&&(c.k!=="t"||c.tt!=="energy"));
+  if(nw.length){ halo=new THREE.InstancedMesh(new THREE.BoxGeometry(1.08,1.08,1.08),new THREE.MeshBasicMaterial({color:0xF2E36A,transparent:true,opacity:0.3,depthWrite:false}),nw.length);
+    nw.forEach((c,i)=>{ const s=c.k==="t"?0.55:1; m4.compose(new THREE.Vector3(c.x,c.y,c.z),q.set(0,0,0,1),new THREE.Vector3(s,s,s)); halo.setMatrixAt(i,m4); }); halo.renderOrder=3; add(halo); }
+  // side config overlay for the chosen transmission type
+  if(view3.side){ const tt=TTYPES[view3.side-1][0], plates=[];
+    for(const c of C.values()){ if(c.k!=="m"||!show(c)) continue; for(const s of SIDES){ const fc=c.faces[s]; plates.push([c,s,fc&&fc[tt]?fc[tt][0]:"NONE"]); } }
+    const pg=new THREE.PlaneGeometry(0.9,0.9), mesh=new THREE.InstancedMesh(pg,new THREE.MeshBasicMaterial({transparent:true,opacity:0.88,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}),plates.length);
+    const col=new THREE.Color(), zf=new THREE.Vector3(0,0,1);
+    plates.forEach(([c,s,dt],i)=>{ const d=SIDE_DIR[s]; q.setFromUnitVectors(zf,v.set(d[0],d[1],d[2])); m4.compose(new THREE.Vector3(c.x+d[0]*0.505,c.y+d[1]*0.505,c.z+d[2]*0.505),q,sc);
+      mesh.setMatrixAt(i,m4); col.set(DT[dt][1]); if(dt==="NONE") col.multiplyScalar(0.45); mesh.setColorAt(i,col); });
+    mesh.instanceColor.needsUpdate=true; mesh.renderOrder=2; add(mesh); }
+  // labels
+  const lg=new THREE.Group(); for(const l of L.labels){ if(!view3.support&&l.z<-1.5) continue; const s=labelSprite(l.text,l.kind); s.position.set(l.x,l.y,l.z); lg.add(s); } add(lg);
+  // frame the build when its footprint changes
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9; for(const c of C.values()){ if(!show(c)) continue; x0=Math.min(x0,c.x);x1=Math.max(x1,c.x);y0=Math.min(y0,c.y);y1=Math.max(y1,c.y);z0=Math.min(z0,c.z);z1=Math.max(z1,c.z); }
+  const cx=(x0+x1)/2, cy=(y0+y1)/2, cz=(z0+z1)/2, r=Math.max(6,Math.hypot(x1-x0,y1-y0,z1-z0)/2), key=[x0,x1,z0,z1].join("|");
+  if(key!==shownKey){ orbit.goal={x:cx,y:cy,z:cz,r:r*1.95+3}; if(!shownKey){ orbit.target={x:cx,y:cy,z:cz}; orbit.radius=orbit.goal.r; orbit.goal=null; } shownKey=key; }
+}
+
+/* hover / tap: what is this block */
+let raycaster=null;
+function hideTip(){ $("tip").hidden=true; }
+function hover(e,tap){
+  if(!renderer||!pickables.length) return; raycaster=raycaster||new THREE.Raycaster();
+  const r=view.getBoundingClientRect(), px=e.clientX-r.left, py=e.clientY-r.top;
+  raycaster.setFromCamera({x:px/r.width*2-1,y:-(py/r.height)*2+1},camera);
+  const hit=raycaster.intersectObjects(pickables,false)[0];
+  if(!hit||hit.instanceId==null){ if(tap||!hit) hideTip(); return; }
+  const c=hit.object.userData.cells[hit.instanceId]; if(!c){ hideTip(); return; }
+  const tip=$("tip"); tip.innerHTML=tipHtml(c); tip.hidden=false;
+  const w=tip.offsetWidth, h=tip.offsetHeight; tip.style.left=Math.min(r.width-w-6,Math.max(6,px+14))+"px"; tip.style.top=Math.min(r.height-h-6,Math.max(6,py+14))+"px";
+}
+function tipHtml(c){
+  if(c.k==="chest") return c.what==="in"?`<b>Chest: ore in</b>Put the ore here. Set the transporter touching it to <b>Pull</b> with the Configurator.`:`<b>Chest: ingots out</b>The smelters' transporter row fills it.`;
+  if(c.k==="t"){ const n=`${TIER_NAMES[c.tier]} ${TNAME[c.tt]}`; return `<b>${n}</b>${c.what?esc(c.what):c.tt==="energy"?"power":""}${c.pull?" · set to Pull from the chest":""}`; }
+  const b=baseOf(c.role), name=machineName(b,c.fac), u=c.u||{};
+  const up=MACH[b].kind==="rate"&&MACH[b].fixedJ?`${u.s} speed`:`${u.s} speed · ${u.e} energy${MACH[b].chem?` · ${u.c} chemical`:""}`;
+  const rows=SIDES.filter(s=>c.faces[s]).map(s=>Object.entries(c.faces[s]).map(([tt,[dt,what]])=>`<div><i style="background:${DT[dt][1]}"></i>${SIDE_NAME[s]}: ${tt==="energy"?"energy in":`${TTYPES.find(x=>x[0]===tt)[1].toLowerCase().replace(/s$/,"")} ${DT[dt][0].toLowerCase()} · ${esc(what)}`}</div>`).join("")).join("");
+  return `<b>${esc(name)}</b>${ROLE_NOTE[c.role]?esc(ROLE_NOTE[c.role])+"<br>":""}Upgrades: ${up}<div class="sides">${rows}</div>`;
+}
+
+/* ================= UI: config ================= */
+function renderCfg(){
+  renderPresetButtons();
+  const M=cfg.maxUpgradeMultiplier, dbl=USAGE_KEYS.filter(k=>cfg[k]!==DEFAULTS[k]);
+  $("cfgHint").innerHTML=`Upgrade multiplier <b>${fmt(M)}</b>${M!==10?" (default 10)":""} · Digital Miner <b>${fmt(cfg.ticksPerMine)}</b> ticks per block · ${cfg.feConversionRate} J = 1 FE`+
+    (dbl.length?` · <b>${dbl.length}</b> machine power values changed`:"")+(cfg.atmOre?" · <b>ATM ore recipes</b> (KubeJS)":"");
+  const g=$("cfgGrid");
+  if(!g.childElementCount){ for(const [k,label] of CFG_FIELDS){ if(k==="atmOre") continue; const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+      const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="any"; i.min="1";
+      i.onchange=()=>{ const v=+i.value; if(!(v>0)){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+    const l=document.createElement("label"); l.className="chk cfg-chk";
+    l.innerHTML=`<input type="checkbox" id="cfg-atmOre"><span>ATM ore processing recipes<small>kubejs/server_scripts/mods/Mekanism/ore_processing.js: washing 5 → 3, crystal → 2 shards, clump → 2 dirty dust, 4 dirty dust → 3 dust</small></span>`;
+    l.querySelector("input").onchange=e=>{ cfg.atmOre=e.target.checked?1:0; cfgPreset="custom"; saveCfg(); update(); }; g.append(l); }
+  for(const [k] of CFG_FIELDS) if(k!=="atmOre") $("cfg-"+k).value=cfg[k];
+  $("cfg-atmOre").checked=!!cfg.atmOre;
+}
+function saveCfg(){ try{ localStorage.setItem("mek-ore-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+
+/* ================= UI: inputs ================= */
+for(let t=2;t<=5;t++){ const b=document.createElement("button"); b.type="button"; b.textContent=t+"x"; b.dataset.t=t; b.onclick=()=>{ state.tier=t; view3.step=0; update(); }; $("tierSeg").append(b); }
+for(const [k,m] of Object.entries(METALS)){ const o=document.createElement("option"); o.value=k; o.textContent=m.name; $("metal").append(o); }
+$("metal").onchange=e=>{ state.metal=e.target.value; update(); };
+const MINE_OPTS=[["s","Silk Touch"],["0","No Fortune"],["1","Fortune I"],["2","Fortune II"],["3","Fortune III"]];
+for(const [k,label] of MINE_OPTS){ const b=document.createElement("button"); b.type="button"; b.textContent=label; b.dataset.k=k;
+  b.onclick=()=>{ if(k==="s") state.mine="s"; else { state.mine="f"; state.fortune=+k; } update(); }; $("mineSeg").append(b); }
+for(const [k,p] of Object.entries(MACHINE_PRESETS)){ const b=document.createElement("button"); b.type="button"; b.textContent=p.name; b.dataset.k=k; b.onclick=()=>{ setPreset(k); update(); }; $("presetSeg").append(b); }
+const cust=document.createElement("button"); cust.type="button"; cust.textContent="Custom"; cust.dataset.k="custom"; cust.disabled=true; cust.title="Change any machine below"; $("presetSeg").append(cust);
+for(const [id,v] of [["mMine","m"],["mDm","d"],["mTarget","t"]]) $(id).onclick=()=>{ state.mode=v; update(); };
+const bindRange=(id,key,min,max)=>{ const f=v=>{ const x=+v; if(!(x>=min)) return; state[key]=Math.min(max,x); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
+bindRange("rate","rate",0.1,1e6); bindRange("target","target",1,1e9); bindRange("dmS","dmS",0,8);
+$("dmS").oninput=e=>{ state.dmS=Math.round(+e.target.value); update(); }; $("dmSN").onchange=e=>{ state.dmS=Math.max(0,Math.min(8,Math.round(+e.target.value||0))); update(); };
+$("dmSilk").onchange=e=>{ state.dmSilk=e.target.checked; update(); };
+$("blocks").onchange=e=>{ state.blocks=e.target.checked; update(); };
+const opts=(sel,n,from=0)=>{ for(let i=from;i<=n;i++){ const o=document.createElement("option"); o.value=i; o.textContent=i; sel.append(o); } };
+opts($("supS"),8); opts($("supE"),8);
+$("supS").onchange=e=>{ state.sup.s=+e.target.value; update(); }; $("supE").onchange=e=>{ state.sup.e=+e.target.value; update(); };
+
+// stage cards
+function buildCards(){
+  const box=$("cards"); box.innerHTML="";
+  for(const id of ORDER){ const m=MACH[id], c=document.createElement("div"); c.className="card"; c.id="card-"+id; c.dataset.id=id;
+    const sel=(k,label,n)=>`<label>${label}<select data-k="${k}">${Array.from({length:n+1},(_,i)=>`<option value="${i}">${i}</option>`).join("")}</select></label>`;
+    c.innerHTML=`<div class="card-h"><img alt="" src="${swatch(id,0)}"><b class="nm"></b><span class="tag"></span><span class="n"></span></div>
+      <div class="card-c">${m.fac?`<label>Machine<select data-k="f"><option value="0">Single machine</option>${FAC.slice(1).map((t,i)=>`<option value="${i+1}">${t.name} factory (${t.slots})</option>`).join("")}</select></label>`:""}
+      ${sel("s","Speed",8)}${m.kind==="rate"?sel("e","Energy",8):sel("e","Energy",8)}${m.chem?sel("c","Chemical",8):""}
+      <label>Count<input type="number" min="1" step="1" data-k="n" placeholder="auto" aria-label="Machine count (blank for auto)"></label></div>
+      <div class="bar"><i></i></div><p class="card-s"></p>`;
+    box.append(c); }
+  box.onchange=e=>{ const k=e.target.dataset.k, id=e.target.closest(".card")?.dataset.id; if(!k||!id) return;
+    const u=state.st[id]; if(k==="n"){ const v=Math.round(+e.target.value); u.n=e.target.value===""||!(v>=1)?null:v; } else u[k]=+e.target.value;
+    if(k!=="n") state.preset="custom"; update(); };
+}
+buildCards();
+function renderCards(Mo){
+  const met=METALS[state.metal];
+  for(const id of ORDER){ const c=$("card-"+id), g=Mo.stages.find(s=>s.id===id); c.hidden=!g; if(!g) continue;
+    const u=g.u, b=c.querySelector(".nm"); b.textContent=machineName(id,u.f);
+    c.querySelector("img").src=swatch(id,MACH[id].fac?u.f:0);
+    c.querySelector(".tag").textContent=g.isFront?`takes the ${Mo.src.feed==="ore"?"ore":Mo.src.feed==="raw"?"raw ore":"raw blocks"}`:`${STAGE_TIER[id]}x`;
+    c.querySelector(".n").textContent="×"+fmt(g.count);
+    c.classList.toggle("isnew",STAGE_TIER[id]===state.tier&&state.tier>2||state.tier===2&&id==="enrich");
+    c.classList.toggle("hot",Mo.slow===g);
+    for(const el of c.querySelectorAll("[data-k]")){ const k=el.dataset.k; if(document.activeElement===el) continue; el.value=k==="n"?(u.n??""):u[k]; }
+    const bar=c.querySelector(".bar i"), load=g.req/g.cap; bar.style.width=Math.min(100,load*100)+"%"; bar.className=load>1.0001?"over":load>0.95?"hi":"";
+    const s=g.s, rate=s.opsPerSec;
+    const bits=[`<span><b>${sig(rate)}</b>/s each</span>`,`<span><b>${fmt(Math.min(load,9.99)*100)}%</b> busy</span>`,`<span><b>${big(toFE(g.J))}</b> FE/t</span>`];
+    if(MACH[id].kind==="progress") bits.splice(1,0,`<span>${s.ticks} ticks${s.slots>1?` × ${s.slots} slots`:""}</span>`); else bits.splice(1,0,`<span>${fmt(s.opsPerTick*(id==="wash"?chain().wash[0]:1))} mB/t</span>`);
+    if(g.gas) bits.push(`<span><b>${sig(perT(g.gasRate))}</b> mB/t ${GAS[g.gas].short}</span>`);
+    if(id==="wash") bits.push(`<span><b>${sig(perT(g.water))}</b> mB/t water</span>`);
+    c.querySelector(".card-s").innerHTML=bits.join("");
+  }
+  for(const b of $("presetSeg").children) b.setAttribute("aria-pressed",b.dataset.k===state.preset);
+}
+function renderGasCards(Mo){
+  const box=$("gasCards"), rows=[], S=Mo.sup;
+  const pick=(key,opts)=>`<div class="seg" role="group">${opts.map(([v,l])=>`<button type="button" data-g="${key}" data-v="${v}" aria-pressed="${state.sup[key]===v}">${l}</button>`).join("")}</div>`;
+  const card=(id,title,body,stat)=>`<div class="card"><div class="card-h"><img alt="" src="${swatch(id,0)}"><b>${title}</b></div><div class="card-c">${body}</div><p class="card-s">${stat}</p></div>`;
+  if(Mo.dem.o2>0){ const g=S.o2;
+    rows.push(card("sep",`Oxygen · ${sig(perT(Mo.dem.o2))} mB/t`,pick("o2",[["s","Electrolytic Separators"],["f","Flint in the gas slot"]]),
+      g.src==="s"?`<span><b>${fmt(g.units)}</b> separator${g.units>1?"s":""}, 8 speed upgrades each</span><span><b>${fmt(g.load*100)}%</b> busy</span><span><b>${big(toFE(g.J))}</b> FE/t</span><span><b>${sig(perT(g.water))}</b> mB/t water</span><span>${sig(perT(g.h2))} mB/t hydrogen spare</span>`
+      :`<span><b>${big(g.flint*3600)}</b> flint per hour</span>`)); }
+  if(Mo.dem.hcl>0){ const g=S.hcl;
+    rows.push(card("infuser",`Hydrogen chloride · ${sig(perT(Mo.dem.hcl))} mB/t`,pick("hcl",[["p","Gas plant"],["s","Salt in the gas slot"]]),
+      g.src==="p"?`<span><b>${fmt(g.units)}</b> × (infuser + 2 separators)</span><span><b>${big(toFE(g.J))}</b> FE/t</span><span><b>${sig(perT(g.brine))}</b> mB/t brine</span><span><b>${sig(perT(g.water))}</b> mB/t water</span>`
+      :`<span><b>${big(g.salt*3600)}</b> salt per hour</span>`)); }
+  if(Mo.dem.acid>0){ const g=S.acid;
+    rows.push(card("oxid",`Sulfuric acid · ${sig(perT(Mo.dem.acid))} mB/t`,pick("acid",[["p","Gas plant"],["s","Sulfur dust in the gas slot"]]),
+      g.src==="p"?`<span><b>${fmt(g.units)}</b> × (oxidizer, 2 infusers, rotary, separator)</span><span><b>${big(toFE(g.J))}</b> FE/t</span><span><b>${big(g.sulfur*3600)}</b> sulfur dust per hour</span><span><b>${sig(perT(g.water))}</b> mB/t water</span>`
+      :`<span><b>${big(g.sulfur*3600)}</b> sulfur dust per hour</span>`)); }
+  box.innerHTML=rows.join("")||`<p class="hint">At 2x the line needs no gas.</p>`;
+  $("supS").value=state.sup.s; $("supE").value=state.sup.e;
+  $("supS").parentElement.hidden=!(S.o2&&S.o2.src==="s"||S.hcl&&S.hcl.src==="p"||S.acid&&S.acid.src==="p");
+}
+$("gasCards").onclick=e=>{ const b=e.target.closest("button[data-g]"); if(!b) return; state.sup[b.dataset.g]=b.dataset.v; update(); };
+
+function syncInputs(Mo){
+  for(const b of $("tierSeg").children) b.setAttribute("aria-pressed",+b.dataset.t===state.tier);
+  $("metal").value=state.metal;
+  for(const [id,v] of [["mMine","m"],["mDm","d"],["mTarget","t"]]) $(id).setAttribute("aria-pressed",state.mode===v);
+  $("srcMine").hidden=state.mode!=="m"; $("srcDm").hidden=state.mode!=="d"; $("srcTarget").hidden=state.mode!=="t"; $("mineHow").hidden=state.mode==="d";
+  const setR=(id,v)=>{ if(document.activeElement!==$(id)) $(id).value=v; if(document.activeElement!==$(id+"N")) $(id+"N").value=v; };
+  setR("rate",state.rate); setR("target",state.target); setR("dmS",state.dmS); $("dmSilk").checked=state.dmSilk;
+  for(const b of $("mineSeg").children) b.setAttribute("aria-pressed",b.dataset.k==="s"?state.mine==="s":state.mine==="f"&&+b.dataset.k===state.fortune);
+  const silk=Mo.src.silk; $("blocksWrap").hidden=silk; $("blocks").checked=state.blocks;
+  const met=METALS[state.metal], src=Mo.src;
+  const yk=src.feed==="ore"?"ore":"raw", yv=Y()[yk][state.tier-1], ym=Y(CHAINS.mek)[yk][state.tier-1], per=src.perBlock*Y()[src.feed][state.tier-1];
+  $("tierHint").innerHTML=`${state.tier}x turns each ${src.feed==="ore"?"ore block":"raw ore"} into ${yfmt(yv)} ingots${yv!==ym?` with this pack's recipes (${yfmt(ym)} in plain Mekanism)`:""}. You mine <b>${sig(per)}</b> ${met.name.toLowerCase()} ingots' worth per ore block.`;
+  let h="";
+  if(state.mode==="d") h=`One block every <b>${src.dmTicks}</b> ticks: <b>${sig(src.bps*60)}</b> blocks a minute, if every block it mines is ${met.name.toLowerCase()} ore (set its filter to the ore).`;
+  else if(state.mode==="t") h=`That takes <b>${sig(src.bps*60)}</b> ore blocks a minute${src.silk?"":` (${sig(src.bps*60*src.drops)} raw ore)`}.`;
+  else h=src.silk?`Silk Touch brings back the ore blocks themselves.`:`${src.fort?`Fortune ${["","I","II","III"][src.fort]} averages`:"Without Fortune you get"} <b>${sig(src.drops)}</b> raw ${met.name.toLowerCase()} per block${met.raw!==1?" (copper ore drops 2 to 5)":""}.`;
+  $("srcHint").innerHTML=h;
+}
+
+/* ================= UI: results ================= */
+function renderResults(Mo){
+  const met=METALS[state.metal], src=Mo.src, perBlock=Mo.oreIn>0?Mo.ingots/Mo.oreIn:0;
+  $("hudMain").innerHTML=`${big(Mo.ingots*3600)} <small>${met.name.toLowerCase()} ingots/hour</small>`;
+  $("hudSub").textContent=`${Mo.t}x from ${src.feed==="ore"?"ore blocks":src.feed==="raw"?"raw ore":"raw ore blocks"} · ${pl(Mo.allMachines,"machine")} · ${big(toFE(Mo.J))} FE/t${view3.guide?` · step ${view3.step+1}: ${Mo.t}x`:""}`;
+  const cells=[["Ingots per hour",`${big(Mo.ingots*3600)} <small>${met.name.toLowerCase()} · ${sig(Mo.ingots*60)}/min</small>`,"hero"],
+    ["Per ore block mined",`${sig(perBlock)} <small>ingots</small>`],
+    ["Ore in",`${sig(Mo.oreIn*60)} <small>blocks/min${src.silk?"":` · ${sig(Mo.oreIn*60*src.drops)} raw`}</small>`],
+    ["Power",`${big(toFE(Mo.J))} <small>FE/t · ${big(Mo.J/20)} J/t</small>`],
+    ["Machines",`${fmt(Mo.allMachines)} <small>${fmt(Mo.machines)} in the line${Mo.sup.machines?` · ${fmt(Mo.sup.machines)} making gas`:""}</small>`]];
+  for(const k of ["o2","hcl","acid"]) if(Mo.dem[k]>0) cells.push([GAS[k].name,`${sig(perT(Mo.dem[k]))} <small>mB/t</small>`]);
+  if(Mo.water>0) cells.push(["Water",`${sig(perT(Mo.water))} <small>mB/t</small>`]);
+  if(Mo.sup.hcl&&Mo.sup.hcl.brine) cells.push(["Brine",`${sig(perT(Mo.sup.hcl.brine))} <small>mB/t</small>`]);
+  const items=[]; if(Mo.sup.o2&&Mo.sup.o2.flint) items.push(`${big(Mo.sup.o2.flint*3600)} flint`); if(Mo.sup.hcl&&Mo.sup.hcl.salt) items.push(`${big(Mo.sup.hcl.salt*3600)} salt`);
+  if(Mo.sup.acid&&Mo.sup.acid.sulfur) items.push(`${big(Mo.sup.acid.sulfur*3600)} sulfur dust`);
+  if(items.length) cells.push(["Items per hour",`<small>${items.join(" · ")}</small>`]);
+  const busiest=Mo.stages.reduce((a,g)=>g.req/g.cap>a.req/a.cap?g:a,Mo.stages[0]);
+  cells.push([Mo.limit<0.9999?"Bottleneck":"Busiest machine",`${fmt(Math.min(busiest.req/busiest.cap,9.99)*100)}% <small>${MACH[busiest.id].short}</small>`]);
+  if(cells.length%2===0) cells.push(["Slurry",Mo.t===5?`${sig(perT(Mo.slurry))} <small>mB/t</small>`:`— <small>5x only</small>`]);
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  $("notes").innerHTML=notesFor(Mo).map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+}
+function notesFor(Mo){
+  const n=[], met=METALS[state.metal], src=Mo.src, M=cfg.maxUpgradeMultiplier, t=Mo.t;
+  if(Mo.limit<0.9999) n.push(["bad",`${MACH[Mo.slow.id].name}s hold the line to ${fmt(Mo.limit*100)}% of the ore coming in: ${fmt(Mo.slow.count)} can do ${sig(Mo.slow.cap)} operations a second, it needs ${sig(Mo.slow.req)}. You'd need ${fmt(Mo.slow.auto)}.`]);
+  const cr=Mo.stages.find(g=>g.id==="crystal"), dis=Mo.stages.find(g=>g.id==="dissolve");
+  if(cr&&dis&&cr.count>=3*dis.count) n.push(["warn",`Crystallizers are the slow step: ${fmt(cr.count)} of them keep up with ${pl(dis.count,"dissolution chamber")}. They have no factory, so more speed upgrades in them is the way to need fewer.`]);
+  if(!src.silk&&src.feed==="raw"&&t>=2){ const fr=Mo.stages[0], k=FRONT[t].raw[0], mult=k===3?3:9;
+    n.push(["good",`Craft the raw ore into raw ore blocks first: the ${MACH[fr.id].short.toLowerCase()} stage would do ${mult}× fewer operations${fr.gas?` and use ${fmt(mult/2,1).replace(/\.0$/,"")}× less ${GAS[fr.gas].name.toLowerCase()}`:""}, for the same ingots.`]); }
+  if(src.silk&&state.mode!=="d"){ const raw=met.raw*FORTUNE[3]*Y().raw[t-1]; if(raw>Y().ore[t-1]) n.push(["good",`Fortune III would give ${sig(raw)} ingots per ore block at ${t}x instead of ${yfmt(Y().ore[t-1])}: raw ore loses a bit per item, Fortune more than makes it up.`]); }
+  if(state.mode==="d"&&!state.dmSilk) n.push(["warn",`The Digital Miner has no Fortune, so it brings back one raw ore per block (${met.raw!==1?"2 to 5 for copper":"for most ores"}). With Silk Touch on you'd get ${yfmt(Y().ore[t-1])} ingots per block instead of ${sig(met.raw*Y().raw[t-1])}, for 12× the miner's power.`]);
+  if(cfg.atmOre&&t>=3){ const steps=[...(t===5?["washing turns 5 mB of dirty slurry into 3 mB clean","a crystal injects into 2 shards"]:[]),"a clump crushes into 2 dirty dust","4 dirty dust enrich into 3 dust"];
+    n.push(["good",`This pack's KubeJS changes Mekanism's recipes: ${steps.join(", ")}. An ore block makes ${yfmt(Y().ore[t-1])} ingots at ${t}x here, not ${yfmt(Y(CHAINS.mek).ore[t-1])}.`]); }
+  const gasless=Mo.stages.filter(g=>g.gas&&g.u.s>g.u.c);
+  if(gasless.length){ const g=gasless[0], k=Math.pow(M,(g.u.s-g.u.c)/8); n.push(["warn",`${MACH[g.id].short} has ${g.u.s} speed and ${g.u.c} chemical upgrades, so each item takes ${sig(k)}× the ${GAS[g.gas].name.toLowerCase()} it would with none. Match the chemical upgrades to the speed upgrades to cancel it.`]); }
+  const hungry=Mo.stages.filter(g=>MACH[g.id].kind==="progress"&&2*g.u.s-g.u.e>g.u.s);
+  if(hungry.length){ const g=hungry[0], k=Math.pow(M,(g.u.s-g.u.e)/8); n.push(["warn",`With ${g.u.s} speed and ${g.u.e} energy upgrades, each item through a ${MACH[g.id].short.toLowerCase()} costs ${sig(k)}× the power it would with none. Energy upgrades bring it back down.`]); }
+  const w=Mo.stages.find(g=>g.id==="wash"); if(w&&w.u.s>=6&&w.load<0.3) n.push(["warn",`The washer is ${fmt(w.load*100)}% busy. Each speed upgrade doubles what it can wash but raises its power per mB too, so ${Math.max(0,w.u.s-Math.floor(Math.log2(1/w.load)))} speed upgrades would do with less power.`]);
+  if(Mo.sup.hcl&&Mo.sup.hcl.brine) n.push(["warn",`The hydrogen chloride plant needs ${sig(perT(Mo.sup.hcl.brine))} mB/t of brine: 10 mB of brine per mB of chlorine. Brine comes from a Thermal Evaporation Plant (10 water → 1 brine).`]);
+  if(Mo.sup.o2&&Mo.sup.o2.src==="s") n.push(["good",`The oxygen separators also make ${sig(perT(Mo.sup.o2.h2))} mB/t of hydrogen. Burnt in Gas-Burning Generators it gives back the ${big(toFE(Mo.sup.o2.J))} FE/t the separators use (200 J per mB).`]);
+  if(L&&L.tiers.energy>=3&&Mo.J/20>TCAP.energy[3]) n.push(["bad",`${big(Mo.J/20)} J/t is more than one line of Ultimate Universal Cable carries (8.19M J/t). Feed the line from both ends or split it.`]);
+  if(M!==10) n.push(["good",`This pack sets maxUpgradeMultiplier to ${fmt(M)} (default 10): 8 speed upgrades make machines ${fmt(M)}× faster and ${fmt(M*M)}× hungrier per tick.`]);
+  return n;
+}
+
+/* ================= build guide (tier by tier) ================= */
+function stepModels(){ const src=supply(), out=[]; for(let t=2;t<=state.tier;t++) out.push(model(t,src)); const tiers=tiersFor(out[out.length-1]); for(const m of out) m.tiers=tiers; return out; }
+function partsOf(Mo){ const P=new Map(), add=(key,name,img,n,bom)=>{ if(!n) return; const p=P.get(key)||{name,img,n:0,bom}; p.n+=n; P.set(key,p); };
+  for(const g of Mo.stages){ const f=MACH[g.id].fac?g.u.f:0; add(g.id+f,machineName(g.id,f),swatch(g.id,f),g.count,f?`${FAC[f].key}_${MACH[g.id].fac}_factory`:MACH[g.id].bom);
+    add("us","Speed Upgrade",null,g.count*g.u.s,"upgrade_speed"); add("ue","Energy Upgrade",null,g.count*g.u.e,"upgrade_energy"); if(MACH[g.id].chem) add("uc","Chemical Upgrade",null,g.count*g.u.c,"upgrade_chemical"); }
+  for(const k of ["o2","hcl","acid"]){ const g=Mo.sup[k]; if(!g) continue; for(const [b,n] of Object.entries(g.machines)){ add(b,MACH[b].name,swatch(b,0),n,MACH[b].bom);
+      add("us","Speed Upgrade",null,n*(k==="o2"?8:b==="oxid"?Mo.sup.oxS:state.sup.s),"upgrade_speed"); if(!MACH[b].fixedJ) add("ue","Energy Upgrade",null,n*state.sup.e,"upgrade_energy"); } }
+  const Lb=layout(Mo,Infinity), tc={};
+  for(const c of Lb.C.values()){ if(c.k==="t"){ const k=c.tt+c.tier; tc[k]=tc[k]||{tt:c.tt,tier:c.tier,n:0}; tc[k].n++; } if(c.k==="chest") add("chest","Chest",null,1,null); }
+  for(const v of Object.values(tc)) add("t"+v.tt+v.tier,`${TIER_NAMES[v.tier]} ${TNAME[v.tt]}`,null,v.n,`${["basic","advanced","elite","ultimate"][v.tier]}_${TBOM[v.tt]}`);
+  return P; }
+// raw materials per part, from ATM10's recipes (scripts/costs/costs.py: cheapest route, Metallurgic Infuser steps expanded)
+const BOM={"enrichment_chamber":{"osmium":3.0,"coal":1.0,"iron":6.0,"redstone":4.5,"sand":4.0},"crusher":{"osmium":3.0,"coal":1.0,"iron":4.0,"lava":2.0,"redstone":4.5,"sand":4.0},"energized_smelter":{"osmium":3.0,"coal":1.0,"iron":4.0,"redstone":4.5,"sand":6.0},"purification_chamber":{"osmium":7.0,"coal":1.0,"copper":4.0,"iron":6.0,"redstone":7.0,"sand":4.0},"chemical_injection_chamber":{"osmium":9.0,"coal":1.0,"copper":12.0,"diamond":2.0,"gold":2.0,"iron":6.0,"redstone":10.0,"sand":4.0},"chemical_dissolution_chamber":{"osmium":15.0,"coal":1.0,"copper":4.0,"diamond":2.25,"iron":4.0,"obsidian":2.5,"redstone":10.5,"sand":4.0},"chemical_washer":{"osmium":11.0,"coal":1.0,"copper":4.0,"diamond":2.25,"iron":8.0,"obsidian":2.5,"redstone":10.5,"sand":4.0},"chemical_crystallizer":{"fluorite":2.0,"osmium":7.0,"coal":1.0,"copper":4.0,"diamond":2.25,"iron":4.0,"obsidian":2.5,"redstone":2.5,"sand":4.0},"electrolytic_separator":{"osmium":2.0,"copper":7.0,"gold":1.0,"iron":5.0,"redstone":2.875},"chemical_infuser":{"osmium":11.0,"coal":1.0,"copper":4.0,"iron":4.0,"redstone":9.0,"sand":4.0},"chemical_oxidizer":{"osmium":7.0,"coal":1.5,"copper":4.0,"iron":6.75,"log":4.0,"redstone":5.25,"sand":1.0},"rotary_condensentrator":{"osmium":6.0,"copper":2.0,"gold":3.0,"iron":4.0,"redstone":12.75,"sand":4.0},"upgrade_speed":{"osmium":1.0,"copper":2.0,"redstone":0.25,"sand":2.0},"upgrade_energy":{"copper":2.0,"gold":1.0,"redstone":0.25,"sand":2.0},"upgrade_chemical":{"copper":2.0,"iron":1.0,"redstone":0.25,"sand":2.0},"basic_enriching_factory":{"osmium":5.0,"coal":1.0,"iron":8.0,"redstone":9.0,"sand":4.0},"basic_crushing_factory":{"osmium":5.0,"coal":1.0,"iron":6.0,"lava":2.0,"redstone":9.0,"sand":4.0},"basic_smelting_factory":{"osmium":5.0,"coal":1.0,"iron":6.0,"redstone":9.0,"sand":6.0},"basic_purifying_factory":{"osmium":9.0,"coal":1.0,"copper":4.0,"iron":8.0,"redstone":11.5,"sand":4.0},"basic_injecting_factory":{"osmium":11.0,"coal":1.0,"copper":12.0,"diamond":2.0,"gold":2.0,"iron":8.0,"redstone":14.5,"sand":4.0},"basic_logistical_transporter":{"osmium":0.125,"coal":0.0625,"iron":0.25,"redstone":0.0312},"basic_pressurized_tube":{"coal":0.0625,"iron":0.25,"sand":0.125},"basic_universal_cable":{"coal":0.0625,"iron":0.25,"redstone":0.125},"basic_mechanical_pipe":{"coal":0.0625,"iron":0.625},"advanced_enriching_factory":{"osmium":9.0,"coal":1.0,"copper":4.0,"iron":8.0,"redstone":11.5,"sand":4.0},"advanced_crushing_factory":{"osmium":9.0,"coal":1.0,"copper":4.0,"iron":6.0,"lava":2.0,"redstone":11.5,"sand":4.0},"advanced_smelting_factory":{"osmium":9.0,"coal":1.0,"copper":4.0,"iron":6.0,"redstone":11.5,"sand":6.0},"advanced_purifying_factory":{"osmium":13.0,"coal":1.0,"copper":8.0,"iron":8.0,"redstone":14.0,"sand":4.0},"advanced_injecting_factory":{"osmium":15.0,"coal":1.0,"copper":16.0,"diamond":2.0,"gold":2.0,"iron":8.0,"redstone":17.0,"sand":4.0},"advanced_logistical_transporter":{"osmium":0.125,"coal":0.0625,"copper":0.125,"iron":0.25,"redstone":0.0469},"advanced_pressurized_tube":{"coal":0.0625,"copper":0.125,"iron":0.25,"redstone":0.0156,"sand":0.125},"advanced_universal_cable":{"coal":0.0625,"copper":0.125,"iron":0.25,"redstone":0.1406},"advanced_mechanical_pipe":{"coal":0.0625,"copper":0.125,"iron":0.625,"redstone":0.0156},"elite_enriching_factory":{"osmium":11.0,"coal":1.0,"copper":12.0,"diamond":2.0,"gold":2.0,"iron":8.0,"redstone":14.5,"sand":4.0},"elite_crushing_factory":{"osmium":11.0,"coal":1.0,"copper":12.0,"diamond":2.0,"gold":2.0,"iron":6.0,"lava":2.0,"redstone":14.5,"sand":4.0},"elite_smelting_factory":{"osmium":11.0,"coal":1.0,"copper":12.0,"diamond":2.0,"gold":2.0,"iron":6.0,"redstone":14.5,"sand":6.0},"elite_purifying_factory":{"osmium":15.0,"coal":1.0,"copper":16.0,"diamond":2.0,"gold":2.0,"iron":8.0,"redstone":17.0,"sand":4.0},"elite_injecting_factory":{"osmium":17.0,"coal":1.0,"copper":24.0,"diamond":4.0,"gold":4.0,"iron":8.0,"redstone":20.0,"sand":4.0},"elite_logistical_transporter":{"osmium":0.125,"coal":0.0625,"copper":0.25,"diamond":0.0312,"iron":0.25,"redstone":0.0625},"elite_pressurized_tube":{"coal":0.0625,"copper":0.25,"diamond":0.0312,"iron":0.25,"redstone":0.0312,"sand":0.125},"elite_universal_cable":{"coal":0.0625,"copper":0.25,"diamond":0.0312,"iron":0.25,"redstone":0.1562},"elite_mechanical_pipe":{"coal":0.0625,"copper":0.25,"diamond":0.0312,"iron":0.625,"redstone":0.0312},"ultimate_enriching_factory":{"osmium":13.0,"coal":1.0,"copper":20.0,"diamond":7.0,"gold":2.0,"iron":8.0,"obsidian":2.0,"redstone":17.5,"sand":4.0},"ultimate_crushing_factory":{"osmium":13.0,"coal":1.0,"copper":20.0,"diamond":7.0,"gold":2.0,"iron":6.0,"lava":2.0,"obsidian":2.0,"redstone":17.5,"sand":4.0},"ultimate_smelting_factory":{"osmium":13.0,"coal":1.0,"copper":20.0,"diamond":7.0,"gold":2.0,"iron":6.0,"obsidian":2.0,"redstone":17.5,"sand":6.0},"ultimate_purifying_factory":{"osmium":17.0,"coal":1.0,"copper":24.0,"diamond":7.0,"gold":2.0,"iron":8.0,"obsidian":2.0,"redstone":20.0,"sand":4.0},"ultimate_injecting_factory":{"osmium":19.0,"coal":1.0,"copper":32.0,"diamond":9.0,"gold":4.0,"iron":8.0,"obsidian":2.0,"redstone":23.0,"sand":4.0},"ultimate_logistical_transporter":{"osmium":0.125,"coal":0.0625,"copper":0.375,"diamond":0.0703,"iron":0.25,"obsidian":0.0156,"redstone":0.0781},"ultimate_pressurized_tube":{"coal":0.0625,"copper":0.375,"diamond":0.0703,"iron":0.25,"obsidian":0.0156,"redstone":0.0469,"sand":0.125},"ultimate_universal_cable":{"coal":0.0625,"copper":0.375,"diamond":0.0703,"iron":0.25,"obsidian":0.0156,"redstone":0.1719},"ultimate_mechanical_pipe":{"coal":0.0625,"copper":0.375,"diamond":0.0703,"iron":0.625,"obsidian":0.0156,"redstone":0.0469}};
+const RAW_NAME={osmium:"Osmium ingots",iron:"Iron ingots",copper:"Copper ingots",gold:"Gold ingots",redstone:"Redstone",diamond:"Diamonds",sand:"Sand",coal:"Coal",
+  obsidian:"Obsidian",lava:"Lava buckets",fluorite:"Fluorite gems",log:"Oak logs"};
+function rawOf(P){ const R={}; for(const p of P.values()){ const b=p.bom&&BOM[p.bom]; if(!b) continue; for(const [k,v] of Object.entries(b)) R[k]=(R[k]||0)+v*p.n; } return R; }
+function diffParts(A,B){ const out=new Map(); for(const [k,p] of A){ const q=B&&B.get(k), n=p.n-(q?q.n:0); if(n>0) out.set(k,{...p,n}); } return out; }
+const partsHtml=(P,add)=>[...P.values()].sort((a,b)=>(b.img?1:0)-(a.img?1:0)).map(p=>`<li class="${add?"add":""}">${p.img?`<img src="${p.img}" alt="">`:`<span style="width:16px"></span>`}<span>${esc(p.name)}</span><span class="n">${add?"+":""}${fmt(Math.ceil(p.n))}</span></li>`).join("")||`<li><span class="hint">Nothing new</span></li>`;
+function sideTable(Mo,ids){
+  const rows=[];
+  for(const id of ids){ const faces=facesFor(id,stageInName(Mo,id)), name=ROLE[id]?MACH[ROLE[id]].name:machineName(id,MACH[id].fac?state.st[id].f:0);
+    const cell=SIDES.filter(s=>faces[s]).map(s=>Object.entries(faces[s]).map(([tt,[dt,what]])=>`<div><i style="background:${DT[dt][1]}"></i>${SIDE_NAME[s]} · ${TTYPES.find(x=>x[0]===tt)[1]}: ${DT[dt][0]} (${esc(what)})</div>`).join("")).join("");
+    rows.push(`<tr><td><b>${esc(name)}</b>${ROLE_NOTE[id]?`<br><span class="hint">${esc(ROLE_NOTE[id])}</span>`:""}</td><td>${cell}</td></tr>`); }
+  return `<table class="sidecfg"><tr><th>Machine</th><th>Sides (machine facing you: left is your left)</th></tr>${rows.join("")}</table>`;
+}
+function renderGuide(){
+  const steps=stepModels(), i=Math.min(view3.step,steps.length-1); view3.step=i;
+  $("sLabel").textContent=`${steps[i].t}x · step ${i+1} of ${steps.length}`; $("sDown").disabled=i<=0; $("sUp").disabled=i>=steps.length-1;
+  if(!view3.guide) return;
+  const Mo=steps[i], prev=i?steps[i-1]:null, met=METALS[state.metal], P=partsOf(Mo), add=diffParts(P,prev?partsOf(prev):null);
+  const li=[], news=Mo.stages.filter(g=>!prev||!prev.stages.some(p=>p.id===g.id)), fr=Mo.stages[0];
+  const nm=g=>`${pl(g.count,machineName(g.id,MACH[g.id].fac?g.u.f:0))}`;
+  if(!prev){
+    li.push(`Put ${nm(Mo.stages[0])} in a row going away from you, all facing you, and ${nm(Mo.stages[1])} in a second row two blocks to the right.`);
+    li.push(`Fill the gaps with <b>Logistical Transporters</b>: a row from the input chest into the enrichment row, a row between the two machine rows, and a row from the smelters to the output chest.`);
+    li.push(`Set the transporter that touches the input chest to <b>Pull</b> (sneak-click it with a Configurator).`);
+    li.push(`In each machine's side config: <b>Left</b> = item input, <b>Right</b> = item output, and press <b>Eject</b> for items. Power goes in the <b>Top</b>: run Universal Cable over every machine.`);
+    if(Mo.stages.some(g=>g.u.f)) li.push(`Turn on <b>Auto-sort</b> in each factory so all its slots get items.`);
+  } else {
+    li.push(`Add ${news.map(nm).join(", then ")} as new rows on the left, in front of the ${MACH[prev.stages[0].id].short.toLowerCase()} row. The ore now goes into the ${MACH[fr.id].short.toLowerCase()} row: move the input chest and its Pull transporter to the new left end.`);
+    if(news.some(g=>g.id==="dissolve")) li.push(`Dissolution → washer → crystallizer pass slurry, not items: join those rows with <b>Pressurized Tubes</b> and press <b>Eject</b> for chemicals on the dissolution chambers and washers.`);
+    const more=Mo.stages.filter(g=>prev.stages.some(p=>p.id===g.id&&g.count>p.count)).map(g=>{ const p=prev.stages.find(x=>x.id===g.id); return `${fmt(g.count-p.count)} more ${MACH[g.id].short.toLowerCase()}${g.count-p.count>1?"s":""} (${fmt(p.count)} → ${fmt(g.count)})`; });
+    const r=Mo.ingots/(prev.ingots||1);
+    if(more.length) li.push(`Everything after the new machines now gets ${sig(r)}× as many items: add ${more.join(", ")}.`);
+    for(const g of news) if(g.gas){ const s=Mo.sup[g.gas];
+      li.push(g.gas==="o2"?(s.src==="s"?`Oxygen: ${pl(s.units,"Electrolytic Separator")} behind the purification row, on a Pressurized Tube that runs under the chambers (gas goes in the <b>Bottom</b>). Water in, hydrogen tank set to <b>Dump</b>.`:`Oxygen: keep flint in each purification chamber's gas slot (${big(s.flint*3600)} an hour).`)
+        :g.gas==="hcl"?(s.src==="p"?`Hydrogen chloride: ${s.units>1?`${fmt(s.units)} Chemical Infusers, each`:"a Chemical Infuser"} between a separator making hydrogen (from water) and one making chlorine (from brine). The output tube runs under the injection chambers.`:`Hydrogen chloride: keep salt in each injection chamber's gas slot (${big(s.salt*3600)} an hour).`)
+        :(s.src==="p"?`Sulfuric acid: per unit, a Chemical Oxidizer turns sulfur dust into sulfur dioxide, an infuser adds oxygen from a separator, a second infuser adds water vapor from a Rotary Condensentrator. The acid tube runs under the dissolution chambers.`:`Sulfuric acid: keep sulfur dust in each dissolution chamber's gas slot (${big(s.sulfur*3600)} an hour).`)); }
+    for(const k of ["o2","hcl","acid"]){ const a=prev.sup[k], b=Mo.sup[k]; if(!a||!b||a.src!==b.src) continue;
+      const unit=k==="o2"?"separator":"unit";
+      if(b.units>a.units) li.push(`Grow the ${GAS[k].name.toLowerCase()} plant from ${pl(a.units,unit)} to ${fmt(b.units)}: the line now uses ${sig(perT(Mo.dem[k]))} mB/t instead of ${sig(perT(prev.dem[k]))}, because the ${MACH[{o2:"purify",hcl:"inject",acid:"dissolve"}[k]].short.toLowerCase()} stage now handles more items per ore.`);
+      else if(b.units===0&&perT(Mo.dem[k])>perT(prev.dem[k])*1.01) li.push(`Feed more ${k==="o2"?"flint":k==="hcl"?"salt":"sulfur dust"}: the line now uses ${sig(perT(Mo.dem[k]))} mB/t of ${GAS[k].name.toLowerCase()} instead of ${sig(perT(prev.dem[k]))}.`); }
+    if(news.some(g=>g.id==="wash")) li.push(`The washers take water in the <b>Bottom</b>: ${sig(perT(Mo.stages.find(g=>g.id==="wash").water))} mB/t, 5 mB per mB of dirty slurry. A Mechanical Pipe from any water source.`);
+  }
+  const ids=[...news.map(g=>g.id)]; for(const g of news) if(g.gas&&Mo.sup[g.gas]&&(Mo.sup[g.gas].src==="p"||g.gas==="o2"&&Mo.sup[g.gas].src==="s"))
+    ids.push(...(g.gas==="o2"?["sepO2"]:g.gas==="hcl"?["sepH2","infHCl","sepCl"]:["oxid","sepAcid","inf1","inf2","rotary"]));
+  $("gBody").innerHTML=`<p class="stepname">Step ${i+1}: ${Mo.t}x · ${big(Mo.ingots*3600)} ingots/hour${prev?` (+${big((Mo.ingots-prev.ingots)*3600)})`:""}</p>
+    <ol>${li.map(x=>`<li>${x}</li>`).join("")}</ol>
+    <div class="guide-cols"><div><h3>Add in this step</h3>${`<ul class="parts">${partsHtml(add,!!prev)}</ul>`}</div><div><h3>Whole line after it</h3><ul class="parts">${partsHtml(P)}</ul></div></div>
+    <h3>Side config for the new machines</h3>${sideTable(Mo,ids)}`;
+}
+function setGuide(on){ view3.guide=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("stepbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ view3.step=state.tier-2; } update(); }
+$("tGuide").onclick=()=>setGuide(!view3.guide);
+$("sDown").onclick=()=>{ view3.step=Math.max(0,view3.step-1); update(); }; $("sUp").onclick=()=>{ view3.step++; update(); };
+$("tCables").onclick=e=>{ view3.cables=!view3.cables; e.target.setAttribute("aria-pressed",view3.cables); update(); };
+$("tSupport").onclick=e=>{ view3.support=!view3.support; e.target.setAttribute("aria-pressed",view3.support); update(); };
+$("tSide").onclick=e=>{ view3.side=(view3.side+1)%5; e.target.setAttribute("aria-pressed",view3.side>0); e.target.textContent="Sides: "+(view3.side?TTYPES[view3.side-1][1].toLowerCase():"off"); update(); };
+function renderLegend(){ const lg=$("legend"); lg.hidden=!view3.side; if(!view3.side) return;
+  const tt=TTYPES[view3.side-1][0], used=new Set(["NONE"]); if(L) for(const c of L.C.values()) if(c.k==="m") for(const s of SIDES){ const f=c.faces[s]; if(f&&f[tt]) used.add(f[tt][0]); }
+  lg.innerHTML=`<span>${TTYPES[view3.side-1][1]}:</span>`+[...used].map(d=>`<span><i style="background:${DT[d][1]}${d==="NONE"?";opacity:.5":""}"></i>${DT[d][0]}</span>`).join(""); }
+
+/* ================= upgrade curve ================= */
+function buildCurveSelect(){ const s=$("curveStage"); s.innerHTML=""; for(const id of ORDER){ const o=document.createElement("option"); o.value=id; o.textContent=MACH[id].name; s.append(o); } }
+buildCurveSelect();
+$("curveStage").onchange=e=>{ view3.curve=e.target.value; renderCurve(lastModel); };
+function renderCurve(Mo){
+  const avail=Mo.stages.map(g=>g.id); if(!avail.includes(view3.curve)) view3.curve=avail.includes("crystal")?"crystal":avail[0];
+  for(const o of $("curveStage").options) o.disabled=!avail.includes(o.value); $("curveStage").value=view3.curve;
+  const g=Mo.stages.find(x=>x.id===view3.curve), id=g.id, pts=[];
+  for(let s=0;s<=8;s++){ const st=stats(id,{...g.u,s}), need=g.req/st.opsPerSec; pts.push({s,n:Math.max(1,Math.ceil(need-1e-9)),fe:toFE(st.energyPerOp*g.req),gas:g.gas?perT(g.amt*st.gasPerOp*g.req):0}); }
+  const W=640,H=250,pl0=48,pr=58,pt=24,pb=34,iw=W-pl0-pr,ih=H-pt-pb, nMax=Math.max(...pts.map(p=>p.n)), fMax=Math.max(...pts.map(p=>p.fe))||1;
+  const bx=s=>pl0+iw*(s+0.5)/9, bw=iw/9*0.56, ny=n=>pt+ih*(1-n/nMax), fy=f=>pt+ih*(1-f/fMax);
+  const ticks=[0,0.5,1].map(f=>({n:Math.round(nMax*f),y:ny(Math.round(nMax*f))}));
+  let svg=`<g font-family="JetBrains Mono, monospace" font-size="11" fill="#97A29A">`;
+  for(const tk of ticks) svg+=`<line x1="${pl0}" x2="${W-pr}" y1="${tk.y}" y2="${tk.y}" stroke="#2A332D"/><text x="${pl0-8}" y="${tk.y+4}" text-anchor="end">${tk.n}</text>`;
+  for(const f of [0,0.5,1]) svg+=`<text x="${W-pr+8}" y="${fy(fMax*f)+4}">${big(fMax*f)}</text>`;
+  svg+=`<text x="4" y="${pt-10}" fill="#7FA6F5">machines</text><text x="${W-4}" y="${pt-10}" text-anchor="end" fill="#E2D03A">FE/t</text>`;
+  for(const p of pts){ const on=p.s===g.u.s; svg+=`<rect x="${bx(p.s)-bw/2}" y="${ny(p.n)}" width="${bw}" height="${pt+ih-ny(p.n)}" fill="${on?"#7FA6F5":"#3D5EA8"}" rx="2"/>`;
+    svg+=`<text x="${bx(p.s)}" y="${H-pb+16}" text-anchor="middle" fill="${on?"#E5E9E3":"#97A29A"}">${p.s}</text>`;
+    if(on) svg+=`<text x="${bx(p.s)}" y="${ny(p.n)-5}" text-anchor="middle" fill="#E5E9E3">${p.n}</text>`; }
+  svg+=`<polyline fill="none" stroke="#E2D03A" stroke-width="2.5" points="${pts.map(p=>`${bx(p.s)},${fy(p.fe)}`).join(" ")}"/>`;
+  for(const p of pts) svg+=`<circle cx="${bx(p.s)}" cy="${fy(p.fe)}" r="${p.s===g.u.s?4.5:3}" fill="#E2D03A"/>`;
+  svg+=`<text x="${pl0+iw/2}" y="${H-4}" text-anchor="middle">speed upgrades in each machine</text></g>`;
+  $("curve").innerHTML=svg;
+  const a=pts[0], b=pts[8], M=cfg.maxUpgradeMultiplier;
+  $("curveSub").innerHTML=`For your ${MACH[id].name.toLowerCase()}s, with ${g.u.e} energy${MACH[id].chem?` and ${g.u.c} chemical`:""} upgrades and ${g.u.f&&MACH[id].fac?FAC[g.u.f].name.toLowerCase()+" factories":"single machines"}, at the rate this line feeds them. Bars: machines needed. Line: their power.`;
+  $("curveNote").innerHTML=`0 → 8 speed upgrades: <b>${fmt(a.n)}</b> → <b>${fmt(b.n)}</b> machines, <b>${big(a.fe)}</b> → <b>${big(b.fe)}</b> FE/t`+
+    (g.gas?`, <b>${sig(a.gas)}</b> → <b>${sig(b.gas)}</b> mB/t of ${GAS[g.gas].name.toLowerCase()}`:"")+". "+(MACH[id].kind==="rate"
+      ?`Each speed upgrade halves the washers needed and multiplies their power per mB by ${sig(Math.pow(M,0.25))}; each energy upgrade divides it by ${sig(Math.pow(M,0.125))}.`
+      :`Each speed upgrade divides the machines needed by about ${sig(Math.pow(M,0.125))} and multiplies power per item by the same; each energy upgrade divides power per item by it again.`);
+}
+
+/* ================= tier comparison and raw vs silk ================= */
+function renderTiers(Mo){
+  const src=Mo.src, rows=[]; let prev=null;
+  for(let t=1;t<=5;t++){ const m=model(t,src), ingH=m.ingots*3600;
+    const d=prev?`+${big(ingH-prev.ingots*3600)} for +${fmt(m.allMachines-prev.allMachines)} machines, +${big(toFE(m.J)-toFE(prev.J))} FE/t`:"<small>baseline: smelting only</small>";
+    rows.push(`<tr class="${t===state.tier?"on":""}"><td>${t}x${t===1?" <small>(smelt it)</small>":""}</td><td>${big(ingH)}</td><td>${sig(m.oreIn?m.ingots/m.oreIn:0)}</td><td>${fmt(m.allMachines)}</td><td>${big(toFE(m.J))}</td><td>${sig(toFE(m.J)/(ingH||1)*1000)}</td><td style="text-align:left">${d}</td></tr>`);
+    prev=m; }
+  $("tierTbl").innerHTML=`<tr><th>Tier</th><th>Ingots/hour</th><th>Per ore block</th><th>Machines</th><th>FE/t</th><th>FE/t per 1k ingots/h</th><th style="text-align:left">Over the tier before</th></tr>${rows.join("")}`;
+  const m4=model(4,src), m5=model(5,src);
+  $("tierNote").innerHTML=`Going from 4x to 5x adds ${pl(m5.allMachines-m4.allMachines,"machine")} for ${sig((m5.ingots/m4.ingots-1)*100)}% more ingots. 1x counts Energized Smelters with your smelter upgrades.`;
+}
+function renderRaw(Mo){
+  const met=METALS[state.metal], t=state.tier, rows=[];
+  const opts=[["Silk Touch (ore blocks)",1,"ore",state.mine==="s"&&state.mode!=="d"]];
+  for(let f=0;f<=3;f++) opts.push([`${f?`Fortune ${["","I","II","III"][f]}`:"No Fortune"} (raw ore)`,met.raw*FORTUNE[f],"raw",state.mode!=="d"&&state.mine==="f"&&state.fortune===f&&!state.blocks]);
+  opts.push(["Fortune III, crafted into raw blocks",met.raw*FORTUNE[3]/9,"block",state.mode!=="d"&&state.mine==="f"&&state.fortune===3&&state.blocks]);
+  opts.push(["Digital Miner, Silk Touch",1,"ore",state.mode==="d"&&state.dmSilk]);
+  opts.push(["Digital Miner, no Silk Touch",met.raw,"raw",state.mode==="d"&&!state.dmSilk]);
+  const yt=Y(), vals=opts.map(([,per,feed])=>yt[feed].map(y=>per*y)), best=[0,1,2,3,4].map(i=>Math.max(...vals.map(v=>v[i])));
+  opts.forEach(([name,per,feed,on],r)=>{ const front=FRONT[t][feed], frontOps=per/front[0]*100;
+    rows.push(`<tr class="${on?"on":""}"><td>${name}</td>${vals[r].map((v,i)=>`<td class="${Math.abs(v-best[i])<1e-9?"best":""}">${sig(v)}</td>`).join("")}<td>${sig(frontOps)}</td></tr>`); });
+  $("rawTbl").innerHTML=`<tr><th>Mined with</th><th>1x</th><th>2x</th><th>3x</th><th>4x</th><th>5x</th><th>${MACH[FRONT_ID[t]].short} ops per 100 blocks at ${t}x</th></tr>${rows.join("")}`;
+  $("rawSub").innerHTML=`${met.name} ingots per ore block mined, by how you mine it. Raw ore gives fewer ingots per item than an ore block at every tier past 1x, but Fortune brings back more items${met.raw!==1?", and copper ore drops 2 to 5 raw copper before Fortune":""}.`;
+  $("rawNote").innerHTML=`The last column is how much work the first machine does: raw ore blocks go through it 9 raw ore at a time.`;
+}
+function renderMaterials(){
+  const steps=stepModels(), Mo=steps[steps.length-1], prev=steps.length>1?steps[steps.length-2]:null;
+  const P=partsOf(Mo), show=view3.mat==="step"&&prev?diffParts(P,partsOf(prev)):P;
+  $("matAll").setAttribute("aria-pressed",view3.mat!=="step"); $("matStep").setAttribute("aria-pressed",view3.mat==="step"); $("matStep").disabled=!prev;
+  $("matStep").textContent=prev?`Just ${prev.t}x → ${Mo.t}x`:"Just this tier's additions";
+  $("matParts").innerHTML=partsHtml(show,view3.mat==="step"&&prev);
+  const R=rawOf(show); $("matRaw").innerHTML=Object.entries(R).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<li><span>${RAW_NAME[k]||k}</span><span class="n">${fmt(Math.ceil(v-1e-6))}</span></li>`).join("");
+}
+$("matAll").onclick=()=>{ view3.mat="all"; renderMaterials(); }; $("matStep").onclick=()=>{ view3.mat="step"; renderMaterials(); };
+
+/* ================= design code (mdo1) =================
+   mdo1.<tier>.<metal>.<source>.<mining>.<machines>.<gas>
+   tier 2-5; metal i g c o t l u; source m<ore blocks/min> | d<miner speed upgrades> | t<ingots/hour>
+   mining s (Silk Touch) | f<fortune 0-3> | b<fortune 0-3> (raw ore crafted into blocks); with a Digital Miner, s = Silk Touch on
+   machines: 8 groups joined by "-" in line order (dissolution … smelter), each <factory 0-4><speed><energy><chemical>, plus x<count> when the count is fixed
+   gas: <plant speed><plant energy><oxygen s|f><HCl p|s><acid p|s> */
+function encodeDesign(){
+  const src=state.mode==="m"?"m"+(+state.rate.toFixed(3)):state.mode==="d"?"d"+state.dmS:"t"+Math.round(state.target);
+  const mine=state.mode==="d"?(state.dmSilk?"s":state.blocks?"b0":"f0"):state.mine==="s"?"s":(state.blocks?"b":"f")+state.fortune;
+  const st=ORDER.map(id=>{ const u=state.st[id]; return `${MACH[id].fac?u.f:0}${u.s}${u.e}${MACH[id].chem?u.c:0}${u.n!=null?"x"+u.n:""}`; }).join("-");
+  const g=state.sup; return ["mdo1",state.tier,state.metal,src,mine,st,`${g.s}${g.e}${g.o2}${g.hcl}${g.acid}`].join(".");
+}
+function decodeDesign(code){
+  const p=String(code||"").trim().split("."); if(p.length!==7||p[0]!=="mdo1") return null;
+  const tier=+p[1]; if(!(tier>=2&&tier<=5)||!METALS[p[2]]) return null;
+  const sm=/^([mdt])(\d+(?:\.\d+)?)$/.exec(p[3]); if(!sm) return null;
+  const mm=/^(s|[fb][0-3])$/.exec(p[4]); if(!mm) return null;
+  const parts=p[5].split("-"); if(parts.length!==8) return null; const st={};
+  for(let i=0;i<8;i++){ const m=/^([0-4])([0-8])([0-8])([0-8])(?:x(\d{1,4}))?$/.exec(parts[i]); if(!m) return null; const id=ORDER[i];
+    st[id]={f:MACH[id].fac?+m[1]:0,s:+m[2],e:+m[3],c:MACH[id].chem?+m[4]:0,n:m[5]?Math.max(1,+m[5]):null}; }
+  const gm=/^([0-8])([0-8])([sf])([ps])([ps])$/.exec(p[6]); if(!gm) return null;
+  const d={tier,metal:p[2],mode:sm[1],st,sup:{s:+gm[1],e:+gm[2],o2:gm[3],hcl:gm[4],acid:gm[5]},preset:"custom"};
+  const v=+sm[2]; if(d.mode==="m"){ if(!(v>0)) return null; d.rate=v; } else if(d.mode==="d"){ if(!(v>=0&&v<=8)) return null; d.dmS=Math.round(v); } else { if(!(v>0)) return null; d.target=v; }
+  if(d.mode==="d"){ d.dmSilk=p[4]==="s"; d.blocks=p[4][0]==="b"; }
+  else if(p[4]==="s") d.mine="s"; else { d.mine="f"; d.fortune=+p[4][1]; d.blocks=p[4][0]==="b"; }
+  for(const [k,pr] of Object.entries(MACHINE_PRESETS)){ if(ORDER.every(id=>{ const a=pr.make(id), b=st[id]; return a.f===b.f&&a.s===b.s&&a.e===b.e&&a.c===b.c&&b.n==null; })) d.preset=k; }
+  return d;
+}
+const share=mdShare({prefix:"mdo1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:d=>{ Object.assign(state,d); update(); }, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+/* ================= update ================= */
+let lastModel=null;
+function update(){
+  hideTip();
+  state.rate=Math.max(0.1,+state.rate||60); state.target=Math.max(1,+state.target||1);
+  const src=supply(), Mo=model(state.tier,src); lastModel=Mo;
+  renderCfg(); syncInputs(Mo); renderCards(Mo); renderGasCards(Mo); renderResults(Mo);
+  let shown=Mo, prev=null;
+  if(view3.guide){ const steps=stepModels(); view3.step=Math.min(view3.step,steps.length-1); shown=steps[view3.step]; prev=view3.step?steps[view3.step-1]:null; renderResultsHud(shown); }
+  rebuild3D(shown,prev); renderLegend(); renderGuide(); renderCurve(Mo); renderTiers(Mo); renderRaw(Mo); renderMaterials(); share.render();
+}
+function renderResultsHud(Mo){ const met=METALS[state.metal];
+  $("hudMain").innerHTML=`${big(Mo.ingots*3600)} <small>${met.name.toLowerCase()} ingots/hour</small>`;
+  $("hudSub").textContent=`Step ${view3.step+1}: ${Mo.t}x · ${pl(Mo.allMachines,"machine")} · ${big(toFE(Mo.J))} FE/t`; }
+
+// start: the 5x line for a minute of Fortune III mining; a design in the link replaces it
+if(share.atLoad.design) Object.assign(state,share.atLoad.design);
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>

@@ -13,6 +13,7 @@ your server.
 | [Mekanism fission reactor + turbine](https://moddecoded.com/tools/mekanism/fission-reactor-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Mekanism fusion reactor + turbine](https://moddecoded.com/tools/mekanism/fusion-reactor-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Mekanism dynamic tank](https://moddecoded.com/tools/mekanism/dynamic-tank-calculator/) | 10.7.19 (MC 1.21.1) |
+| [Mekanism ore processing](https://moddecoded.com/tools/mekanism/ore-processing-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Create Aeronautics airship](https://moddecoded.com/tools/create-aeronautics/airship-calculator/) | 1.3.2 |
 | [Ryzer Gen fission station](https://moddecoded.com/tools/ryzer-gen/fission-station-calculator/) | 0.1.2-alpha (MC 1.21.1) |
 | [AE2 crafting CPU](https://moddecoded.com/tools/applied-energistics-2/crafting-cpu-calculator/) | AE2 19.2.17 + MEGA Cells 4.11.0 (MC 1.21.1) |

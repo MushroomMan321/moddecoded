@@ -34,3 +34,16 @@
 /er/medium/turbine/       /tools/extreme-reactors/turbine-calculator/#atm10&d=mdt1.r.1968.7.7.20.2.79.gold~61  302
 /er/medium/active         /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.7.7.7.graphite,rod.QAEFAA  302
 /er/medium/active/        /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.r.a.y.0.7.7.7.graphite,rod.QAEFAA  302
+
+# Mekanism ore processing calculator. /mek/2x … /mek/5x open it at that tier with the ATM10 preset, a minute of Fortune III mining
+# (60 iron ore blocks) and Ultimate factories with speed, energy and chemical upgrades; /mek/ore is the plain page with the ATM10 preset.
+/mek/ore                  /tools/mekanism/ore-processing-calculator/#atm10  302
+/mek/ore/                 /tools/mekanism/ore-processing-calculator/#atm10  302
+/mek/2x                   /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.2.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/2x/                  /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.2.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/3x                   /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.3.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/3x/                  /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.3.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/4x                   /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.4.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/4x/                  /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.4.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/5x                   /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.5.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302
+/mek/5x/                  /tools/mekanism/ore-processing-calculator/#atm10&d=mdo1.5.i.m60.f3.0888-0480-0880-4888-4888-4880-4880-4880.48spp  302

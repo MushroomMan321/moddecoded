@@ -44,7 +44,7 @@ Keys are written `section.key`, exactly as they appear in the .toml file.
 | `turbine.turbineMassDragMultiplier` | 1.0 |
 | `turbine.turbineFluidPerBladeMultiplier` | 1.0 |
 
-### Mekanism: `config/Mekanism/generators.toml` (and `general.toml`)
+### Mekanism: `config/Mekanism/generators.toml` (and `general.toml`, `machine-usage.toml`)
 
 Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some different key names
 (`turbineBladesPerCoil`, `turbineVentGasFlow`, `gasPerTank`, `energyPerFusionFuel`); write them under the 10.7 names below.
@@ -71,6 +71,20 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `boiler.superheatingHeatTransfer` | general.toml | 16000000 |
 | `dynamic_tank.fluidPerTank` | general.toml | 350000 |
 | `dynamic_tank.chemicalPerTank` | general.toml | 16000000 |
+| `general.maxUpgradeMultiplier` | general.toml | 10 |
+| `digital_miner.ticksPerMine` | general.toml | 80 |
+| `usage.enrichmentChamber` | machine-usage.toml | 50 |
+| `usage.crusher` | machine-usage.toml | 50 |
+| `usage.energizedSmelter` | machine-usage.toml | 50 |
+| `usage.purificationChamber` | machine-usage.toml | 200 |
+| `usage.chemicalInjectionChamber` | machine-usage.toml | 400 |
+| `usage.chemicalDissolutionChamber` | machine-usage.toml | 400 |
+| `usage.chemicalWasher` | machine-usage.toml | 200 |
+| `usage.chemicalCrystallizer` | machine-usage.toml | 400 |
+| `usage.chemicalInfuser` | machine-usage.toml | 200 |
+| `usage.chemicalOxidizer` | machine-usage.toml | 200 |
+| `usage.rotaryCondensentrator` | machine-usage.toml | 50 |
+| `kubejs.atmOreProcessing` | 1 if the pack ships ATM's `kubejs/server_scripts/mods/Mekanism/ore_processing.js` (ore processing calculator) | 0 |
 
 ### Ryzer Gen: `config/ryzergen-common.toml`
 

@@ -4,7 +4,9 @@
 // whose value differs from the mod's default; anything left out uses the default. Keys are written
 // "section.key", exactly as they appear in the .toml file:
 //   extremereactors -> config/extremereactors/common.toml
-//   mekanism        -> config/Mekanism/generators.toml (general.*, boiler.* and dynamic_tank.* keys: config/Mekanism/general.toml)
+//   mekanism        -> config/Mekanism/generators.toml (general.*, boiler.*, dynamic_tank.* and digital_miner.* keys: config/Mekanism/general.toml;
+//                      usage.* keys: config/Mekanism/machine-usage.toml;
+//                      kubejs.atmOreProcessing: 1 when the pack ships ATM's kubejs/server_scripts/mods/Mekanism/ore_processing.js)
 //   ryzergen        -> config/ryzergen-common.toml
 //   advanced_ae     -> config/advanced_ae-common.toml (its section is "quantum computer", with the space)
 // The keys each calculator reads are listed in its "Edit values" panel and in CONTRIBUTING.md.
@@ -17,12 +19,13 @@
 window.MD_PACKS = [
   {
     id: "atm10", name: "ATM10", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/ATM-10", commit: "e5e3d1d", checked: "2026-09-25" },
+    source: { repo: "https://github.com/AllTheMods/ATM-10", commit: "d12e72c", checked: "2026-10-19" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 4.0, "general.fuelUsageMultiplier": 0.8,
         "reactor.reactorPowerProductionMultiplier": 3.0, "turbine.turbinePowerProductionMultiplier": 3.0 } },
       mekanism: { config: {
+        "general.maxUpgradeMultiplier": 16, "kubejs.atmOreProcessing": 1,
         "fission_reactor.energyPerFissionFuel": 250000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
@@ -35,13 +38,14 @@ window.MD_PACKS = [
   {
     // Validated in-game 2026-09-25: turbine RPM and power matched the calculator exactly.
     id: "atm10-aeronautics", name: "ATM10: Aeronautics", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/ATM-10-a", commit: "d876358", checked: "2026-09-25" },
+    source: { repo: "https://github.com/AllTheMods/ATM-10-a", commit: "913c86d", checked: "2026-10-19" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 0.5, "general.fuelUsageMultiplier": 1.2,
         "reactor.reactorPowerProductionMultiplier": 0.8, "reactor.maxReactorHeight": 32,
         "turbine.turbinePowerProductionMultiplier": 0.8, "turbine.maxTurbineSize": 16, "turbine.maxTurbineHeight": 16 } },
       mekanism: { config: {
+        "general.maxUpgradeMultiplier": 16, "kubejs.atmOreProcessing": 1,
         "fission_reactor.energyPerFissionFuel": 8000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.fuelEnergy": 100000, "fusion_reactor.thermocoupleEfficiency": 0.02,
@@ -53,12 +57,16 @@ window.MD_PACKS = [
   },
   {
     id: "atm10-sky", name: "ATM10 To The Sky", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/All-the-mods-10-Sky", commit: "53b95da", checked: "2026-09-25" },
+    source: { repo: "https://github.com/AllTheMods/All-the-mods-10-Sky", commit: "c186b04", checked: "2026-10-19" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 4.0, "general.fuelUsageMultiplier": 0.8,
         "reactor.reactorPowerProductionMultiplier": 3.0, "turbine.turbinePowerProductionMultiplier": 3.0 } },
       mekanism: { config: {
+        "general.maxUpgradeMultiplier": 16, "usage.enrichmentChamber": 100, "usage.crusher": 100, "usage.energizedSmelter": 100,
+        "usage.purificationChamber": 400, "usage.chemicalInjectionChamber": 800, "usage.chemicalDissolutionChamber": 800,
+        "usage.chemicalWasher": 400, "usage.chemicalCrystallizer": 800, "usage.chemicalInfuser": 400, "usage.chemicalOxidizer": 400,
+        "usage.rotaryCondensentrator": 100,
         "fission_reactor.energyPerFissionFuel": 2800000, "fission_reactor.casingHeatCapacity": 4000,
         "fission_reactor.surfaceAreaTarget": 1.8, "turbine.ventChemicalFlow": 43478.262, "turbine.condenserRate": 128000,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
@@ -67,12 +75,13 @@ window.MD_PACKS = [
   },
   {
     id: "all-the-mons", name: "All the Mons", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/All-the-Mons", commit: "56b5a4a", checked: "2026-09-25" },
+    source: { repo: "https://github.com/AllTheMods/All-the-Mons", commit: "140143f", checked: "2026-10-19" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 4.0, "general.fuelUsageMultiplier": 0.8,
         "reactor.reactorPowerProductionMultiplier": 3.0, "turbine.turbinePowerProductionMultiplier": 3.0 } },
       mekanism: { config: {
+        "general.maxUpgradeMultiplier": 16, "kubejs.atmOreProcessing": 1,
         "fission_reactor.energyPerFissionFuel": 250000, "turbine.bladesPerCoil": 8, "turbine.ventChemicalFlow": 43478.262,
         "turbine.condenserRate": 128000, "turbine.chemicalPerTank": 6400,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.333333333,
@@ -86,7 +95,7 @@ window.MD_PACKS = [
     id: "atm10-lite", name: "ATM10 Lite", mc: "1.21.1",
     source: { repo: "https://github.com/AllTheMods/ATM-10-L", commit: "6186086", checked: "2026-09-25" },
     mods: {
-      mekanism: { config: {}, note: "mod defaults" },
+      mekanism: { config: { "kubejs.atmOreProcessing": 1 }, note: "mod defaults" },
     },
   },
   {
