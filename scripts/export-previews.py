@@ -31,6 +31,7 @@ TOOLS = {
     # air-cooled, so the card shows the reactor and its lasers rather than a turbine three times its size
     "fusion": "/tools/mekanism/fusion-reactor-calculator/#d=mdz1.a.98.5.17.17.18.14.28.4.345.0",
     "tank": "/tools/mekanism/dynamic-tank-calculator/",
+    "ore": "/tools/mekanism/ore-processing-calculator/",
     "airship": "/tools/create-aeronautics/airship-calculator/",
     "cpu": "/tools/applied-energistics-2/crafting-cpu-calculator/",
     "quantum": "/tools/applied-energistics-2/quantum-computer-calculator/",
@@ -45,6 +46,7 @@ TOOLS = {
 # Page-side tweak before the export, for a card that reads better without part of the build
 PRE = {
     "research": "document.getElementById('tCasing').click()",   # the glass box dwarfs the plates inside it
+    "ore": "document.getElementById('tSupport').click(); document.getElementById('tCables').click()",   # just the line: no gas plants or cables
 }
 # Extra distance for wide, flat builds: the card frames a bounding cylinder, but perspective makes the
 # near corner of a 9x9 pile a lot bigger than its centre, so it runs off the edges without this
