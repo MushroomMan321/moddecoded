@@ -517,7 +517,7 @@ function simulate(st,cfg){
       const p=RP[rd], tot=fQ[i], fast=fF[i], slow=tot-fast;
       lastIn[i]=tot; totalFlux+=tot; fQ[i]=0; fF[i]=0;   // lastFluxQuantity = received, then reset (Rod.java 166-169)
       let inF=(p.nt==="SLOW" ? slow+0.5*fast : p.nt==="FAST" ? fast+0.3*slow : tot)+p.self; // fluxFromType 183-196 + selfRate
-      if(xenonOn){ let x=xe[i]; x-=inF*inF/p.xb; inF*=1-x/100; x+=inF*p.xg; xe[i]=x<0?0:(x>100?100:x); } // burn 122-136
+      if(xenonOn){ const x0=xe[i]; let x=x0-inF*inF/p.xb; inF*=1-x0/100; x+=inF*p.xg; xe[i]=x<0?0:(x>100?100:x); } // burn 122-136: the poison factor reads the stored value from before this tick's burn (getPoisonLevel(stack), 125)
       let hmult=1;
       if(p.hcS!==0&&core[i]>=p.hcS){ const pr=Math.min((core[i]-p.hcS)/p.hcL,1); hmult=Math.sin((pr*Math.PI+Math.PI)/2); } // 138-147
       const e=yld[i]/p.Y, f=inF*depMod(p.dc,e*hmult);     // reactivityFunc(in, enrichment·mult), enrichment=yield/max (149, 316-318)
@@ -587,8 +587,8 @@ function simulate(st,cfg){
       if(heat[i]<20) heat[i]=20;
     }
     for(let i=0;i<N;i++) if(heat[i]>colMax) heat[i]=colMax;
-    // phase H: meltdown — column heat over the base max (1500) melts; the mod takes the whole connected net (Base.meltdown 361+)
-    if(meltdowns){ for(let i=0;i<N;i++){ if(cells[i]!==0&&heat[i]>rodTEMax){ meltdownAt=t; meltCell=i; break; } }
+    // phase H: meltdown — a fuelled rod column over the base max (1500) melts (only a rod column checks, TileEntityRBMKRod 141); the mod takes the whole connected net (Base.meltdown 361+)
+    if(meltdowns){ for(let i=0;i<N;i++){ if(isFuel(i)&&heat[i]>rodTEMax){ meltdownAt=t; meltCell=i; break; } }
       if(meltdownAt!=null){ hist.push({t,s:steamNow,h:heat[meltCell],f:totalFlux,x:xe[meltCell],c:core[meltCell],m:1}); break; } }
     // control rod travel (TileEntityRBMKControl 84-97), speed 0.00277/t × dial, 5,000 EU/t from the 50k buffer (assumed supplied)
     if(cl<ct){ cl+=ctrlSpeed; if(cl>ct) cl=ct; } else if(cl>ct){ cl-=ctrlSpeed; if(cl<ct) cl=ct; }
