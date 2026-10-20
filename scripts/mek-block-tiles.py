@@ -10,7 +10,7 @@ Output: site/img/mekanism/blocks/<name>.png, 192×32: front, back, left, right, 
 
     python scripts/mek-block-tiles.py [path/to/Mekanism.jar]     # default: the update check's cached jar
 
-Needs Pillow. Mekanism's code and assets are MIT licensed; the notice is in site/img/mekanism/LICENSE.
+Needs Pillow. Mekanism's code and assets are MIT licensed; the notice is in site/img/mekanism/LICENSE.txt.
 """
 import io
 import json

@@ -418,7 +418,7 @@ power: machine usage × busy slots</pre>
   <footer>
     <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
     <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
-    <p>Machine textures are drawn from <a href="https://github.com/mekanism/Mekanism">Mekanism</a>'s own block models and textures, used under the <a href="/img/mekanism/LICENSE">MIT license</a>.</p>
+    <p>Machine textures are drawn from <a href="https://github.com/mekanism/Mekanism">Mekanism</a>'s own block models and textures, used under the <a href="/img/mekanism/LICENSE.txt">MIT license</a>.</p>
   </footer>
 </div>
 
@@ -751,7 +751,7 @@ function atlas(key,side,front,top){ if(texCache[key]) return texCache[key]; cons
   const g=c.getContext("2d"); g.drawImage(side,0,0); g.drawImage(front,16,0); g.drawImage(top,32,0); return texCache[key]=c; }
 const chestAtlas=()=>atlas("atlas:chest",chestTex("side"),chestTex("front"),chestTex("top"));
 // Mekanism's own blocks: site/img/mekanism/blocks/<block>.png, six 32 px sides (front, back, left, right, top, bottom of a
-// machine facing south) drawn from the jar's models and textures by scripts/mek-block-tiles.py (MIT, see img/mekanism/LICENSE)
+// machine facing south) drawn from the jar's models and textures by scripts/mek-block-tiles.py (MIT, see img/mekanism/LICENSE.txt)
 const blockName=(base,f)=>f&&MACH[base].fac?`${FAC[f].key}_${MACH[base].fac}_factory`:MACH[base].bom;
 const stripUrl=(base,f)=>`/img/mekanism/blocks/${blockName(base,f)}.png`;
 function swatch(base,f){ return stripUrl(base,f); }
