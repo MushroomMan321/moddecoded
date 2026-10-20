@@ -524,7 +524,7 @@ const MACHINE_PRESETS={
   full:{name:"Speed + energy",make:id=>UPG(0,MACH[id].kind==="rate"?4:8,8,8)},
   factory:{name:"Ultimate factories",make:id=>UPG(MACH[id].fac?4:0,MACH[id].kind==="rate"?4:8,8,8)},
 };
-const state={tier:2,metal:"i",mode:"m",rate:60,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
+const state={tier:2,metal:"i",mode:"m",rate:8,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
   preset:"bare",st:{},sup:{s:4,e:8,o2:"s",hcl:"p",acid:"p"}};
 const setPreset=k=>{ state.preset=k; for(const id of ORDER) state.st[id]=MACHINE_PRESETS[k].make(id); };
 setPreset("bare");
@@ -1316,7 +1316,7 @@ if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPrese
 let lastModel=null;
 function update(){
   hideTip();
-  state.rate=Math.max(0.1,+state.rate||60); state.target=Math.max(1,+state.target||1);
+  state.rate=Math.max(0.1,+state.rate||8); state.target=Math.max(1,+state.target||1);
   const src=supply(), Mo=model(state.tier,src); lastModel=Mo;
   renderCfg(); syncInputs(Mo); renderCards(Mo); renderGasCards(Mo); renderResults(Mo);
   let shown=Mo, prev=null;
@@ -1327,7 +1327,8 @@ function renderResultsHud(Mo){ const met=METALS[state.metal];
   $("hudMain").innerHTML=`${big(Mo.ingots*3600)} <small>${met.name.toLowerCase()} ingots/hour</small>`;
   $("hudSub").textContent=`Step ${view3.step+1}: ${Mo.t}x · ${pl(Mo.allMachines,"machine")} · ${big(toFE(Mo.J))} FE/t`; }
 
-// start: the most basic line, 2x with single machines and no upgrades, for a minute of Fortune III mining; a design in the link replaces it
+// start: the most basic line: 2x, single machines, no upgrades, and 8 Fortune III ore blocks a minute, about what one bare
+// Enrichment Chamber keeps up with (1 chamber, 4 smelters); a design in the link replaces it
 if(share.atLoad.design) Object.assign(state,share.atLoad.design);
 initGL(); update(); share.live();
 })();
