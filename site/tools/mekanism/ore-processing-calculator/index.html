@@ -393,11 +393,12 @@ crystallizer: 200 ticks → 1 crystal (200 mB)</pre>
       </div>
       <div class="fact">
         <h3>Washers, separators and infusers double</h3>
-        <p>These run several operations a tick: 2^speed of them. Each operation still pays the speed power formula, so a washer's power per mB of slurry still climbs with every upgrade. Electrolytic Separators are the exception: 400 J per operation whatever you fit. In-game, washers with 4 and 8 speed upgrades washed exactly 16 and 256 operations a tick.</p>
+        <p>These run several operations a tick: 2^speed of them, but only as many as their stored energy covers, so speed upgrades need energy upgrades too: with 8 speed and none, a washer manages 4 a tick (1 in ATM10). Each operation still pays the speed power formula, so a washer's power per mB of slurry still climbs with every upgrade. Electrolytic Separators are the exception: 400 J per operation whatever you fit. In-game, washers with 4 and 8 speed upgrades washed exactly 16 and 256 operations a tick.</p>
 <pre>washer ops/tick = 2^speed   (1 mB slurry + 5 mB water each;
                              ATM10: 5 mB + 25 mB → 3 mB)
+          at most stored J / J per op
 separator: 400 J per op, fixed</pre>
-        <span class="ref">TileEntityChemicalWasher · TileEntityElectrolyticSeparator</span>
+        <span class="ref">TileEntityChemicalWasher · TileEntityElectrolyticSeparator · CachedRecipe</span>
       </div>
       <div class="fact">
         <h3>Items straight into the gas slot</h3>
@@ -521,7 +522,7 @@ const gasMult=(s,c)=>Math.pow(cfg.maxUpgradeMultiplier,2*s/CAP()-c/8);
 // One machine's numbers with upgrades u = {f: factory tier, s: speed, e: energy, c: chemical}
 // CachedRecipe runs at most stored energy / energy per tick operations a tick, so a machine whose buffer can't cover
 // what its speed upgrades ask for runs fewer (work < want), or none. A factory shares one buffer between its slots.
-const fits=(want,buf,ept)=>UNL()?Math.min(want,Math.floor(buf/ept)):want;
+const fits=(want,buf,ept)=>Math.min(want,Math.floor(buf/ept));
 function stats(id,u){
   const m=MACH[id], M=cfg.maxUpgradeMultiplier, s=u.s||0, e=u.e||0, c=m.chem?(u.c||0):0;
   if(m.kind==="rate"){ const want=Math.min(2147483647,Math.trunc(Math.pow(2,s))), ept=m.fixedJ??eptOf(cfg[m.use],s,e), buf=bufOf(m.store,e), opt=fits(want,buf,ept);
