@@ -524,7 +524,7 @@ const MACHINE_PRESETS={
   full:{name:"Speed + energy",make:id=>UPG(0,MACH[id].kind==="rate"?4:8,8,8)},
   factory:{name:"Ultimate factories",make:id=>UPG(MACH[id].fac?4:0,MACH[id].kind==="rate"?4:8,8,8)},
 };
-const state={tier:2,metal:"i",mode:"m",rate:60,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
+const state={tier:2,metal:"i",mode:"m",rate:8,target:20000,dmS:8,dmSilk:false,mine:"f",fortune:3,blocks:false,
   preset:"bare",st:{},sup:{s:4,e:8,o2:"s",hcl:"p",acid:"p"}};
 const setPreset=k=>{ state.preset=k; for(const id of ORDER) state.st[id]=MACHINE_PRESETS[k].make(id); };
 setPreset("bare");
@@ -808,6 +808,11 @@ function frame(t){
   const o=orbit.target;
   camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
   if(halo){ halo.material.opacity=reduce?0.35:0.22+0.18*Math.sin(t/260); }
+  // build animation: new blocks drop in and grow, removed ones shrink away
+  for(let i=anims.length-1;i>=0;i--){ const a=anims[i]; if(t<a.t0){ a.o.visible=a.kind==="out"; continue; }
+    const k=Math.min(1,(t-a.t0)/a.dur); a.o.visible=true;
+    if(a.kind==="in"){ const e=1-Math.pow(1-k,3); a.o.position.y=a.y+(1-e)*3; a.o.scale.setScalar(0.4+0.6*e); } else a.o.scale.setScalar(Math.max(0.001,1-k));
+    if(k>=1){ if(a.kind==="out"&&a.o.parent) a.o.parent.remove(a.o); anims.splice(i,1); } }
   renderer.render(scene,camera); requestAnimationFrame(frame);
 }
 const BOX=()=>BOX.g||(BOX.g=new THREE.BoxGeometry(1,1,1));
@@ -838,58 +843,102 @@ function labelSprite(text,kind){ const lk=kind+"|"+text; if(labelCache[lk]){ con
   const t=new THREE.CanvasTexture(c); t.minFilter=THREE.LinearFilter; const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true}));
   const k=kind==="stage"?0.0135:0.012; s.scale.set(w*k,h*k,1); s.renderOrder=10; labelCache[lk]={m:s.material,s:s.scale.clone()}; return s; }
 
-let L=null, shownKey="";
+let L=null, shownKey="", shownC=null, animGroup=null, settleTimer=0;
+const anims=[];
+const show=c=>(view3.cables||c.tt!=="energy")&&(view3.support||c.z>-2);
+const keyOf=c=>c.x+","+c.y+","+c.z;
+// what a block is, for telling which blocks changed between two builds (a pipe that only changes tier is redrawn in place)
+const ident=c=>[c.k,c.role||"",c.fac||0,c.tt||""].join("|");
+const DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+const coreG=()=>coreG.g||(coreG.g=new THREE.BoxGeometry(0.34,0.34,0.34));
+// a plain BufferGeometry, so the card exporter keeps the offset
+const armG=()=>{ if(armG.g) return armG.g; const g=new THREE.BufferGeometry().copy(new THREE.BoxGeometry(0.26,0.26,0.5)); g.translate(0,0,0.25); return armG.g=g; };
+// does transmitter c run an arm toward direction d?
+function connects(c,d,C,skip){ const n=C.get((c.x+d[0])+","+(c.y+d[1])+","+(c.z+d[2])); if(!n||!show(n)||skip&&skip.has(keyOf(n))) return false;
+  if(n.k==="t") return n.tt===c.tt;
+  if(n.k==="m"){ const fc=n.faces[DIR_SIDE([-d[0],-d[1],-d[2]])]; return !!(fc&&fc[c.tt]); }
+  return n.k==="chest"&&c.tt==="item"; }
+let V1, THIN, THIN_ARM, FWD;
+// one block on its own, for the build animation: a group centred on the block so it can drop and grow in place
+function cellObject(c,C){
+  const g=new THREE.Group(), q=new THREE.Quaternion(), v=new THREE.Vector3(); g.position.set(c.x,c.y,c.z);
+  if(c.k==="m") g.add(new THREE.Mesh(STRIP_GEO(),blockMat(baseOf(c.role),c.fac||0)));
+  else if(c.k==="chest"){ const m=new THREE.Mesh(ATLAS_GEO(),mat(chestAtlas())); m.scale.setScalar(0.88); m.position.y=-0.06; g.add(m); }
+  else { const mt=tMat(c.tt,c.tier), core=new THREE.Mesh(coreG(),mt); if(c.tt==="energy") core.scale.copy(THIN); g.add(core);
+    for(const d of DIRS) if(connects(c,d,C)){ const a=new THREE.Mesh(armG(),mt); a.quaternion.copy(q.setFromUnitVectors(FWD,v.set(d[0],d[1],d[2]))); if(c.tt==="energy") a.scale.copy(THIN_ARM); g.add(a); } }
+  return g;
+}
+function clearAnims(){ clearTimeout(settleTimer); anims.length=0; if(animGroup){ root.remove(animGroup); animGroup=null; } }
 function rebuild3D(Mo,prev){
   if(!renderer) return;
-  for(const g of groups){ root.remove(g); g.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups=[]; pickables=[]; halo=null;
+  if(!V1){ V1=new THREE.Vector3(1,1,1); THIN=new THREE.Vector3(0.62,0.62,0.62); THIN_ARM=new THREE.Vector3(0.62,0.62,1); FWD=new THREE.Vector3(0,0,1); }
   L=layout(Mo,48); const C=L.C, isNew=new Set();
   if(prev){ const P=layout(prev,48).C; for(const [k,c] of C){ const p=P.get(k); if(!p||p.k!==c.k||p.role!==c.role||p.tt!==c.tt||p.k==="m"&&p.fac!==c.fac) isNew.add(k); } }
-  const cell=(x,y,z)=>C.get(x+","+y+","+z);
-  const show=c=>(view3.cables||c.tt!=="energy")&&(view3.support||c.z>-2);
-  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3(), sc=new THREE.Vector3(1,1,1);
+  // blocks added and removed since the build on screen
+  const before=shownC; shownC=C; clearAnims();
+  let added=[], removed=[];
+  if(before){ for(const [k,c] of C){ const p=before.get(k); if(!p||ident(p)!==ident(c)) added.push(c); }
+    for(const [k,p] of before){ const c=C.get(k); if(!c||ident(p)!==ident(c)) removed.push(p); } }
+  added=added.filter(show); removed=removed.filter(show);
+  const animate=!!before&&!reduce&&(added.length+removed.length>0)&&added.length+removed.length<=1500;
+  const skip=animate?new Set(added.map(keyOf)):null;
+  drawStatic(C,skip,isNew);
+  frameBuild(C);
+  if(!animate) return;
+  // build it like a player would: the blocks nearest the part that stays go down first, then outward;
+  // in each spot the pipes under the machines, then the machines, then the cables on top
+  const now=performance.now(); animGroup=new THREE.Group(); root.add(animGroup);
+  for(const p of removed){ const o=cellObject(p,before); animGroup.add(o); anims.push({o,kind:"out",t0:now,dur:350,y:p.y}); }
+  const kept=[...C.values()].filter(c=>show(c)&&!skip.has(keyOf(c)));
+  const dist=c=>{ let d=1e9; for(const k of kept){ const m=Math.abs(k.x-c.x)+Math.abs(k.y-c.y)+Math.abs(k.z-c.z); if(m<d) d=m; } return kept.length?d:c.x; };
+  const order=added.map(c=>({c,d:Math.round(dist(c))})).sort((a,b)=>a.d-b.d||a.c.y-b.c.y||a.c.z-b.c.z||b.c.x-a.c.x);
+  // one block every 180 ms for small additions; big ones speed up so the whole build takes about 7 s at most
+  const step=Math.max(35,Math.min(180,7000/Math.max(1,order.length))), lead=removed.length?350:0, DROP=450; let end=now+400;
+  order.forEach(({c},i)=>{ const o=cellObject(c,C), t0=now+lead+i*step; o.visible=false; animGroup.add(o); anims.push({o,kind:"in",t0,dur:DROP,y:c.y}); end=Math.max(end,t0+DROP); });
+  // then swap back to the instanced build, with the new blocks' arms, halo and side colours
+  settleTimer=setTimeout(()=>{ clearAnims(); drawStatic(C,null,isNew); },end-now+40);
+}
+function drawStatic(C,skip,isNew){
+  for(const g of groups){ root.remove(g); g.traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); } groups=[]; pickables=[]; halo=null;
+  const here=c=>show(c)&&!(skip&&skip.has(keyOf(c)));
+  const m4=new THREE.Matrix4(), q=new THREE.Quaternion(), v=new THREE.Vector3();
   const add=(o)=>{ root.add(o); groups.push(o); };
   // machines, one instanced mesh per (machine, factory tier); BoxGeometry faces: +x right, −x left, +y top, −y bottom, +z front, −z back
   const mBuckets={};
-  for(const [k,c] of C){ if(c.k!=="m"||!show(c)) continue; const b=baseOf(c.role), key=b+":"+(c.fac||0); (mBuckets[key]=mBuckets[key]||[]).push(c); }
+  for(const c of C.values()){ if(c.k!=="m"||!here(c)) continue; const b=baseOf(c.role), key=b+":"+(c.fac||0); (mBuckets[key]=mBuckets[key]||[]).push(c); }
   for(const key in mBuckets){ const [b,f]=key.split(":"), list=mBuckets[key], F=+f;
     const mesh=new THREE.InstancedMesh(STRIP_GEO(),blockMat(b,F),list.length);
     list.forEach((c,i)=>{ m4.makeTranslation(c.x,c.y,c.z); mesh.setMatrixAt(i,m4); });
     mesh.userData.cells=list; add(mesh); pickables.push(mesh); }
   // chests
-  const chests=[...C.values()].filter(c=>c.k==="chest");
+  const chests=[...C.values()].filter(c=>c.k==="chest"&&here(c));
   if(chests.length){ const mesh=new THREE.InstancedMesh(ATLAS_GEO(),mat(chestAtlas()),chests.length), s88=new THREE.Vector3(0.88,0.88,0.88);
     chests.forEach((c,i)=>{ m4.compose(new THREE.Vector3(c.x,c.y-0.06,c.z),q.set(0,0,0,1),s88); mesh.setMatrixAt(i,m4); }); mesh.userData.cells=chests; add(mesh); pickables.push(mesh); }
   // transmitters: a core plus an arm toward every neighbour it connects to
-  const coreG=new THREE.BoxGeometry(0.34,0.34,0.34), armG=new THREE.BufferGeometry().copy(new THREE.BoxGeometry(0.26,0.26,0.5)); armG.translate(0,0,0.25);   // a plain BufferGeometry, so the card exporter keeps the offset
   const cores={}, arms={};
-  const DIRS=[[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-  for(const [k,c] of C){ if(c.k!=="t"||!show(c)) continue; const key=c.tt+c.tier; (cores[key]=cores[key]||[]).push(c);
-    for(const d of DIRS){ const n=cell(c.x+d[0],c.y+d[1],c.z+d[2]); if(!n) continue; let ok=false;
-      if(n.k==="t") ok=n.tt===c.tt&&show(n);
-      else if(n.k==="m"){ const side=DIR_SIDE([-d[0],-d[1],-d[2]]), fc=n.faces[side]; ok=!!(fc&&fc[c.tt])&&show(n); }
-      else if(n.k==="chest") ok=c.tt==="item";
-      if(ok) (arms[key]=arms[key]||[]).push([c,d]); } }
-  const thin=new THREE.Vector3(0.62,0.62,0.62), thinArm=new THREE.Vector3(0.62,0.62,1);
-  for(const key in cores){ const list=cores[key], tt=list[0].tt, tier=list[0].tier, mesh=new THREE.InstancedMesh(coreG,tMat(tt,tier),list.length);
-    list.forEach((c,i)=>{ m4.compose(new THREE.Vector3(c.x,c.y,c.z),q.set(0,0,0,1),tt==="energy"?thin:sc); mesh.setMatrixAt(i,m4); }); mesh.userData.cells=list; add(mesh); pickables.push(mesh); }
-  const fwd=new THREE.Vector3(0,0,1);
-  for(const key in arms){ const list=arms[key], tt=list[0][0].tt, tier=list[0][0].tier, mesh=new THREE.InstancedMesh(armG,tMat(tt,tier),list.length);
-    list.forEach(([c,d],i)=>{ q.setFromUnitVectors(fwd,v.set(d[0],d[1],d[2])); m4.compose(new THREE.Vector3(c.x,c.y,c.z),q,tt==="energy"?thinArm:sc); mesh.setMatrixAt(i,m4); }); add(mesh); }
+  for(const c of C.values()){ if(c.k!=="t"||!here(c)) continue; const key=c.tt+c.tier; (cores[key]=cores[key]||[]).push(c);
+    for(const d of DIRS) if(connects(c,d,C,skip)) (arms[key]=arms[key]||[]).push([c,d]); }
+  for(const key in cores){ const list=cores[key], tt=list[0].tt, tier=list[0].tier, mesh=new THREE.InstancedMesh(coreG(),tMat(tt,tier),list.length);
+    list.forEach((c,i)=>{ m4.compose(new THREE.Vector3(c.x,c.y,c.z),q.set(0,0,0,1),tt==="energy"?THIN:V1); mesh.setMatrixAt(i,m4); }); mesh.userData.cells=list; add(mesh); pickables.push(mesh); }
+  for(const key in arms){ const list=arms[key], tt=list[0][0].tt, tier=list[0][0].tier, mesh=new THREE.InstancedMesh(armG(),tMat(tt,tier),list.length);
+    list.forEach(([c,d],i)=>{ q.setFromUnitVectors(FWD,v.set(d[0],d[1],d[2])); m4.compose(new THREE.Vector3(c.x,c.y,c.z),q,tt==="energy"?THIN_ARM:V1); mesh.setMatrixAt(i,m4); }); add(mesh); }
   // new in this build step: a pulsing yellow shell around each new block
-  const nw=[...isNew].map(k=>C.get(k)).filter(c=>show(c)&&(c.k!=="t"||c.tt!=="energy"));
+  const nw=[...isNew].map(k=>C.get(k)).filter(c=>here(c)&&(c.k!=="t"||c.tt!=="energy"));
   if(nw.length){ halo=new THREE.InstancedMesh(new THREE.BoxGeometry(1.08,1.08,1.08),new THREE.MeshBasicMaterial({color:0xF2E36A,transparent:true,opacity:0.3,depthWrite:false}),nw.length);
     nw.forEach((c,i)=>{ const s=c.k==="t"?0.55:1; m4.compose(new THREE.Vector3(c.x,c.y,c.z),q.set(0,0,0,1),new THREE.Vector3(s,s,s)); halo.setMatrixAt(i,m4); }); halo.renderOrder=3; add(halo); }
   // side config overlay for the chosen transmission type
   if(view3.side){ const tt=TTYPES[view3.side-1][0], plates=[];
-    for(const c of C.values()){ if(c.k!=="m"||!show(c)) continue; for(const s of SIDES){ const fc=c.faces[s]; plates.push([c,s,fc&&fc[tt]?fc[tt][0]:"NONE"]); } }
-    const pg=new THREE.PlaneGeometry(0.9,0.9), mesh=new THREE.InstancedMesh(pg,new THREE.MeshBasicMaterial({transparent:true,opacity:0.88,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}),plates.length);
-    const col=new THREE.Color(), zf=new THREE.Vector3(0,0,1);
-    plates.forEach(([c,s,dt],i)=>{ const d=SIDE_DIR[s]; q.setFromUnitVectors(zf,v.set(d[0],d[1],d[2])); m4.compose(new THREE.Vector3(c.x+d[0]*0.505,c.y+d[1]*0.505,c.z+d[2]*0.505),q,sc);
-      mesh.setMatrixAt(i,m4); col.set(DT[dt][1]); if(dt==="NONE") col.multiplyScalar(0.45); mesh.setColorAt(i,col); });
-    mesh.instanceColor.needsUpdate=true; mesh.renderOrder=2; add(mesh); }
+    for(const c of C.values()){ if(c.k!=="m"||!here(c)) continue; for(const s of SIDES){ const fc=c.faces[s]; plates.push([c,s,fc&&fc[tt]?fc[tt][0]:"NONE"]); } }
+    if(plates.length){ const pg=new THREE.PlaneGeometry(0.9,0.9), mesh=new THREE.InstancedMesh(pg,new THREE.MeshBasicMaterial({transparent:true,opacity:0.88,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-2}),plates.length);
+      const col=new THREE.Color(), zf=new THREE.Vector3(0,0,1);
+      plates.forEach(([c,s,dt],i)=>{ const d=SIDE_DIR[s]; q.setFromUnitVectors(zf,v.set(d[0],d[1],d[2])); m4.compose(new THREE.Vector3(c.x+d[0]*0.505,c.y+d[1]*0.505,c.z+d[2]*0.505),q,V1);
+        mesh.setMatrixAt(i,m4); col.set(DT[dt][1]); if(dt==="NONE") col.multiplyScalar(0.45); mesh.setColorAt(i,col); });
+      mesh.instanceColor.needsUpdate=true; mesh.renderOrder=2; add(mesh); } }
   // labels
   const lg=new THREE.Group(); for(const l of L.labels){ if(!view3.support&&l.z<-1.5) continue; const s=labelSprite(l.text,l.kind); s.position.set(l.x,l.y,l.z); lg.add(s); } add(lg);
-  // frame the build when its footprint changes
+}
+// frame the build when its footprint changes
+function frameBuild(C){
   let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9,z0=1e9,z1=-1e9; for(const c of C.values()){ if(!show(c)) continue; x0=Math.min(x0,c.x);x1=Math.max(x1,c.x);y0=Math.min(y0,c.y);y1=Math.max(y1,c.y);z0=Math.min(z0,c.z);z1=Math.max(z1,c.z); }
   const cx=(x0+x1)/2, cy=(y0+y1)/2, cz=(z0+z1)/2, r=Math.max(6,Math.hypot(x1-x0,y1-y0,z1-z0)/2), key=[x0,x1,z0,z1].join("|");
   if(key!==shownKey){ orbit.goal={x:cx,y:cy,z:cz,r:r*1.95+3}; if(!shownKey){ orbit.target={x:cx,y:cy,z:cz}; orbit.radius=orbit.goal.r; orbit.goal=null; } shownKey=key; }
@@ -1267,7 +1316,7 @@ if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPrese
 let lastModel=null;
 function update(){
   hideTip();
-  state.rate=Math.max(0.1,+state.rate||60); state.target=Math.max(1,+state.target||1);
+  state.rate=Math.max(0.1,+state.rate||8); state.target=Math.max(1,+state.target||1);
   const src=supply(), Mo=model(state.tier,src); lastModel=Mo;
   renderCfg(); syncInputs(Mo); renderCards(Mo); renderGasCards(Mo); renderResults(Mo);
   let shown=Mo, prev=null;
@@ -1278,7 +1327,8 @@ function renderResultsHud(Mo){ const met=METALS[state.metal];
   $("hudMain").innerHTML=`${big(Mo.ingots*3600)} <small>${met.name.toLowerCase()} ingots/hour</small>`;
   $("hudSub").textContent=`Step ${view3.step+1}: ${Mo.t}x · ${pl(Mo.allMachines,"machine")} · ${big(toFE(Mo.J))} FE/t`; }
 
-// start: the most basic line, 2x with single machines and no upgrades, for a minute of Fortune III mining; a design in the link replaces it
+// start: the most basic line: 2x, single machines, no upgrades, and 8 Fortune III ore blocks a minute, about what one bare
+// Enrichment Chamber keeps up with (1 chamber, 4 smelters); a design in the link replaces it
 if(share.atLoad.design) Object.assign(state,share.atLoad.design);
 initGL(); update(); share.live();
 })();

@@ -166,12 +166,23 @@ window.MD_PACKS = [
     },
   },
   {
+    // FTB pack with no public repo: values read from the 1.23.0 release files on the FTB API (pack 130, version 100554).
+    // Ships Mekanism 10.7.19.85 and no Extreme Reactors; every key the calculators read is at its default.
+    // It also ships Mekanism Unleashed 0.3.4, which lets machines take up to 32 speed/energy upgrades (Tweaks.maxUpgrades).
+    // Its formulas match Mekanism's up to 8 upgrades, which is as far as the calculators go.
+    id: "stoneblock4", name: "FTB StoneBlock 4", mc: "1.21.1",
+    source: { repo: "https://www.feed-the-beast.com/modpacks/130-ftb-stoneblock-4", version: "1.23.0", checked: "2026-10-20" },
+    mods: {
+      mekanism: { config: {}, note: "mod defaults · up to 32 upgrades" },
+    },
+  },
+  {
     // FTB Evolution 2 1.4.1 (FTB App pack 135, version 100567) ships Colossal Reactors 2.4.1.0.0. Values from its
     // config/colossal_reactors-common.toml and datapacks/ftb/data/colossal_reactors/recipe/{reactor,turbine}/*.json, which
     // replace the jar's recipe files. The pack's own guide page still shows the 1.3.0 values (exponent 0.55, 0.8 steam per mB, 48 mB a blade).
     // Keys without a numbered prefix are datapack values (see the Colossal Reactors calculator's CFG_FIELDS); 1/0 = present or not.
     id: "ftb-evolution-2", name: "FTB Evolution 2", mc: "26.1.2",
-    source: { release: "https://www.feed-the-beast.com/modpacks/135-ftb-evolution-2 1.4.1", checked: "2026-10-20" },
+    source: { repo: "https://www.feed-the-beast.com/modpacks/135-ftb-evolution-2", version: "1.4.1", checked: "2026-10-20" },
     mods: {
       colossal_reactors: { config: {
         "reactor.size.000_maxReactorWidth": 32, "reactor.size.001_maxReactorLength": 32, "reactor.size.002_maxReactorHeight": 32,
