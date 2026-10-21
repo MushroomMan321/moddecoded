@@ -437,10 +437,10 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 
 /* ================= config (general.toml, machine-usage.toml) ================= */
 const USAGE_KEYS=["enrichmentChamber","crusher","energizedSmelter","purificationChamber","chemicalInjectionChamber","chemicalDissolutionChamber","chemicalWasher","chemicalCrystallizer","chemicalInfuser","chemicalOxidizer","rotaryCondensentrator"];
-const DEFAULTS={maxUpgradeMultiplier:10, ticksPerMine:80, feConversionRate:2.5, atmOre:0, enrichmentChamber:50, crusher:50, energizedSmelter:50, purificationChamber:200,
+const DEFAULTS={maxUpgradeMultiplier:10, maxUpgrades:8, ticksPerMine:80, feConversionRate:2.5, atmOre:0, enrichmentChamber:50, crusher:50, energizedSmelter:50, purificationChamber:200,
   chemicalInjectionChamber:400, chemicalDissolutionChamber:400, chemicalWasher:200, chemicalCrystallizer:400, chemicalInfuser:200, chemicalOxidizer:200, rotaryCondensentrator:50};
 const CFG_FIELDS=[["maxUpgradeMultiplier","general.maxUpgradeMultiplier"],["ticksPerMine","digital_miner.ticksPerMine"],["feConversionRate","general.feConversionRate"],
-  ...USAGE_KEYS.map(k=>[k,"usage."+k]),["atmOre","kubejs.atmOreProcessing"]];
+  ...USAGE_KEYS.map(k=>[k,"usage."+k]),["maxUpgrades","mekanism_unleashed.maxUpgrades"],["atmOre","kubejs.atmOreProcessing"]];
 // Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
 const {presets:PRESETS, list:ATM_PACKS}=mdPackPresets("mekanism",DEFAULTS,CFG_FIELDS);
 let cfgPreset="default", cfg={...PRESETS.default};
@@ -476,19 +476,20 @@ const OUT_NAME={dissolve:"dirty slurry",wash:"clean slurry",crystal:"crystals",i
 
 /* ================= machines (Mekanism 10.7.19.85) ================= */
 // kind progress: one operation takes `base` ticks (TileEntityProgressMachine); rate: 2^speed operations every tick
+// store: energy buffer with no energy upgrades (storage.* in general.toml: 400 ticks of the default usage)
 const MACH={
-  dissolve:{name:"Chemical Dissolution Chamber",short:"Dissolution",kind:"progress",base:100,use:"chemicalDissolutionChamber",chem:true,bom:"chemical_dissolution_chamber"},
-  wash:{name:"Chemical Washer",short:"Washer",kind:"rate",use:"chemicalWasher",bom:"chemical_washer"},
-  crystal:{name:"Chemical Crystallizer",short:"Crystallizer",kind:"progress",base:200,use:"chemicalCrystallizer",bom:"chemical_crystallizer"},
-  inject:{name:"Chemical Injection Chamber",short:"Injection",kind:"progress",base:200,use:"chemicalInjectionChamber",chem:true,fac:"injecting",bom:"chemical_injection_chamber"},
-  purify:{name:"Purification Chamber",short:"Purification",kind:"progress",base:200,use:"purificationChamber",chem:true,fac:"purifying",bom:"purification_chamber"},
-  crush:{name:"Crusher",short:"Crusher",kind:"progress",base:200,use:"crusher",fac:"crushing",bom:"crusher"},
-  enrich:{name:"Enrichment Chamber",short:"Enrichment",kind:"progress",base:200,use:"enrichmentChamber",fac:"enriching",bom:"enrichment_chamber"},
-  smelt:{name:"Energized Smelter",short:"Smelter",kind:"progress",base:200,use:"energizedSmelter",fac:"smelting",bom:"energized_smelter"},
-  sep:{name:"Electrolytic Separator",short:"Separator",kind:"rate",fixedJ:400,bom:"electrolytic_separator"},   // 2 × hydrogen energy density (200 J)
-  infuser:{name:"Chemical Infuser",short:"Infuser",kind:"rate",use:"chemicalInfuser",bom:"chemical_infuser"},
-  oxid:{name:"Chemical Oxidizer",short:"Oxidizer",kind:"progress",base:100,use:"chemicalOxidizer",bom:"chemical_oxidizer"},
-  rotary:{name:"Rotary Condensentrator",short:"Rotary",kind:"rate",use:"rotaryCondensentrator",bom:"rotary_condensentrator"},
+  dissolve:{name:"Chemical Dissolution Chamber",short:"Dissolution",kind:"progress",store:160000,base:100,use:"chemicalDissolutionChamber",chem:true,bom:"chemical_dissolution_chamber"},
+  wash:{name:"Chemical Washer",short:"Washer",kind:"rate",store:80000,use:"chemicalWasher",bom:"chemical_washer"},
+  crystal:{name:"Chemical Crystallizer",short:"Crystallizer",kind:"progress",store:160000,base:200,use:"chemicalCrystallizer",bom:"chemical_crystallizer"},
+  inject:{name:"Chemical Injection Chamber",short:"Injection",kind:"progress",store:160000,base:200,use:"chemicalInjectionChamber",chem:true,fac:"injecting",bom:"chemical_injection_chamber"},
+  purify:{name:"Purification Chamber",short:"Purification",kind:"progress",store:80000,base:200,use:"purificationChamber",chem:true,fac:"purifying",bom:"purification_chamber"},
+  crush:{name:"Crusher",short:"Crusher",kind:"progress",store:20000,base:200,use:"crusher",fac:"crushing",bom:"crusher"},
+  enrich:{name:"Enrichment Chamber",short:"Enrichment",kind:"progress",store:20000,base:200,use:"enrichmentChamber",fac:"enriching",bom:"enrichment_chamber"},
+  smelt:{name:"Energized Smelter",short:"Smelter",kind:"progress",store:20000,base:200,use:"energizedSmelter",fac:"smelting",bom:"energized_smelter"},
+  sep:{name:"Electrolytic Separator",short:"Separator",kind:"rate",store:160000,fixedJ:400,bom:"electrolytic_separator"},   // 2 × hydrogen energy density (200 J)
+  infuser:{name:"Chemical Infuser",short:"Infuser",kind:"rate",store:80000,use:"chemicalInfuser",bom:"chemical_infuser"},
+  oxid:{name:"Chemical Oxidizer",short:"Oxidizer",kind:"progress",store:80000,base:100,use:"chemicalOxidizer",bom:"chemical_oxidizer"},
+  rotary:{name:"Rotary Condensentrator",short:"Rotary",kind:"rate",store:20000,use:"rotaryCondensentrator",bom:"rotary_condensentrator"},
 };
 const FAC=[null,{name:"Basic",key:"basic",slots:3,col:"#75FF89"},{name:"Advanced",key:"advanced",slots:5,col:"#FF383C"},
   {name:"Elite",key:"elite",slots:7,col:"#30FFF9"},{name:"Ultimate",key:"ultimate",slots:9,col:"#A460D9"}];
@@ -504,16 +505,33 @@ function poissonMean(m){
     lp=lp>lt?lp+Math.log1p(Math.exp(lt-lp)):lt+Math.log1p(Math.exp(lp-lt)); }
   poissonMemo.set(m,E); return E;
 }
+// Mekanism Unleashed (dev.wp.mekanism_unleashed, 0.3.4) raises the speed and energy upgrade limit from 8 to its maxUpgrades
+// and overwrites MekanismUtils.getTicks, getOperationsPerTick, getEnergyPerTick and getMaxEnergy (MixinMekanismUtils, Utils).
+const CAP=()=>Math.max(8,Math.round(cfg.maxUpgrades)||8);   // speed and energy upgrades a machine takes
+const UNL=()=>CAP()>8;
+// getEnergyPerTick: usage × M^((2·speed − energy)/8), rounded up. Unleashed counts energy upgrades only up to max(8, speed)
+// and rounds down (Utils.electricity, MathUtils.clampToLong).
+function eptOf(usage,s,e){ const M=cfg.maxUpgradeMultiplier;
+  return UNL()?Math.trunc(usage*Math.pow(M,(2*s-Math.min(e,Math.max(8,s)))/8)):Math.ceil(usage*Math.pow(M,(2*s-e)/8)); }
+const eEff=u=>UNL()?Math.min(u.e,Math.max(8,u.s)):u.e;   // the energy upgrades getEnergyPerTick counts
+const bufOf=(store,e)=>Math.trunc(store*Math.pow(cfg.maxUpgradeMultiplier,e/8));   // getMaxEnergy
+// getGasPerTickMeanMultiplier: M^(2·speed/max − chemical/8), max = Upgrade.getMax(). Unleashed leaves the formula alone but
+// raises SPEED's max to its cap (MixinUpgrade), so the same speed upgrades draw less gas than in plain Mekanism.
+const gasMult=(s,c)=>Math.pow(cfg.maxUpgradeMultiplier,2*s/CAP()-c/8);
 // One machine's numbers with upgrades u = {f: factory tier, s: speed, e: energy, c: chemical}
+// CachedRecipe runs at most stored energy / energy per tick operations a tick, so a machine whose buffer can't cover
+// what its speed upgrades ask for runs fewer (work < want), or none. A factory shares one buffer between its slots.
+const fits=(want,buf,ept)=>UNL()?Math.min(want,Math.floor(buf/ept)):want;
 function stats(id,u){
   const m=MACH[id], M=cfg.maxUpgradeMultiplier, s=u.s||0, e=u.e||0, c=m.chem?(u.c||0):0;
-  if(m.kind==="rate"){ const opt=Math.trunc(Math.pow(2,s)), ept=m.fixedJ??Math.ceil(cfg[m.use]*Math.pow(M,(2*s-e)/8));
-    return {opsPerSec:20*opt, energyPerOp:ept, ticks:1, opsPerTick:opt, ept, slots:1, peak:20*opt*ept}; }
+  if(m.kind==="rate"){ const want=Math.min(2147483647,Math.trunc(Math.pow(2,s))), ept=m.fixedJ??eptOf(cfg[m.use],s,e), buf=bufOf(m.store,e), opt=fits(want,buf,ept);
+    return {opsPerSec:20*opt, energyPerOp:ept, ticks:1, opsPerTick:opt, want, ept, buf, slots:1, peak:20*opt*ept}; }
   const slots=u.f&&m.fac?FAC[u.f].slots:1;
   const td=m.base*Math.pow(M,-s/8), ticks=Math.max(1,Math.trunc(td)), opt=td>=1?1:Math.trunc(Math.max(1,1/td));   // getTicks, getOperationsPerTick
-  const ept=Math.ceil(cfg[m.use]*Math.pow(M,(2*s-e)/8));                                                          // getEnergyPerTick
-  const gm=m.chem?Math.pow(M,(2*s-c)/8):0;                                                                         // getGasPerTickMeanMultiplier
-  return {opsPerSec:20*slots*opt/ticks, energyPerOp:ept*ticks, ticks, opsPerTick:opt, ept, slots, gasMean:gm, gasPerOp:m.chem?poissonMean(gm)*ticks:0, peak:20*slots*opt*ept};
+  const ept=eptOf(cfg[m.use],s,e);
+  const buf=bufOf(slots>1?Math.max(m.store/2,cfg[m.use])*slots:m.store,e), want=slots*opt, work=fits(want,buf,ept);   // Factory: storage/2 per slot
+  const gm=m.chem?gasMult(s,c):0;
+  return {opsPerSec:20*work/ticks, energyPerOp:ept*ticks, ticks, opsPerTick:opt, want, work, ept, buf, slots, gasMean:gm, gasPerOp:m.chem?poissonMean(gm)*ticks:0, peak:20*work*ept};
 }
 
 /* ================= state ================= */
@@ -538,12 +556,15 @@ function supply(){
   const drops=silk?1:met.raw*FORTUNE[fort];                     // items per ore block mined
   const feed=silk?"ore":state.blocks?"block":"raw";
   const perBlock=feed==="block"?drops/9:drops;                    // items into the line per ore block
-  const dmTicks=Math.max(1,Math.trunc(cfg.ticksPerMine*Math.pow(cfg.maxUpgradeMultiplier,-state.dmS/8)));   // TileEntityDigitalMiner delay
+  // TileEntityDigitalMiner mines one block every getTicks(ticksPerMine) ticks. Under 1 tick, Mekanism Unleashed's getTicks goes
+  // negative (−trunc(1/ticks)) and MixinDigiMiner mines 1 − delay blocks every tick: 2 a tick once the delay drops below 1.
+  const dmD=cfg.ticksPerMine*Math.pow(cfg.maxUpgradeMultiplier,-state.dmS/8), dmMulti=UNL()&&dmD<1;
+  const dmTicks=dmMulti?1:Math.max(1,Math.trunc(dmD)), dmPerTick=dmMulti?Math.min(2147483647,Math.trunc(1/dmD))+1:1;
   let bps;
   if(state.mode==="m") bps=state.rate/60;
-  else if(dm) bps=20/dmTicks;
+  else if(dm) bps=20*dmPerTick/dmTicks;
   else bps=state.target/3600/(perBlock*Y()[feed][state.tier-1]);
-  return {silk,fort,drops,feed,perBlock,bps,dmTicks,F:bps*perBlock};
+  return {silk,fort,drops,feed,perBlock,bps,dmTicks,dmPerTick,F:bps*perBlock};
 }
 function flows(t,feed,F){
   const c=chain(), [k,y]=FRONT[t][feed], front=FRONT_ID[t], ops={}, amt={}; ops[front]=F/k; if(GAS_OF[front]) amt[front]=feed==="block"?2:1;
@@ -559,7 +580,7 @@ function model(t,src){
   src=src||supply();
   const fl=flows(t,src.feed,src.F);
   const stages=ORDER.filter(id=>STAGE_TIER[id]<=t).map(id=>{
-    const u=state.st[id], s=stats(id,u), req=fl.ops[id]||0, need=req/s.opsPerSec, auto=Math.max(1,Math.ceil(need-1e-9));
+    const u=state.st[id], s=stats(id,u), req=fl.ops[id]||0, need=s.opsPerSec?req/s.opsPerSec:Infinity, auto=Number.isFinite(need)?Math.max(1,Math.ceil(need-1e-9)):1;
     const count=u.n!=null?Math.max(1,u.n):auto;
     return {id,u,s,req,need,auto,count,cap:count*s.opsPerSec,amt:fl.amt[id]||0,gas:GAS_OF[id],isFront:FRONT_ID[t]===id};
   });
@@ -576,30 +597,29 @@ function model(t,src){
 }
 // gas plants (all built from rate machines except the oxidizer)
 function supportModel(dem){
-  const M=cfg.maxUpgradeMultiplier, s=state.sup.s, e=state.sup.e, R=20*Math.trunc(Math.pow(2,s));
-  const ept=use=>Math.ceil(cfg[use]*Math.pow(M,(2*s-e)/8));
-  const eInf=ept("chemicalInfuser"), eRot=ept("rotaryCondensentrator"), oxS=Math.min(8,Math.max(s,e)), ox=stats("oxid",{s:oxS,e}), SEP=400;
-  const out={o2:null,hcl:null,acid:null,J:0,water:0,peak:0,machines:0,items:[]}, up=x=>Math.ceil(x-1e-9);
+  const s=state.sup.s, e=state.sup.e, inf=stats("infuser",{s,e}), rot=stats("rotary",{s,e}), sep=stats("sep",{s,e:0});
+  const R=inf.opsPerSec, Rr=rot.opsPerSec, Rs=sep.opsPerSec, eInf=inf.ept, eRot=rot.ept, oxS=Math.min(CAP(),Math.max(s,e)), ox=stats("oxid",{s:oxS,e}), SEP=400;
+  const out={o2:null,hcl:null,acid:null,J:0,water:0,peak:0,machines:0,items:[]}, up=x=>Number.isFinite(x)?Math.ceil(x-1e-9):1;
   const A=dem.acid, H=dem.hcl, O=dem.o2;
   if(A>0){ if(state.sup.acid==="p"){
       // per mB of acid: 1 infuser op (SO₃ + vapor), 1 rotary op (water → vapor), ½ infuser op (O₂ + 2 SO₂ → 2 SO₃), ½ separator op, 1/100 oxidizer op
-      const units=Math.max(up(A/R),up(A/2/R),up(A/100/ox.opsPerSec));
+      const units=Math.max(up(A/R),up(A/Rr),up(A/2/Rs),up(A/100/ox.opsPerSec));
       const J=A*eInf+A*eRot+A/2*eInf+A/100*ox.energyPerOp+A/2*SEP;
-      out.acid={src:"p",units,J,water:2*A,sulfur:A/100,load:{inf2:A/(units*R),rot:A/(units*R),inf1:A/2/(units*R),sep:A/2/(units*R),ox:A/100/(units*ox.opsPerSec)},
-        machines:{sep:units,infuser:2*units,rotary:units,oxid:units}, peak:units*(2*R*eInf+R*eRot+R*SEP+ox.peak)};
+      out.acid={src:"p",units,J,water:2*A,sulfur:A/100,load:{inf2:A/(units*R),rot:A/(units*Rr),inf1:A/2/(units*R),sep:A/2/(units*Rs),ox:A/100/(units*ox.opsPerSec)},
+        machines:{sep:units,infuser:2*units,rotary:units,oxid:units}, peak:units*(2*inf.peak+rot.peak+sep.peak+ox.peak), stalled:!(R&&Rr&&Rs&&ox.opsPerSec)};
     } else out.acid={src:"s",units:0,J:0,water:0,sulfur:A/2,machines:{},peak:0}; }
   if(H>0){ if(state.sup.hcl==="p"){
       // per mB of HCl: 1 infuser op, 1 brine separator op (10 brine → 1 Cl), ½ water separator op (2 water → 2 H₂)
-      const units=Math.max(up(H/R),up(H/2/R));
-      out.hcl={src:"p",units,J:H*eInf+H*SEP+H/2*SEP,water:H,brine:10*H,load:{inf:H/(units*R),cl:H/(units*R),h2:H/2/(units*R)},
-        machines:{sep:2*units,infuser:units}, peak:units*(R*eInf+2*R*SEP)};
+      const units=Math.max(up(H/R),up(H/Rs));
+      out.hcl={src:"p",units,J:H*eInf+H*SEP+H/2*SEP,water:H,brine:10*H,load:{inf:H/(units*R),cl:H/(units*Rs),h2:H/2/(units*Rs)},
+        machines:{sep:2*units,infuser:units}, peak:units*(inf.peak+2*sep.peak), stalled:!(R&&Rs)};
     } else out.hcl={src:"s",units:0,J:0,water:0,salt:H/2,machines:{},peak:0}; }
   if(O>0){ if(state.sup.o2==="s"){ const R8=20*256, units=up(O/R8);   // always 8 speed upgrades: a separator's 400 J per operation never changes
       out.o2={src:"s",units,J:O*SEP,water:2*O,h2:2*O,load:O/(units*R8),machines:{sep:units},peak:units*R8*SEP};
     } else out.o2={src:"f",units:0,J:0,water:0,flint:O/10,machines:{},peak:0}; }
   for(const k of ["o2","hcl","acid"]){ const g=out[k]; if(!g) continue; out.J+=g.J; out.water+=g.water; out.peak+=g.peak;
     out.machines+=Object.values(g.machines).reduce((a,b)=>a+b,0); }
-  out.R=R; out.ox=ox; out.oxS=oxS; out.eInf=eInf; out.eRot=eRot;
+  out.R=R; out.inf=inf; out.ox=ox; out.oxS=oxS; out.eInf=eInf; out.eRot=eRot;
   return out;
 }
 const toFE=Js=>Js/20/cfg.feConversionRate;          // J per second → FE per tick
@@ -971,11 +991,12 @@ function renderCfg(){
   renderPresetButtons();
   const M=cfg.maxUpgradeMultiplier, dbl=USAGE_KEYS.filter(k=>cfg[k]!==DEFAULTS[k]);
   $("cfgHint").innerHTML=`Upgrade multiplier <b>${fmt(M)}</b>${M!==10?" (default 10)":""} · Digital Miner <b>${fmt(cfg.ticksPerMine)}</b> ticks per block · ${cfg.feConversionRate} J = 1 FE`+
-    (dbl.length?` · <b>${dbl.length}</b> machine power values changed`:"")+(cfg.atmOre?" · <b>ATM ore recipes</b> (KubeJS)":"");
+    (dbl.length?` · <b>${dbl.length}</b> machine power values changed`:"")+(cfg.atmOre?" · <b>ATM ore recipes</b> (KubeJS)":"")+(UNL()?` · <b>Mekanism Unleashed</b>: up to ${CAP()} upgrades`:"");
   const g=$("cfgGrid");
   if(!g.childElementCount){ for(const [k,label] of CFG_FIELDS){ if(k==="atmOre") continue; const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
       const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.step="any"; i.min="1";
-      i.onchange=()=>{ const v=+i.value; if(!(v>0)){ i.value=cfg[k]; return; } cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
+      const up=k==="maxUpgrades"; if(up){ i.min="8"; i.max="64"; i.step="1"; }   // Unleashed's range is > 8; it warns past 32
+      i.onchange=()=>{ let v=+i.value; if(!(v>0)){ i.value=cfg[k]; return; } if(up) v=Math.max(8,Math.min(64,Math.round(v))); cfg[k]=v; cfgPreset="custom"; saveCfg(); update(); }; g.append(l,i); }
     const l=document.createElement("label"); l.className="chk cfg-chk";
     l.innerHTML=`<input type="checkbox" id="cfg-atmOre"><span>ATM ore processing recipes<small>kubejs/server_scripts/mods/Mekanism/ore_processing.js: washing 5 → 3, crystal → 2 shards, clump → 2 dirty dust, 4 dirty dust → 3 dust</small></span>`;
     l.querySelector("input").onchange=e=>{ cfg.atmOre=e.target.checked?1:0; cfgPreset="custom"; saveCfg(); update(); }; g.append(l); }
@@ -1012,12 +1033,17 @@ for(const [k,p] of Object.entries(MACHINE_PRESETS)){ const b=document.createElem
 const cust=document.createElement("button"); cust.type="button"; cust.textContent="Custom"; cust.dataset.k="custom"; cust.disabled=true; cust.title="Change any machine below"; $("presetSeg").append(cust);
 for(const [id,v] of [["mMine","m"],["mDm","d"],["mTarget","t"]]) $(id).onclick=()=>{ state.mode=v; update(); };
 const bindRange=(id,key,min,max)=>{ const f=v=>{ const x=+v; if(!(x>=min)) return; state[key]=Math.min(max,x); update(); }; $(id).oninput=e=>f(e.target.value); $(id+"N").onchange=e=>f(e.target.value); };
-bindRange("rate","rate",0.1,1e6); bindRange("target","target",1,1e9); bindRange("dmS","dmS",0,8);
-$("dmS").oninput=e=>{ state.dmS=Math.round(+e.target.value); update(); }; $("dmSN").onchange=e=>{ state.dmS=Math.max(0,Math.min(8,Math.round(+e.target.value||0))); update(); };
+bindRange("rate","rate",0.1,1e6); bindRange("target","target",1,1e9);
+$("dmS").oninput=e=>{ state.dmS=Math.round(+e.target.value); update(); }; $("dmSN").onchange=e=>{ state.dmS=Math.max(0,Math.min(CAP(),Math.round(+e.target.value||0))); update(); };
 $("dmSilk").onchange=e=>{ state.dmSilk=e.target.checked; update(); };
 $("blocks").onchange=e=>{ state.blocks=e.target.checked; update(); };
-const opts=(sel,n,from=0)=>{ for(let i=from;i<=n;i++){ const o=document.createElement("option"); o.value=i; o.textContent=i; sel.append(o); } };
-opts($("supS"),8); opts($("supE"),8);
+// 0..n options; refilled when the pack's upgrade limit changes
+const opts=(sel,n,from=0)=>{ if(sel.options.length===n-from+1) return; sel.innerHTML=""; for(let i=from;i<=n;i++){ const o=document.createElement("option"); o.value=i; o.textContent=i; sel.append(o); } };
+// speed and energy upgrades can't go past the pack's limit: clamp a design made for a higher one
+function fitCap(){ const n=CAP(), c=v=>Math.min(n,v);
+  for(const u of Object.values(state.st)){ u.s=c(u.s); u.e=c(u.e); } state.sup.s=c(state.sup.s); state.sup.e=c(state.sup.e); state.dmS=c(state.dmS);
+  opts($("supS"),n); opts($("supE"),n); for(const sel of $("cards").querySelectorAll('select[data-k="s"],select[data-k="e"]')) opts(sel,n);
+  $("dmS").max=$("dmSN").max=n; }
 $("supS").onchange=e=>{ state.sup.s=+e.target.value; update(); }; $("supE").onchange=e=>{ state.sup.e=+e.target.value; update(); };
 
 // stage cards
@@ -1027,7 +1053,7 @@ function buildCards(){
     const sel=(k,label,n)=>`<label>${label}<select data-k="${k}">${Array.from({length:n+1},(_,i)=>`<option value="${i}">${i}</option>`).join("")}</select></label>`;
     c.innerHTML=`<div class="card-h">${sw(swatch(id,0))}<b class="nm"></b><span class="tag"></span><span class="n"></span></div>
       <div class="card-c">${m.fac?`<label>Machine<select data-k="f"><option value="0">Single machine</option>${FAC.slice(1).map((t,i)=>`<option value="${i+1}">${t.name} factory (${t.slots})</option>`).join("")}</select></label>`:""}
-      ${sel("s","Speed",8)}${m.kind==="rate"?sel("e","Energy",8):sel("e","Energy",8)}${m.chem?sel("c","Chemical",8):""}
+      ${sel("s","Speed",CAP())}${sel("e","Energy",CAP())}${m.chem?sel("c","Chemical",8):""}
       <label>Count<input type="number" min="1" step="1" data-k="n" placeholder="auto" aria-label="Machine count (blank for auto)"></label></div>
       <div class="bar"><i></i></div><p class="card-s"></p>`;
     box.append(c); }
@@ -1091,7 +1117,7 @@ function syncInputs(Mo){
   const yk=src.feed==="ore"?"ore":"raw", yv=Y()[yk][state.tier-1], ym=Y(CHAINS.mek)[yk][state.tier-1], per=src.perBlock*Y()[src.feed][state.tier-1];
   $("tierHint").innerHTML=`${state.tier}x turns each ${src.feed==="ore"?"ore block":"raw ore"} into ${yfmt(yv)} ingots${yv!==ym?` with this pack's recipes (${yfmt(ym)} in plain Mekanism)`:""}. You mine <b>${sig(per)}</b> ${met.name.toLowerCase()} ingots' worth per ore block.`;
   let h="";
-  if(state.mode==="d") h=`One block every <b>${src.dmTicks}</b> ticks: <b>${sig(src.bps*60)}</b> blocks a minute, if every block it mines is ${met.name.toLowerCase()} ore (set its filter to the ore).`;
+  if(state.mode==="d") h=`${src.dmPerTick>1?`<b>${fmt(src.dmPerTick)}</b> blocks every tick`:src.dmTicks===1?"One block every tick":`One block every <b>${src.dmTicks}</b> ticks`}: <b>${sig(src.bps*60)}</b> blocks a minute, if every block it mines is ${met.name.toLowerCase()} ore (set its filter to the ore).`;
   else if(state.mode==="t") h=`That takes <b>${sig(src.bps*60)}</b> ore blocks a minute${src.silk?"":` (${sig(src.bps*60*src.drops)} raw ore)`}.`;
   else h=src.silk?`Silk Touch brings back the ore blocks themselves.`:`${src.fort?`Fortune ${["","I","II","III"][src.fort]} averages`:"Without Fortune you get"} <b>${sig(src.drops)}</b> raw ${met.name.toLowerCase()} per block${met.raw!==1?" (copper ore drops 2 to 5)":""}.`;
   $("srcHint").innerHTML=h;
@@ -1121,7 +1147,7 @@ function renderResults(Mo){
 }
 function notesFor(Mo){
   const n=[], met=METALS[state.metal], src=Mo.src, M=cfg.maxUpgradeMultiplier, t=Mo.t;
-  if(Mo.limit<0.9999) n.push(["bad",`${MACH[Mo.slow.id].name}s hold the line to ${fmt(Mo.limit*100)}% of the ore coming in: ${fmt(Mo.slow.count)} can do ${sig(Mo.slow.cap)} operations a second, it needs ${sig(Mo.slow.req)}. You'd need ${fmt(Mo.slow.auto)}.`]);
+  if(Mo.limit<0.9999&&Mo.slow.s.opsPerSec) n.push(["bad",`${MACH[Mo.slow.id].name}s hold the line to ${fmt(Mo.limit*100)}% of the ore coming in: ${fmt(Mo.slow.count)} can do ${sig(Mo.slow.cap)} operations a second, it needs ${sig(Mo.slow.req)}. You'd need ${fmt(Mo.slow.auto)}.`]);
   const cr=Mo.stages.find(g=>g.id==="crystal"), dis=Mo.stages.find(g=>g.id==="dissolve");
   if(cr&&dis&&cr.count>=3*dis.count) n.push(["warn",`Crystallizers are the slow step: ${fmt(cr.count)} of them keep up with ${pl(dis.count,"dissolution chamber")}. They have no factory, so more speed upgrades in them is the way to need fewer.`]);
   if(!src.silk&&src.feed==="raw"&&t>=2){ const fr=Mo.stages[0], k=FRONT[t].raw[0], mult=k===3?3:9;
@@ -1130,15 +1156,24 @@ function notesFor(Mo){
   if(state.mode==="d"&&!state.dmSilk) n.push(["warn",`The Digital Miner has no Fortune, so it brings back one raw ore per block (${met.raw!==1?"2 to 5 for copper":"for most ores"}). With Silk Touch on you'd get ${yfmt(Y().ore[t-1])} ingots per block instead of ${sig(met.raw*Y().raw[t-1])}, for 12× the miner's power.`]);
   if(cfg.atmOre&&t>=3){ const steps=[...(t===5?["washing turns 5 mB of dirty slurry into 3 mB clean","a crystal injects into 2 shards"]:[]),"a clump crushes into 2 dirty dust","4 dirty dust enrich into 3 dust"];
     n.push(["good",`This pack's KubeJS changes Mekanism's recipes: ${steps.join(", ")}. An ore block makes ${yfmt(Y().ore[t-1])} ingots at ${t}x here, not ${yfmt(Y(CHAINS.mek).ore[t-1])}.`]); }
-  const gasless=Mo.stages.filter(g=>g.gas&&g.u.s>g.u.c);
-  if(gasless.length){ const g=gasless[0], k=Math.pow(M,(g.u.s-g.u.c)/8); n.push(["warn",`${MACH[g.id].short} has ${g.u.s} speed and ${g.u.c} chemical upgrades, so each item takes ${sig(k)}× the ${GAS[g.gas].name.toLowerCase()} it would with none. Match the chemical upgrades to the speed upgrades to cancel it.`]); }
-  const hungry=Mo.stages.filter(g=>MACH[g.id].kind==="progress"&&2*g.u.s-g.u.e>g.u.s);
-  if(hungry.length){ const g=hungry[0], k=Math.pow(M,(g.u.s-g.u.e)/8); n.push(["warn",`With ${g.u.s} speed and ${g.u.e} energy upgrades, each item through a ${MACH[g.id].short.toLowerCase()} costs ${sig(k)}× the power it would with none. Energy upgrades bring it back down.`]); }
-  const w=Mo.stages.find(g=>g.id==="wash"); if(w&&w.u.s>=6&&w.load<0.3) n.push(["warn",`The washer is ${fmt(w.load*100)}% busy. Each speed upgrade doubles what it can wash but raises its power per mB too, so ${Math.max(0,w.u.s-Math.floor(Math.log2(1/w.load)))} speed upgrades would do with less power.`]);
+  for(const g of Mo.stages.filter(g=>!g.s.opsPerSec)) n.push(["bad",`${MACH[g.id].name}s can't run with ${g.u.s} speed and ${g.u.e} energy upgrades: one tick takes ${big(g.s.ept)} J and ${g.s.slots>1?"the factory":"the machine"} holds ${big(g.s.buf)} J. Add energy upgrades or take out speed upgrades.`]);
+  const starved=Mo.stages.find(g=>g.s.opsPerSec&&(g.s.work??g.s.opsPerTick)<g.s.want);
+  if(starved){ const g=starved, w=g.s.work??g.s.opsPerTick; n.push(["warn",`${MACH[g.id].name}s run ${pl(w,"operation")} a tick, not the ${fmt(g.s.want)} their speed upgrades allow: a machine only starts as many as its stored energy covers (${big(g.s.buf)} J at ${big(g.s.ept)} J each). Energy upgrades raise the store and lower the cost.`]); }
+  // gas and power per item relative to no upgrades: M^((speed − chemical)/8) and M^((speed − energy)/8) in plain Mekanism
+  const gasK=g=>UNL()?gasMult(g.u.s,g.u.c)*g.s.ticks/MACH[g.id].base:Math.pow(M,(g.u.s-g.u.c)/8);
+  const gasless=Mo.stages.filter(g=>g.gas&&(UNL()?gasK(g)>1.0001:g.u.s>g.u.c));
+  if(gasless.length){ const g=gasless[0], k=gasK(g); n.push(["warn",`${MACH[g.id].short} has ${g.u.s} speed and ${g.u.c} chemical upgrades, so each item takes ${sig(k)}× the ${GAS[g.gas].name.toLowerCase()} it would with none. ${UNL()?"Chemical upgrades bring it back down.":"Match the chemical upgrades to the speed upgrades to cancel it."}`]); }
+  const powK=g=>UNL()?g.s.energyPerOp/(cfg[MACH[g.id].use]*MACH[g.id].base):Math.pow(M,(g.u.s-g.u.e)/8);
+  const hungry=Mo.stages.filter(g=>MACH[g.id].kind==="progress"&&g.s.opsPerSec&&(UNL()?powK(g)>1.0001:2*g.u.s-g.u.e>g.u.s));
+  if(hungry.length){ const g=hungry[0], k=powK(g); n.push(["warn",`With ${g.u.s} speed and ${g.u.e} energy upgrades, each item through a ${MACH[g.id].short.toLowerCase()} costs ${sig(k)}× the power it would with none. ${UNL()&&g.u.e>eEff(g.u)?`Only ${eEff(g.u)} of the energy upgrades count: Mekanism Unleashed caps them at the speed upgrades (or 8).`:"Energy upgrades bring it back down."}`]); }
+  const w=Mo.stages.find(g=>g.id==="wash"); if(w&&w.u.s>=6&&w.load<0.3) n.push(["warn",`The washer is ${fmt(w.load*100)}% busy. Each speed upgrade doubles what it can wash but raises its power per mB too, so ${Array.from({length:w.u.s+1},(_,k)=>k).find(k=>w.count*stats("wash",{...w.u,s:k}).opsPerSec>=w.req-1e-9)??w.u.s} speed upgrades would do with less power.`]);
+  for(const k of ["hcl","acid"]) if(Mo.sup[k]&&Mo.sup[k].stalled) n.push(["bad",`The ${GAS[k].name.toLowerCase()} plant can't run with ${state.sup.s} speed and ${state.sup.e} energy upgrades: an infuser's ${big(Mo.sup.inf.ept)} J per operation is more than the ${big(Mo.sup.inf.buf)} J it holds. Add energy upgrades.`]);
   if(Mo.sup.hcl&&Mo.sup.hcl.brine) n.push(["warn",`The hydrogen chloride plant needs ${sig(perT(Mo.sup.hcl.brine))} mB/t of brine: 10 mB of brine per mB of chlorine. Brine comes from a Thermal Evaporation Plant (10 water → 1 brine).`]);
   if(Mo.sup.o2&&Mo.sup.o2.src==="s") n.push(["good",`The oxygen separators also make ${sig(perT(Mo.sup.o2.h2))} mB/t of hydrogen. Burnt in Gas-Burning Generators it gives back the ${big(toFE(Mo.sup.o2.J))} FE/t the separators use (200 J per mB).`]);
   if(L&&L.tiers.energy>=3&&Mo.J/20>TCAP.energy[3]) n.push(["bad",`${big(Mo.J/20)} J/t is more than one line of Ultimate Universal Cable carries (8.19M J/t). Feed the line from both ends or split it.`]);
   if(M!==10) n.push(["good",`This pack sets maxUpgradeMultiplier to ${fmt(M)} (default 10): 8 speed upgrades make machines ${fmt(M)}× faster and ${fmt(M*M)}× hungrier per tick.`]);
+  if(UNL()) n.push(["good",`This pack ships Mekanism Unleashed: machines take up to ${CAP()} speed and ${CAP()} energy upgrades, on Mekanism's own formulas. Energy upgrades past 8 only count up to the speed upgrades, a machine runs several operations a tick once its time drops under 1 tick, and gas use is spread over ${CAP()} speed upgrades, so speed upgrades cost less gas per item than in plain Mekanism.`]);
+  if(UNL()&&state.mode==="d"&&state.dmS>8) n.push(["warn",`The Digital Miner's power per tick climbs with speed upgrades like any machine's. Give it energy upgrades to match, or it can't hold a tick's worth (this page doesn't count the miner's power).`]);
   return n;
 }
 
@@ -1222,27 +1257,31 @@ function renderCurve(Mo){
   const avail=Mo.stages.map(g=>g.id); if(!avail.includes(view3.curve)) view3.curve=avail.includes("crystal")?"crystal":avail[0];
   for(const o of $("curveStage").options) o.disabled=!avail.includes(o.value); $("curveStage").value=view3.curve;
   const g=Mo.stages.find(x=>x.id===view3.curve), id=g.id, pts=[];
-  for(let s=0;s<=8;s++){ const st=stats(id,{...g.u,s}), need=g.req/st.opsPerSec; pts.push({s,n:Math.max(1,Math.ceil(need-1e-9)),fe:toFE(st.energyPerOp*g.req),gas:g.gas?perT(g.amt*st.gasPerOp*g.req):0}); }
-  const W=640,H=250,pl0=48,pr=58,pt=24,pb=34,iw=W-pl0-pr,ih=H-pt-pb, nMax=Math.max(...pts.map(p=>p.n)), fMax=Math.max(...pts.map(p=>p.fe))||1;
-  const bx=s=>pl0+iw*(s+0.5)/9, bw=iw/9*0.56, ny=n=>pt+ih*(1-n/nMax), fy=f=>pt+ih*(1-f/fMax);
+  // a speed count the machine's energy buffer can't run (too few energy upgrades) gets no bar and no point
+  const N=CAP(); for(let s=0;s<=N;s++){ const st=stats(id,{...g.u,s}), ok=st.opsPerSec>0, need=g.req/st.opsPerSec;
+    pts.push({s,ok,n:ok?Math.max(1,Math.ceil(need-1e-9)):0,fe:ok?toFE(st.energyPerOp*g.req):0,gas:ok&&g.gas?perT(g.amt*st.gasPerOp*g.req):0}); }
+  const W=640,H=250,pl0=48,pr=58,pt=24,pb=34,iw=W-pl0-pr,ih=H-pt-pb, nMax=Math.max(1,...pts.map(p=>p.n)), fMax=Math.max(...pts.map(p=>p.fe))||1;
+  const bx=s=>pl0+iw*(s+0.5)/(N+1), bw=iw/(N+1)*0.56, ny=n=>pt+ih*(1-n/nMax), fy=f=>pt+ih*(1-f/fMax), lab=s=>N<=8||s%4===0||s===g.u.s;
   const ticks=[0,0.5,1].map(f=>({n:Math.round(nMax*f),y:ny(Math.round(nMax*f))}));
   let svg=`<g font-family="JetBrains Mono, monospace" font-size="11" fill="#97A29A">`;
   for(const tk of ticks) svg+=`<line x1="${pl0}" x2="${W-pr}" y1="${tk.y}" y2="${tk.y}" stroke="#2A332D"/><text x="${pl0-8}" y="${tk.y+4}" text-anchor="end">${tk.n}</text>`;
   for(const f of [0,0.5,1]) svg+=`<text x="${W-pr+8}" y="${fy(fMax*f)+4}">${big(fMax*f)}</text>`;
   svg+=`<text x="4" y="${pt-10}" fill="#7FA6F5">machines</text><text x="${W-4}" y="${pt-10}" text-anchor="end" fill="#E2D03A">FE/t</text>`;
-  for(const p of pts){ const on=p.s===g.u.s; svg+=`<rect x="${bx(p.s)-bw/2}" y="${ny(p.n)}" width="${bw}" height="${pt+ih-ny(p.n)}" fill="${on?"#7FA6F5":"#3D5EA8"}" rx="2"/>`;
-    svg+=`<text x="${bx(p.s)}" y="${H-pb+16}" text-anchor="middle" fill="${on?"#E5E9E3":"#97A29A"}">${p.s}</text>`;
-    if(on) svg+=`<text x="${bx(p.s)}" y="${ny(p.n)-5}" text-anchor="middle" fill="#E5E9E3">${p.n}</text>`; }
-  svg+=`<polyline fill="none" stroke="#E2D03A" stroke-width="2.5" points="${pts.map(p=>`${bx(p.s)},${fy(p.fe)}`).join(" ")}"/>`;
-  for(const p of pts) svg+=`<circle cx="${bx(p.s)}" cy="${fy(p.fe)}" r="${p.s===g.u.s?4.5:3}" fill="#E2D03A"/>`;
+  for(const p of pts){ const on=p.s===g.u.s; if(p.ok) svg+=`<rect x="${bx(p.s)-bw/2}" y="${ny(p.n)}" width="${bw}" height="${pt+ih-ny(p.n)}" fill="${on?"#7FA6F5":"#3D5EA8"}" rx="2"/>`;
+    if(lab(p.s)) svg+=`<text x="${bx(p.s)}" y="${H-pb+16}" text-anchor="middle" fill="${on?"#E5E9E3":"#97A29A"}">${p.s}</text>`;
+    if(on&&p.ok) svg+=`<text x="${bx(p.s)}" y="${ny(p.n)-5}" text-anchor="middle" fill="#E5E9E3">${p.n}</text>`; }
+  const ok=pts.filter(p=>p.ok);
+  svg+=`<polyline fill="none" stroke="#E2D03A" stroke-width="2.5" points="${ok.map(p=>`${bx(p.s)},${fy(p.fe)}`).join(" ")}"/>`;
+  for(const p of ok) svg+=`<circle cx="${bx(p.s)}" cy="${fy(p.fe)}" r="${p.s===g.u.s?4.5:N>8?2:3}" fill="#E2D03A"/>`;
   svg+=`<text x="${pl0+iw/2}" y="${H-4}" text-anchor="middle">speed upgrades in each machine</text></g>`;
-  $("curve").innerHTML=svg;
-  const a=pts[0], b=pts[8], M=cfg.maxUpgradeMultiplier;
+  $("curve").innerHTML=svg; $("curve").setAttribute("aria-label",`Machines needed and power for 0 to ${N} speed upgrades`);
+  const a=pts[0], b=ok[ok.length-1], M=cfg.maxUpgradeMultiplier;
   $("curveSub").innerHTML=`For your ${MACH[id].name.toLowerCase()}s, with ${g.u.e} energy${MACH[id].chem?` and ${g.u.c} chemical`:""} upgrades and ${g.u.f&&MACH[id].fac?FAC[g.u.f].name.toLowerCase()+" factories":"single machines"}, at the rate this line feeds them. Bars: machines needed. Line: their power.`;
-  $("curveNote").innerHTML=`0 → 8 speed upgrades: <b>${fmt(a.n)}</b> → <b>${fmt(b.n)}</b> machines, <b>${big(a.fe)}</b> → <b>${big(b.fe)}</b> FE/t`+
+  $("curveNote").innerHTML=`0 → ${b.s} speed upgrades: <b>${fmt(a.n)}</b> → <b>${fmt(b.n)}</b> machines, <b>${big(a.fe)}</b> → <b>${big(b.fe)}</b> FE/t`+
     (g.gas?`, <b>${sig(a.gas)}</b> → <b>${sig(b.gas)}</b> mB/t of ${GAS[g.gas].name.toLowerCase()}`:"")+". "+(MACH[id].kind==="rate"
       ?`Each speed upgrade halves the washers needed and multiplies their power per mB by ${sig(Math.pow(M,0.25))}; each energy upgrade divides it by ${sig(Math.pow(M,0.125))}.`
-      :`Each speed upgrade divides the machines needed by about ${sig(Math.pow(M,0.125))} and multiplies power per item by the same; each energy upgrade divides power per item by it again.`);
+      :`Each speed upgrade divides the machines needed by about ${sig(Math.pow(M,0.125))} and multiplies power per item by the same; each energy upgrade divides power per item by it again.`)+
+    (b.s<N?` Past ${b.s} speed upgrades, ${g.u.e} energy upgrades can't cover one tick.`:"");
 }
 
 /* ================= tier comparison and raw vs silk ================= */
@@ -1285,12 +1324,14 @@ $("matAll").onclick=()=>{ view3.mat="all"; renderMaterials(); }; $("matStep").on
    tier 2-5; metal i g c o t l u; source m<ore blocks/min> | d<miner speed upgrades> | t<ingots/hour>
    mining s (Silk Touch) | f<fortune 0-3> | b<fortune 0-3> (raw ore crafted into blocks); with a Digital Miner, s = Silk Touch on
    machines: 8 groups joined by "-" in line order (dissolution … smelter), each <factory 0-4><speed><energy><chemical>, plus x<count> when the count is fixed
-   gas: <plant speed><plant energy><oxygen s|f><HCl p|s><acid p|s> */
+   gas: <plant speed><plant energy><oxygen s|f><HCl p|s><acid p|s>
+   Past 8 speed or energy upgrades (Mekanism Unleashed) those groups write each number followed by "_": 4_16_16_8 and 16_16_spp. */
+const ups=(...v)=>v.every(x=>x<=8)?v.join(""):v.map(x=>x+"_").join("");
 function encodeDesign(){
   const src=state.mode==="m"?"m"+(+state.rate.toFixed(3)):state.mode==="d"?"d"+state.dmS:"t"+Math.round(state.target);
   const mine=state.mode==="d"?(state.dmSilk?"s":state.blocks?"b0":"f0"):state.mine==="s"?"s":(state.blocks?"b":"f")+state.fortune;
-  const st=ORDER.map(id=>{ const u=state.st[id]; return `${MACH[id].fac?u.f:0}${u.s}${u.e}${MACH[id].chem?u.c:0}${u.n!=null?"x"+u.n:""}`; }).join("-");
-  const g=state.sup; return ["mdo1",state.tier,state.metal,src,mine,st,`${g.s}${g.e}${g.o2}${g.hcl}${g.acid}`].join(".");
+  const st=ORDER.map(id=>{ const u=state.st[id]; return ups(MACH[id].fac?u.f:0,u.s,u.e,MACH[id].chem?u.c:0).replace(/_$/,"")+(u.n!=null?"x"+u.n:""); }).join("-");
+  const g=state.sup; return ["mdo1",state.tier,state.metal,src,mine,st,`${ups(g.s,g.e)}${g.o2}${g.hcl}${g.acid}`].join(".");
 }
 function decodeDesign(code){
   const p=String(code||"").trim().split("."); if(p.length!==7||p[0]!=="mdo1") return null;
@@ -1298,11 +1339,11 @@ function decodeDesign(code){
   const sm=/^([mdt])(\d+(?:\.\d+)?)$/.exec(p[3]); if(!sm) return null;
   const mm=/^(s|[fb][0-3])$/.exec(p[4]); if(!mm) return null;
   const parts=p[5].split("-"); if(parts.length!==8) return null; const st={};
-  for(let i=0;i<8;i++){ const m=/^([0-4])([0-8])([0-8])([0-8])(?:x(\d{1,4}))?$/.exec(parts[i]); if(!m) return null; const id=ORDER[i];
+  for(let i=0;i<8;i++){ const m=/^([0-4])([0-8])([0-8])([0-8])(?:x(\d{1,4}))?$/.exec(parts[i])||/^([0-4])_(\d{1,2})_(\d{1,2})_([0-8])(?:x(\d{1,4}))?$/.exec(parts[i]); if(!m) return null; const id=ORDER[i];
     st[id]={f:MACH[id].fac?+m[1]:0,s:+m[2],e:+m[3],c:MACH[id].chem?+m[4]:0,n:m[5]?Math.max(1,+m[5]):null}; }
-  const gm=/^([0-8])([0-8])([sf])([ps])([ps])$/.exec(p[6]); if(!gm) return null;
+  const gm=/^([0-8])([0-8])([sf])([ps])([ps])$/.exec(p[6])||/^(\d{1,2})_(\d{1,2})_([sf])([ps])([ps])$/.exec(p[6]); if(!gm) return null;
   const d={tier,metal:p[2],mode:sm[1],st,sup:{s:+gm[1],e:+gm[2],o2:gm[3],hcl:gm[4],acid:gm[5]},preset:"custom"};
-  const v=+sm[2]; if(d.mode==="m"){ if(!(v>0)) return null; d.rate=v; } else if(d.mode==="d"){ if(!(v>=0&&v<=8)) return null; d.dmS=Math.round(v); } else { if(!(v>0)) return null; d.target=v; }
+  const v=+sm[2]; if(d.mode==="m"){ if(!(v>0)) return null; d.rate=v; } else if(d.mode==="d"){ if(!(v>=0&&v<=64)) return null; d.dmS=Math.round(v); } else { if(!(v>0)) return null; d.target=v; }
   if(d.mode==="d"){ d.dmSilk=p[4]==="s"; d.blocks=p[4][0]==="b"; }
   else if(p[4]==="s") d.mine="s"; else { d.mine="f"; d.fortune=+p[4][1]; d.blocks=p[4][0]==="b"; }
   for(const [k,pr] of Object.entries(MACHINE_PRESETS)){ if(ORDER.every(id=>{ const a=pr.make(id), b=st[id]; return a.f===b.f&&a.s===b.s&&a.e===b.e&&a.c===b.c&&b.n==null; })) d.preset=k; }
@@ -1317,6 +1358,7 @@ let lastModel=null;
 function update(){
   hideTip();
   state.rate=Math.max(0.1,+state.rate||8); state.target=Math.max(1,+state.target||1);
+  fitCap();
   const src=supply(), Mo=model(state.tier,src); lastModel=Mo;
   renderCfg(); syncInputs(Mo); renderCards(Mo); renderGasCards(Mo); renderResults(Mo);
   let shown=Mo, prev=null;
