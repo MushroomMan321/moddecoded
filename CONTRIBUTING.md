@@ -111,6 +111,51 @@ Defaults are for Advanced AE 1.6.12 (MC 1.21.1). The section name has a space, s
 | `quantum computer.quantumComputerMultiThreaderMultiplication` | 4 |
 | `quantum computer.quantumComputerDataEntanglerMultiplication` | 4 |
 
+### Colossal Reactors (mod id `colossal_reactors`): `config/colossal_reactors-common.toml` and datapack recipes
+
+Defaults are for Colossal Reactors 2.4.1.0.0 (MC 26.1.2). Config keys keep their numbered prefix, as in the file
+(`reactor.size.000_maxReactorWidth`). Fuels, coolants and heat sinks are datapack recipes in
+`data/colossal_reactors/recipe/reactor/` and `recipe/turbine/`; a pack replaces them by shipping a file at the same path
+(FTB Evolution 2: `datapacks/ftb/data/colossal_reactors/recipe/...`). The calculator reads these as the keys without a prefix.
+
+| Key | Default |
+|---|---|
+| `reactor.size.000_maxReactorWidth` / `001_maxReactorLength` / `002_maxReactorHeight` | 65 |
+| `reactor.base.101b_minRfPerTick` | 500 |
+| `reactor.base.101c_minFuelUnitsPerTick` | 0.05 |
+| `reactor.base.000_rodMaxFuelUnits` | 10000 |
+| `reactor.efficiency.000_rfEfficiencyLoss` | 0.2 |
+| `reactor.efficiency.001_fuelEfficiencyLoss` | 1.0 |
+| `reactor.efficiency.002_productionMultiplier` | 1.0 |
+| `reactor.efficiency.003_consumptionMultiplier` | 1.0 |
+| `reactor.consumption.106b_consumptionScale` | 1.72 |
+| `reactor.consumption.106b2_consumptionCurveDecayRods` | 400 |
+| `reactor.rods.106c_rodAdjacencyPenalty` | 0.25 |
+| `reactor.balance.000_rodEnergyScalingMode` / `003_rodFuelScalingMode` | 1 |
+| `reactor.balance.001_rodEnergyScalingExponent` | 0.9 |
+| `reactor.balance.004_rodFuelScalingExponent` | 1.0 |
+| `reactor.balance.002_rodEnergyScalingSaturationK` / `005_rodFuelScalingSaturationK` | 600 |
+| `reactor.heatSink.106d_heatSinkAdjacentWeight` | 1.0 |
+| `reactor.heatSink.106e_heatSinkNonAdjacentWeight` | 0.5 |
+| `reactor.heatSink.106f_heatSinkConsumptionDivisor` | 1.35 |
+| `reactor.heatSink.106g_heatSinkRfMultiplier` | 1.16 |
+| `reactor.heatSink.106h_heatSinkFuelUnitsMultiplier` | 1.21 |
+| `turbine.blade.004_steamMbPerBladePerTick` | 1000 |
+| `coolant.water.rf_to_coolant_factor` (reactor_coolant.json, water entry) | 0.45 |
+| `coolant.water.steam_per_coolant` (reactor_coolant.json, water entry) | 1.0 |
+| `turbine.water.rf_production` (turbine_generation.json, water entry) | 4 |
+| `fuel.red_cake`: 1 if reactor_fuel.json lists Red Cake | 1 |
+| `heat_sink.industrial_coolant`: 1 if reactor_heat_sinks.json lists `#c:industrial_coolant` | 0 |
+| `tag.peridot`: 1 if some block has the `#c:storage_blocks/peridot` tag | 1 |
+| `turbine.size.000_maxTurbineWidth` / `001_maxTurbineLength` / `002_maxTurbineHeight` | 65 |
+| `turbine.base.101b_minRfPerTick` | 0 |
+| `turbine.balance.000_productionMultiplier` / `001_consumptionMultiplier` | 1.0 |
+| `turbine.blade.000_maxBladeRing` | 31 |
+| `turbine.blade.001_efficiencyBonusPerAscendingLayer` / `002_efficiencyMalusPerDescendingLayer` | 0.03 |
+| `turbine.blade.003_requireBalancedBladeRings` (1 = true) | 1 |
+| `turbine.coil.000_emptyCoilEfficiency` | 0.3 |
+| `coil.ftb`: 1 if elec_coils.json lists FTB's Adamantite, Aeternium and Aurichalcum Turbine Coils | 0 |
+
 ### HBM's Nuclear Tech Mod (mod id `hbm`): no config file
 
 Original NTM (1.7.10-1.0.27) has no reactor `.toml`: its tunables are Java constants and, for the RBMK,

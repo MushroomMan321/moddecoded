@@ -27,6 +27,10 @@ OUT = SITE / "img" / "tools" / "3d"
 TOOLS = {
     "turbine": "/tools/extreme-reactors/turbine-calculator/",
     "reactor": "/tools/extreme-reactors/reactor-calculator/",
+    # FTB Evolution 2, Optimized dots with Gelid Breezium: the default build is all air and the glass hides it
+    "colossal": "/tools/colossal-reactors/reactor-calculator/#ftb-evolution-2&d=mdcr1.n.u.9.9.9.gelid_breezium,rod.ABVABVABAA",
+    # FTB Evolution 2: the page's default 9x9x9 rod grid
+    "colossalturbine": "/tools/colossal-reactors/turbine-calculator/#ftb-evolution-2",
     "fission": "/tools/mekanism/fission-reactor-calculator/",
     # air-cooled, so the card shows the reactor and its lasers rather than a turbine three times its size
     "fusion": "/tools/mekanism/fusion-reactor-calculator/#d=mdz1.a.98.5.17.17.18.14.28.4.345.0",
