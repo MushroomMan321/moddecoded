@@ -163,6 +163,17 @@ window.MD_PACKS = [
       advanced_ae: { config: {}, note: "mod defaults" },
     },
   },
+  {
+    // FTB pack with no public repo: values read from the 1.23.0 release files on the FTB API (pack 130, version 100554).
+    // Ships Mekanism 10.7.19.85 and no Extreme Reactors; every key the calculators read is at its default.
+    // It also ships Mekanism Unleashed 0.3.4, which lets machines take up to 32 speed/energy upgrades (Tweaks.maxUpgrades).
+    // Its formulas match Mekanism's up to 8 upgrades, which is as far as the calculators go.
+    id: "stoneblock4", name: "FTB StoneBlock 4", mc: "1.21.1",
+    source: { repo: "https://www.feed-the-beast.com/modpacks/130-ftb-stoneblock-4", version: "1.23.0", checked: "2026-10-20" },
+    mods: {
+      mekanism: { config: {}, note: "mod defaults · up to 32 upgrades" },
+    },
+  },
 ];
 
 // ---- helper used by the calculators (contributors don't need to touch this) ----
