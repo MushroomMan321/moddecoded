@@ -6,7 +6,9 @@
 //   extremereactors -> config/extremereactors/common.toml
 //   mekanism        -> config/Mekanism/generators.toml (general.*, boiler.*, dynamic_tank.* and digital_miner.* keys: config/Mekanism/general.toml;
 //                      usage.* keys: config/Mekanism/machine-usage.toml;
-//                      kubejs.atmOreProcessing: 1 when the pack ships ATM's kubejs/server_scripts/mods/Mekanism/ore_processing.js)
+//                      kubejs.atmOreProcessing: 1 when the pack ships ATM's kubejs/server_scripts/mods/Mekanism/ore_processing.js;
+//                      mekanism_unleashed.maxUpgrades: [Tweaks] maxUpgrades in config/mekanism_unleashed-startup.toml when the pack
+//                      ships the Mekanism Unleashed add-on; 8, the default, means it doesn't)
 //   ryzergen        -> config/ryzergen-common.toml
 //   advanced_ae     -> config/advanced_ae-common.toml (its section is "quantum computer", with the space)
 // The keys each calculator reads are listed in its "Edit values" panel and in CONTRIBUTING.md.
@@ -165,13 +167,12 @@ window.MD_PACKS = [
   },
   {
     // FTB pack with no public repo: values read from the 1.23.0 release files on the FTB API (pack 130, version 100554).
-    // Ships Mekanism 10.7.19.85 and no Extreme Reactors; every key the calculators read is at its default.
-    // It also ships Mekanism Unleashed 0.3.4, which lets machines take up to 32 speed/energy upgrades (Tweaks.maxUpgrades).
-    // Its formulas match Mekanism's up to 8 upgrades, which is as far as the calculators go.
+    // Ships Mekanism 10.7.19.85 and no Extreme Reactors; every Mekanism key the calculators read is at its default.
+    // It also ships Mekanism Unleashed 0.3.4: machines take up to 32 speed and energy upgrades (config/mekanism_unleashed-startup.toml).
     id: "stoneblock4", name: "FTB StoneBlock 4", mc: "1.21.1",
     source: { repo: "https://www.feed-the-beast.com/modpacks/130-ftb-stoneblock-4", version: "1.23.0", checked: "2026-10-20" },
     mods: {
-      mekanism: { config: {}, note: "mod defaults · up to 32 upgrades" },
+      mekanism: { config: { "mekanism_unleashed.maxUpgrades": 32 }, note: "Mekanism Unleashed" },
     },
   },
 ];
