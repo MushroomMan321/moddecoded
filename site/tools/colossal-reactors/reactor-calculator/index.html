@@ -1,0 +1,975 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/colossal-reactors/reactor-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Colossal Reactors Reactor Calculator (FTB Evolution 2)</title>
+<meta name="description" content="Colossal Reactors reactor calculator: paint rods and heat sinks or use the Reactor Builder patterns, and get RF/t, steam, fuel burn and turbine needs from the mod's real formulas (26.1.2-2.4.1.0.0), with the FTB Evolution 2 config built in.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --heat:#F08A5D;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+img{max-width:100%}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:70ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.lede a{color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:1/1;max-height:64vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+@media (max-width:520px){.layerbar{top:66px}}   /* clear of the HUD, whose readout can be wide */
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide h3{font-size:14px;margin:0 0 6px}
+.guide h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px;background:#3A4248}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.parts li small{color:var(--muted)}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.guide ol b{font-weight:700}
+.dims{font-family:var(--font-mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+.dims b{color:var(--ink);font-weight:600}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:120px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:96px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.seg button:disabled{opacity:.45;cursor:not-allowed}
+.seg-label{font-size:13px;color:var(--muted);margin:0 0 -4px}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list[hidden]{display:none}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.cfg-grid h3{grid-column:1/-1;font:600 12.5px var(--font-body);color:var(--ink);margin:8px 0 0}
+.builder{display:flex;flex-direction:column;gap:8px;border:1px dashed var(--line);border-radius:6px;padding:10px}
+.builder h3{font-size:14px;margin:0}
+.builder select{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:5px 8px}
+.builder select:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+
+/* JEI palette: fixed Minecraft GUI look in both themes */
+.jei{background:#C6C6C6;border:2px solid;border-color:#FFFFFF #555555 #555555 #FFFFFF;box-shadow:0 0 0 2px #000;border-radius:3px;padding:8px;color:#3F3F3F;font-family:var(--font-display);display:flex;flex-direction:column;gap:8px}
+.jei-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.jei-title{font-size:20px;line-height:1;color:#404040;margin-right:auto}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,40px);justify-content:start;max-height:168px;overflow:auto}
+.slot{width:40px;height:40px;background:#8B8B8B;border:2px solid;border-color:#373737 #FFFFFF #FFFFFF #373737;display:grid;place-items:center;cursor:pointer;padding:0;position:relative}
+.slot:hover,.slot:focus-visible{background:#A9A9A9;outline:none}
+.slot[aria-pressed="true"]{background:#C8C850;box-shadow:inset 0 0 0 2px #FFFF55}
+.slot canvas{width:32px;height:32px;image-rendering:pixelated}
+.jei-foot{font-size:12px;color:#555;font-family:var(--font-mono)}
+.tip{position:fixed;z-index:20;pointer-events:none;background:rgba(16,0,16,.94);border:2px solid;border-image:linear-gradient(#5000FF,#28007F) 1;padding:6px 8px;font:400 19px/1.15 var(--font-display);color:#fff;max-width:300px}
+.tip .g{color:#AAAAAA;font-size:17px}.tip .s{color:#55FF55}.tip .b{color:#FF5555}.tip .m{color:#5555FF;font-style:italic;font-size:17px}
+
+/* layout editor */
+.editor{display:flex;flex-direction:column;gap:8px}
+.core-wrap{overflow:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;background:var(--viewport-2);padding:8px;width:max-content;max-height:440px}
+#core{display:block;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* results */
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes a{color:var(--accent-ink)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink);overflow-wrap:anywhere}
+.fact table{border-collapse:collapse;font:12.5px var(--font-mono);color:var(--ink)}
+.fact th,.fact td{border:1px solid var(--line);padding:3px 8px;text-align:right}
+.fact th:first-child,.fact td:first-child{text-align:left}
+.fact th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Colossal Reactors / Reactor Calculator</nav>
+  <header class="top">
+    <h1>Colossal Reactors <span class="y">Reactor Calculator</span></h1>
+    <span class="src">Uses the Colossal Reactors 26.1.2-2.4.1.0.0 reactor formulas</span>
+  </header>
+  <p class="lede">Paint rods and heat sinks, or lay out the same patterns the Reactor Builder uses, and see the RF/t or steam, fuel burn and turbine needs the controller will show. Pick <b>FTB Evolution 2</b> under Modpack for that pack's config: it changes the numbers a lot.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D reactor preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="Rotating 3D model of the reactor design"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
+        <div class="viewbar">
+          <button id="tFit" type="button" title="Re-centre and zoom to fit the reactor">Fit</button>
+          <button id="tCasing" aria-pressed="true" type="button">Casing</button>
+          <button id="tMods" aria-pressed="true" type="button">Heat sinks</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
+      <div class="dims" id="dims"></div>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols"><div id="gLayer"></div><div id="gParts"></div></div>
+        <details open><summary>How it goes together</summary>
+          <ol>
+            <li>The outside is a closed box. Every outside block must be <b>Reactor Casing</b>, <b>Reactor Glass</b>, a port, or a <b>Reactor Rod Controller</b>. The guide puts casing on the edges and glass on the faces so you can see in; any mix works.</li>
+            <li>Each <b>Reactor Rod Controller</b> sits in the roof, and every block under it down to the floor must be a <b>Reactor Rod</b>. A rod that isn't under a rod controller stops the reactor forming.</li>
+            <li>The <b>Reactor Controller</b> goes <b>outside</b> the box, against any face. Exactly one: a second one stops it forming unless <code>allowMultipleReactorControllers</code> is on.</li>
+            <li>Everything else inside must be air or a heat sink from the list. Any other block stops it forming. At most one <b>Reactor Redstone Port</b>.</li>
+            <li>A <b>Reactor Resource Port</b> set to Insert takes fuel (and water); one set to Extract gives waste (and steam). The default filter handles both. Press Reboot on the controller after changing a port's mode or filter.</li>
+            <li>With no coolant inside, the reactor sends RF out of a <b>Reactor Power Port</b>. Pipe water in and it turns its RF into steam instead.</li>
+          </ol>
+          <p class="hint" style="margin-top:8px">From <code>ReactorValidation.validate</code> in the Colossal Reactors 26.1.2-2.4.1.0.0 jar.</p>
+        </details>
+      </div>
+      <div class="box">
+        <h2>Casing size</h2>
+        <div class="row"><label for="extX">Width (X)</label><input type="range" id="extX" min="3" max="65"><input class="num" id="extXN" type="number" min="3" max="65" aria-label="Exterior width X in blocks"></div>
+        <div class="row"><label for="extZ">Length (Z)</label><input type="range" id="extZ" min="3" max="65"><input class="num" id="extZN" type="number" min="3" max="65" aria-label="Exterior length Z in blocks"></div>
+        <div class="row"><label for="extY">Height (Y)</label><input type="range" id="extY" min="3" max="65"><input class="num" id="extYN" type="number" min="3" max="65" aria-label="Exterior height Y in blocks"></div>
+        <p class="hint" id="casingHint"></p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Reactor inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/colossal_reactors-common.toml and the reactor recipes</summary>
+          <p class="hint" style="margin-top:8px">The numbered keys are in the config file. The rest come from the datapack recipes in <code>data/colossal_reactors/recipe/reactor/</code> and <code>recipe/turbine/</code>, which packs can replace.</p>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Reactor</h2>
+        <p class="seg-label">Coolant piped in</p>
+        <div class="seg" role="group" aria-label="Coolant">
+          <button type="button" id="cNone" aria-pressed="true">None (RF out)</button>
+          <button type="button" id="cWater" aria-pressed="false">Water (steam out)</button>
+        </div>
+        <p class="seg-label">Fuel in the rods</p>
+        <div class="seg" role="group" aria-label="Fuel" id="fuelSeg"></div>
+      </div>
+
+      <div class="sect">
+        <h2>Core layout</h2>
+        <div class="jei">
+          <div class="jei-head"><span class="jei-title">Paint with</span></div>
+          <div class="slots" id="slots" role="toolbar" aria-label="Blocks to paint"></div>
+          <div class="jei-foot" id="jeiFoot"></div>
+        </div>
+        <div class="editor">
+          <div class="core-wrap"><canvas id="core" aria-label="Top-down core layout. Click or drag to paint the selected block."></canvas></div>
+          <div class="legend" id="legend"></div>
+          <div class="builder">
+            <h3>Reactor Builder layouts</h3>
+            <div class="btns">
+              <label class="hint" for="bMode" style="align-self:center">Mode</label>
+              <select id="bMode" aria-label="Reactor Builder mode">
+                <option value="0">Optimized</option>
+                <option value="1">Production</option>
+                <option value="2">Economy</option>
+                <option value="3">Super economy</option>
+              </select>
+              <button class="btn" type="button" data-pattern="0">Dots</button>
+              <button class="btn" type="button" data-pattern="1">Checkerboard</button>
+              <button class="btn" type="button" data-pattern="2">Expansion</button>
+            </div>
+            <p class="hint" id="builderHint">The same rods the Reactor Builder places. Its heat sink is the block selected above (pick air for none).</p>
+          </div>
+          <div class="btns">
+            <button class="btn" type="button" data-fill="all">Fill non-rods with selected</button>
+            <button class="btn" type="button" data-fill="adj">Fill only cells touching a rod</button>
+            <button class="btn" type="button" data-fill="clear">Clear</button>
+          </div>
+          <p class="hint">Top-down view of the inside. Rods and heat sinks run the full height; each rod column has a Reactor Rod Controller in the roof above it.</p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Output</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">Checked in game with the FTB Evolution 2 config: eight test reactors (air, gold, diamond, emerald, graphite, Ender Goo and Gelid Breezium, uranium and azurite, with and without water) matched the page's RF/t, steam and water to the unit, and fuel burn to four digits. In the full pack, FTB Armory's adamantite, aeternium and aurichalcum blocks and Industrial Coolant matched too.</p>
+        <p class="hint">Assumes fuel is kept topped up, waste is taken out, and the power port (or the steam port and its water supply) keeps up. Reactor instability is off by default and in FTB Evolution 2, so heat sinks' overheating value isn't used.</p>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>Power only counts heat sinks touching a rod</h3>
+        <p>Every interior cell next to a rod is "adjacent". RF uses the average energy of those cells, and drops if there are fewer of them than rod blocks. Cells further out only change fuel burn, never RF.</p>
+<pre>RF/t = baseRF × 0.8 × n^exp
+       × avg energy (adjacent cells)
+       × min(1, adjacent cells / rods) × 1.16</pre>
+        <span class="ref">ReactorSimulation.tick</span>
+      </div>
+      <div class="fact">
+        <h3>Each rod loses 25% per crowded side</h3>
+        <p><i>n</i> above isn't your rod count. Each rod block loses a quarter for every side (of four) touching another rod or the casing. A checkerboard rod touches neither, so it counts in full; a rod against the wall in a corner counts half.</p>
+<pre>n = Σ rods max(0, 1 − 0.25 × crowded sides)</pre>
+        <span class="ref">ReactorControllerBlockEntity.rebuildSimulationCaches</span>
+      </div>
+      <div class="fact">
+        <h3>More rods, less power each</h3>
+        <p>Power grows as <i>n</i> to a power below 1. The mod uses 0.9; FTB Evolution 2 sets 0.76, so doubling the effective rods there gives 1.69× the RF, not 2×. Fuel burn grows almost linearly, so small reactors get more RF per ingot.</p>
+<pre>rodEnergyScalingExponent  0.9 → 0.76 (Evo 2)</pre>
+        <span class="ref">ReactorSimulation.rodEnergyScaling</span>
+      </div>
+      <div class="fact">
+        <h3>Water turns all of the power into steam</h3>
+        <p>With water piped in, the reactor boils <code>RF × factor</code> mB of water a tick and sends no RF at all while the water lasts. Only the share it can't boil comes out as RF.</p>
+<pre>water/t = RF × 0.45   (Evo 2: 0.085)
+steam/t = water × 1.0 (Evo 2: 3.93)</pre>
+        <span class="ref">ReactorSimulation.tick · reactor_coolant.json</span>
+      </div>
+      <div class="fact">
+        <h3>Fuel burn has its own curve</h3>
+        <p>Fuel use scales with <i>n</i> too, divided by a curve that flattens as the reactor grows, and by the weighted fuel value of every heat sink cell (cells not touching a rod count half).</p>
+<pre>fuel/t = 0.03 × n × 1.72 / (n+1)^k
+         / heatSinkFuel / 1.35 × 1.21
+k = 0.5 × (0.4 + 0.5 × 400/(n+400))</pre>
+        <span class="ref">ReactorSimulation.tick</span>
+      </div>
+      <div class="fact">
+        <h3>Empty space stretches fuel more than it should</h3>
+        <p>Cells not touching a rod are meant to count for at most 4 per rod block. The controller caps their count but adds their fuel values in full, so a few rods in a big empty reactor burn far less fuel than the formula intends. In game, 9 rod columns in a 15×15×6 of air burned 0.178 units/t; the intended cap gives 0.353.</p>
+<pre>capNonAdjacentHeatSinks(rods, countNon,
+    new double[]{fuelNon}, …)  // copies, thrown away</pre>
+        <span class="ref">ReactorSimulation.computeHeatSinkModifiersFromStaticCache</span>
+      </div>
+      <div class="fact">
+        <h3>FTB Evolution 2's guide is out of date</h3>
+        <p>The pack's in-game guide still describes its 1.3.0 values. Pack 1.3.1 changed the config and the water coolant again; the calculator uses what the pack ships now (1.4.1).</p>
+        <table>
+          <tr><th></th><th>Guide</th><th>Config</th></tr>
+          <tr><td>Rod power exponent</td><td>0.55</td><td>0.76</td></tr>
+          <tr><td>Steam per mB water</td><td>0.8</td><td>3.93</td></tr>
+          <tr><td>Steam per blade, mB/t</td><td>48</td><td>150</td></tr>
+        </table>
+        <span class="ref">kubejs/assets/ftb/guides/ftb/power/colossal_reactors.md · config/colossal_reactors-common.toml</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Block textures for reactor parts are from <a href="https://github.com/unfamily/Colossal-Reactors">Colossal Reactors</a>, used under the <a href="/img/colossal-reactors/LICENSE.txt">MIT license</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+
+/* ================= mod data ================= */
+/* MODEL START (research/colossal-reactors-2.4.1.0.0-reactor.md; the test harness evals this block) */
+// data/colossal_reactors/recipe/reactor/reactor_fuel.json. units = units_per_fuel (one item), rf = base_rf_per_tick,
+// burn = base_fuel_units_per_tick, waste = units_per_waste. Mekanism fissile fuel (a chemical) is left out: no Mekanism on 26.1.
+const FUELS = {
+  uranium:{name:"Uranium",  item:"Uranium Ingot", units:1500, rf:400,  burn:0.03, waste:1500, color:"#5BC236"},
+  azurite:{name:"Azurite",  item:"Azurite Ingot", units:500,  rf:1000, burn:0.03, waste:1500, color:"#3F7BE0"},
+  red_cake:{name:"Red Cake",item:"Red Cake",      units:1500, rf:1500, burn:0.03, waste:1500, color:"#C23A2E", key:"fuel.red_cake"},
+};
+// data/colossal_reactors/recipe/reactor/reactor_heat_sinks.json: [id, name, source, color, fuel, energy, overheating, kind, pack key]
+// kind "fluid" = a fluid filling the cell (must be a source block unless it's water: must_source defaults to true).
+const SINKS = [
+ ["air","Air","Empty cell","#000000",1.0,1.0,0.75,"air"],
+ ["water","Water","#c:water · flowing counts too","#2F6BDA",1.0,1.0,1.0,"fluid"],
+ ["gold","Block of Gold","#c:storage_blocks/gold","#F2CF34",1.25,1.25,1.7],
+ ["ruby","Block of Ruby","#c:storage_blocks/ruby","#C8283C",1.3,1.3,1.75],
+ ["sapphire","Block of Sapphire","#c:storage_blocks/sapphire","#2F4FC8",1.3,1.3,1.75],
+ ["diamond","Block of Diamond","#c:storage_blocks/diamond","#7FE3DC",1.5,1.3,1.8],
+ ["emerald","Block of Emerald","#c:storage_blocks/emerald","#3ED07A",1.4,1.4,1.8],
+ ["peridot","Block of Peridot","#c:storage_blocks/peridot","#9ED040",1.4,1.4,1.76,"block","tag.peridot"],
+ ["netherite","Block of Netherite","#c:storage_blocks/netherite","#4B4346",1.5,1.75,1.7],
+ ["graphite","Block of Graphite","#c:storage_blocks/graphite","#34373A",2.0,-5.0,2.5],
+ ["ice","Ice, Packed or Blue Ice","#minecraft:ice","#A9CBF5",2.0,-5.0,2.5],
+ ["ender_goo","Ender Goo","#c:ender_molten · source blocks","#0F6E5A",1.5,2.0,3.0,"fluid"],
+ ["industrial_coolant","Industrial Coolant","#c:industrial_coolant · source blocks","#7FD8F0",1.75,2.15,3.2,"fluid","heat_sink.industrial_coolant"],
+ ["gelid_breezium","Refrigerant Gelid Breezium","#c:breezium · source blocks","#9FE6F2",1.5,3.0,5.0,"fluid"],
+ // FTB Armory's own heat_sinks recipe (armory_heat_sinks.json in its jar), so these exist wherever FTB Armory is installed
+ ["adamantite","Block of Adamantite","#c:storage_blocks/adamantite · FTB Armory","#4E9C8E",1.6,2.0,1.8,"block","heat_sink.ftb_armory"],
+ ["aeternium","Block of Aeternium","#c:storage_blocks/aeternium · FTB Armory","#7A3FC8",1.7,2.4,2.0,"block","heat_sink.ftb_armory"],
+ ["aurichalcum","Block of Aurichalcum","#c:storage_blocks/aurichalcum · FTB Armory","#E08A2A",1.8,2.8,2.2,"block","heat_sink.ftb_armory"],
+].map(([id,name,src,color,fuel,energy,heat,kind,key],i)=>({id,name,src,color,fuel,energy,heat,kind:kind||"block",key,order:i}));
+const SINK = Object.fromEntries(SINKS.map(m=>[m.id,m]));
+const NEUTRAL = {fuel:1,energy:1,heat:1};   // HeatSinkLoader's fallback when a fluid has no heat sink entry
+const ROD = {id:"rod",name:"Reactor Rod",src:"Colossal Reactors",color:"#5BC236",kind:"rod"};
+
+// RodPatternLogic: 0 dots, 1 checkerboard, 2 expansion. Modes: 0 optimized, 1 production, 2 economy, 3 super economy.
+// Production puts rods right up to the walls (inset 1); the rest keep a ring of non-rod cells along the walls (inset 2).
+function expansionCol(rx,rz,rw,rd,layers,center){
+  if(rx===0||rx===rw-1||rz===0||rz===rd-1) return true;
+  for(let L=1;L<layers;L++) if(rx===L||rx===rw-1-L||rz===L||rz===rd-1-L) return true;
+  if(!center) return false;
+  const cx=rw>>1, cz=rd>>1, inX=rw&1?rx===cx:rx>=cx-1&&rx<=cx, inZ=rd&1?rz===cz:rz>=cz-1&&rz<=cz;
+  return inX&&inZ;
+}
+function expansionCount(rw,rd,layers,center){ let n=0; for(let x=0;x<rw;x++)for(let z=0;z<rd;z++) if(expansionCol(x,z,rw,rd,layers,center)) n++; return n; }
+function builderRods(ix,iz,pattern,mode){
+  const inset=mode===1?0:1, rw=Math.max(0,ix-2*inset), rd=Math.max(0,iz-2*inset), rods=new Array(ix*iz).fill(false);
+  let layers=1, center=true;
+  if(pattern===2&&Math.min(rw,rd)>=3){
+    const m=Math.min(rw,rd); layers=m<5?1:m<7?2:(expansionCount(rw,rd,3,true)>=expansionCount(rw,rd,2,true)?3:2);
+    center=expansionCount(rw,rd,layers,true)>=expansionCount(rw,rd,layers,false);
+  }
+  for(let rx=0;rx<rw;rx++)for(let rz=0;rz<rd;rz++){
+    const on = pattern===0 ? rx%2===0&&rz%2===0 : pattern===1 ? (rx+rz)%2===0 : Math.min(rw,rd)>=3&&expansionCol(rx,rz,rw,rd,layers,center);
+    if(on) rods[(rx+inset)*iz+(rz+inset)]=true;
+  }
+  return {rods,inset};
+}
+
+// cells: interior columns, index x*iz+z, each "rod" or a heat sink id. cfg: the values in CFG_FIELDS.
+function simulate(s,cfg){
+  const ix=s.X-2, iz=s.Z-2, H=s.Y-2;
+  const at=(x,z)=>(x<0||z<0||x>=ix||z>=iz)?"wall":s.cells[x*iz+z];
+  const N4=[[1,0],[-1,0],[0,1],[0,-1]];
+  let cols=0, wallSides=0, rodSides=0, effPerLayer=0;
+  let adjCols=0, nonCols=0, sumFuelAdj=0, sumEnergyAdj=0, sumFuelNon=0, sumEnergyNon=0;
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){
+    const c=at(x,z);
+    if(c==="rod"){
+      // effective rods: horizontal neighbours that are rods or shell (ReactorValidation.isShellBlock)
+      let crowd=0; for(const [dx,dz] of N4){ const n=at(x+dx,z+dz); if(n==="wall"){ crowd++; wallSides++; } else if(n==="rod"){ crowd++; rodSides++; } }
+      cols++; effPerLayer+=Math.max(0,1-cfg.penalty*crowd);
+    } else {
+      // a heat sink cell is adjacent if any of its 6 neighbours is a rod; above and below are the same column, so only the sides count
+      const m=SINK[c]; let adj=false; for(const [dx,dz] of N4) if(at(x+dx,z+dz)==="rod"){ adj=true; break; }
+      if(adj){ adjCols++; sumFuelAdj+=m.fuel; sumEnergyAdj+=m.energy; } else { nonCols++; sumFuelNon+=m.fuel; sumEnergyNon+=m.energy; }
+    }
+  }
+  const rods=cols*H, eff=effPerLayer*H, countAdj=adjCols*H, countNon=nonCols*H;
+  const out={ix,iz,H,cols,rods,eff,countAdj,countNon,wallSides:wallSides*H,rodSides:rodSides*H,ok:rods>0&&ix>0&&iz>0&&H>0};
+  if(!out.ok) return out;
+  sumFuelAdj*=H; sumEnergyAdj*=H; sumFuelNon*=H; sumEnergyNon*=H;
+  const water=s.coolant==="water", F=FUELS[s.fuel];
+  // Rods count as cells with the heat sink values of the coolant's first fluid (water: the #c:water entry).
+  const rodM=water?SINK.water:NEUTRAL;
+  // computeHeatSinkModifiersFromStaticCache: non-adjacent cells are capped at 4 per rod block, but the cap only
+  // reaches the count; the fuel/energy sums it scales are throwaway copies, so the full sums stay in.
+  const cappedNon=Math.min(countNon,Math.max(0,rods)*4);
+  const totalWeight=rods+countAdj*cfg.wAdj+cappedNon*cfg.wNon;
+  const hsFuel=(rods*rodM.fuel+sumFuelAdj*cfg.wAdj+sumFuelNon*cfg.wNon)/totalWeight;
+  const hsEnergy=(rods*rodM.energy+sumEnergyAdj*cfg.wAdj+sumEnergyNon*cfg.wNon)/totalWeight;
+  const scaling=(n,mode,exp,k)=>{ n=Math.max(0,n); return mode===2?n/(1+n/Math.max(1,k)):mode===1?Math.pow(n,exp):n*(Math.log(n+1)/2.3); };
+  const energyRod=scaling(eff,cfg.eMode,cfg.eExp,cfg.eK), fuelRod=scaling(eff,cfg.fMode,cfg.fExp,cfg.fK);
+  const decay=Math.max(0,cfg.decay), curve=decay<=0?1:decay/(eff+decay);
+  const consScale=cfg.consScale/Math.pow(eff+1,0.5*(0.4+0.5*curve));
+  const mbDiv=water?1:1;   // mb_decrement_percent 100 for water in both the mod and Evo 2
+  const rfMult=water?1:1;  // rf_increment_percent 0
+  const sinks=countAdj+countNon>0;
+  let fuel=F.burn*cfg.cons*cfg.fuelEff*fuelRod*consScale/mbDiv/hsFuel/Math.max(0.1,cfg.hsDiv);
+  if(sinks) fuel*=Math.max(0.1,cfg.hsFuel);
+  const fuelRaw=fuel; fuel=Math.max(fuel,cfg.minFuel);
+  const baseRf=F.rf*cfg.prod*(1-cfg.rfLoss)*energyRod*rfMult;
+  let rf, adjAvg=1, coverage=1, sinkFactor;
+  if(sinks&&eff>0){
+    adjAvg=countAdj>0?sumEnergyAdj/countAdj:1; coverage=Math.min(1,countAdj/Math.max(1,rods));
+    sinkFactor=adjAvg*coverage*Math.max(0.1,cfg.hsRf);
+  } else sinkFactor=hsEnergy;
+  rf=baseRf*sinkFactor;
+  const rfRaw=rf; rf=Math.max(rf,cfg.minRf);
+  let waterIn=0, steam=0, rfOut=Math.floor(rf);
+  if(water){ waterIn=Math.trunc(rf*cfg.waterFactor); steam=Math.trunc(waterIn*cfg.steamPerWater); rfOut=0; }
+  Object.assign(out,{water,rf,rfRaw,rfOut,waterIn,steam,fuel,fuelRaw,hsFuel,hsEnergy,adjAvg,coverage,sinkFactor,energyRod,fuelRod,consScale,
+    cappedNon,F,fuelCap:rods*cfg.rodMax});
+  return out;
+}
+/* MODEL END */
+
+// Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
+// FTB Evolution 2 (1.4.1) values live in /data/packs.js.
+const DEFAULTS = {maxW:65,maxL:65,maxH:65, minRf:500, minFuel:0.05, rodMax:10000, rfLoss:0.2, fuelEff:1, prod:1, cons:1,
+  consScale:1.72, decay:400, penalty:0.25, eMode:1, eExp:0.9, eK:600, fMode:1, fExp:1, fK:600,
+  wAdj:1, wNon:0.5, hsDiv:1.35, hsRf:1.16, hsFuel:1.21,
+  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1, ftbArmory:0};
+const CFG_FIELDS=[
+  ["maxW","reactor.size.000_maxReactorWidth",3,65,1],["maxL","reactor.size.001_maxReactorLength",3,65,1],["maxH","reactor.size.002_maxReactorHeight",3,65,1],
+  ["minRf","reactor.base.101b_minRfPerTick",0,1e9],["minFuel","reactor.base.101c_minFuelUnitsPerTick",0,100],["rodMax","reactor.base.000_rodMaxFuelUnits",1,1e9,1],
+  ["rfLoss","reactor.efficiency.000_rfEfficiencyLoss",0,1],["fuelEff","reactor.efficiency.001_fuelEfficiencyLoss",0,10],
+  ["prod","reactor.efficiency.002_productionMultiplier",0,100],["cons","reactor.efficiency.003_consumptionMultiplier",0,100],
+  ["consScale","reactor.consumption.106b_consumptionScale",0.01,10],["decay","reactor.consumption.106b2_consumptionCurveDecayRods",0,1e9],
+  ["penalty","reactor.rods.106c_rodAdjacencyPenalty",0,1],
+  ["eMode","reactor.balance.000_rodEnergyScalingMode",0,2,1],["eExp","reactor.balance.001_rodEnergyScalingExponent",0.05,1.5],["eK","reactor.balance.002_rodEnergyScalingSaturationK",1,1e9],
+  ["fMode","reactor.balance.003_rodFuelScalingMode",0,2,1],["fExp","reactor.balance.004_rodFuelScalingExponent",0.05,1.5],["fK","reactor.balance.005_rodFuelScalingSaturationK",1,1e9],
+  ["wAdj","reactor.heatSink.106d_heatSinkAdjacentWeight",0,10],["wNon","reactor.heatSink.106e_heatSinkNonAdjacentWeight",0,10],
+  ["hsDiv","reactor.heatSink.106f_heatSinkConsumptionDivisor",0.1,10],["hsRf","reactor.heatSink.106g_heatSinkRfMultiplier",0.1,5],["hsFuel","reactor.heatSink.106h_heatSinkFuelUnitsMultiplier",0.1,5],
+  ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],
+  ["waterFactor","coolant.water.rf_to_coolant_factor",0,100,0,"Datapack recipes (1 = present, 0 = not)"],["steamPerWater","coolant.water.steam_per_coolant",0,100],
+  ["turbineRf","turbine.water.rf_production",0,1e6],["redCake","fuel.red_cake",0,1,1],["industrialCoolant","heat_sink.industrial_coolant",0,1,1],["peridot","tag.peridot",0,1,1],["ftbArmory","heat_sink.ftb_armory",0,1,1],
+];
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEFAULTS, CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("cr-reactor-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+const sinkOn=m=>!m.key||cfg[{"heat_sink.industrial_coolant":"industrialCoolant","tag.peridot":"peridot","heat_sink.ftb_armory":"ftbArmory"}[m.key]]>0;
+const fuelOn=f=>!FUELS[f].key||cfg.redCake>0;
+
+/* ================= state ================= */
+const state={coolant:"none", fuel:"uranium", X:9, Z:9, Y:9, cells:null, tool:"rod", bMode:0};
+function limits(){ return {maxX:Math.min(65,cfg.maxW), maxZ:Math.min(65,cfg.maxL), maxY:Math.min(65,cfg.maxH)}; }
+function resizeCells(ix,iz,old,oix,oiz){ const c=new Array(ix*iz).fill("air"); if(old){ for(let x=0;x<Math.min(ix,oix);x++)for(let z=0;z<Math.min(iz,oiz);z++) c[x*iz+z]=old[x*oiz+z]; } return c; }
+const N4=[[1,0],[-1,0],[0,1],[0,-1]];
+function touchesRod(cells,ix,iz,x,z){ for(const [dx,dz] of N4){ const X=x+dx, Z=z+dz; if(X>=0&&Z>=0&&X<ix&&Z<iz&&cells[X*iz+Z]==="rod") return true; } return false; }
+const sinkTool=()=>state.tool==="rod"?"air":state.tool;
+// Reactor Builder: rods from RodPatternLogic, heat sinks where the mode places them (tickHeatSinks), air elsewhere.
+function applyBuilder(pattern){
+  const ix=state.X-2, iz=state.Z-2, {rods,inset}=builderRods(ix,iz,pattern,state.bMode), hs=sinkTool();
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const i=x*iz+z;
+    if(rods[i]){ state.cells[i]="rod"; continue; }
+    const inSpace=x>=inset&&x<ix-inset&&z>=inset&&z<iz-inset, adj=touchesRod(rods.map(r=>r?"rod":""),ix,iz,x,z);
+    const place=state.bMode===3?inSpace&&adj:state.bMode===2?adj:true;
+    state.cells[i]=place?hs:"air";
+  }
+}
+function applyFill(p){
+  const ix=state.X-2, iz=state.Z-2, hs=sinkTool(), snap=state.cells.slice();
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const i=x*iz+z; const cur=snap[i];
+    if(p==="all"){ if(cur!=="rod") state.cells[i]=hs; }
+    else if(p==="adj"){ if(cur!=="rod"&&touchesRod(snap,ix,iz,x,z)) state.cells[i]=hs; }
+    else if(p==="clear") state.cells[i]="air";
+  }
+}
+
+/* ================= textures + icons ================= */
+// /img/colossal-reactors/blocks.png: 16×16 tiles from the mod jar (MIT), in this order.
+const TILES=["casing","glass","rodSide","rodTop","uranium","rodCtl","ctrlFront","ctrlBack","power","resource","redstone","graphite","fluid"];
+let atlas=null;
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; const g=c.getContext("2d"); g.imageSmoothingEnabled=false; draw(g); return texCache[key]=c; }
+const tile=(g,name)=>{ if(!atlas) return false; g.drawImage(atlas,TILES.indexOf(name)*16,0,16,16,0,0,16,16); return true; };
+// drawn look-alikes for when the atlas hasn't loaded (or failed)
+function plain(g,rgb,seed){ const R=rng(seed); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(rgb,0.88+R()*0.2); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(rgb,1.22); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(rgb,0.62); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); }
+function sinkTex(m){
+  return tex("m:"+m.id+(atlas?"":"~"),g=>{ const base=hexRgb(m.color);
+    if(m.id==="graphite"&&tile(g,"graphite")) return;
+    if(m.kind==="fluid"){
+      if(atlas){ tile(g,"fluid"); g.globalCompositeOperation="multiply"; g.fillStyle=m.color; g.fillRect(0,0,16,16); g.globalCompositeOperation="destination-in"; tile(g,"fluid"); g.globalCompositeOperation="source-over"; return; }
+      const R=rng(m.id); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(base,0.85+0.15*Math.sin((x+y*1.7+R()*3)/2.5)); g.fillRect(x,y,1,1);} return; }
+    plain(g,base,m.id);
+    g.fillStyle=shade(base,0.78); g.fillRect(2,2,12,1); g.fillRect(2,2,1,12); g.fillStyle=shade(base,1.12); g.fillRect(2,13,12,1); g.fillRect(13,2,1,12); });
+}
+const fuelColor=()=>FUELS[state.fuel].color;
+const rodTex=()=>tex("rod:"+state.fuel+(atlas?"":"~"),g=>{
+  if(atlas){ tile(g,"uranium"); if(state.fuel!=="uranium"){ g.globalCompositeOperation="hue"; g.fillStyle=fuelColor(); g.fillRect(0,0,16,16); g.globalCompositeOperation="source-over"; } tile(g,"rodSide"); return; }
+  g.fillStyle="#1E2440"; g.fillRect(0,0,16,16); const f=hexRgb(fuelColor()); for(let y=0;y<16;y++){ g.fillStyle=shade(f,0.8+0.25*Math.sin(y/2)); g.fillRect(3,y,10,1);} });
+const named=(name,rgb)=>tex(name+(atlas?"":"~"),g=>{ if(!tile(g,name)) plain(g,rgb,name); });
+const casingTex=()=>named("casing",[40,46,82]);
+const glassTex=()=>tex("glass"+(atlas?"":"~"),g=>{ if(tile(g,"glass")) return; g.fillStyle="rgba(60,70,120,0.9)"; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); });
+const TEX={casing:casingTex, glass:glassTex, rodctl:()=>named("rodCtl",[50,56,96]), controller:()=>named("ctrlFront",[90,140,230]),
+  power:()=>named("power",[200,50,30]), resIn:()=>named("resource",[30,30,30]), resOut:()=>named("resource",[30,30,30])};
+function iconFor(m,size=32){
+  const cv=document.createElement("canvas"); cv.width=cv.height=size; const g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
+  if(m.kind==="air"){ g.strokeStyle="#5A5A5A"; g.setLineDash([3,3]); g.strokeRect(6.5,6.5,19,19); return cv; }
+  const t=m.kind==="rod"?rodTex():sinkTex(m), s=size/32;
+  const face=(a,b,c,d,e,f,dark)=>{ g.setTransform(a*s,b*s,c*s,d*s,e*s,f*s); g.drawImage(t,0,0); if(dark){ g.fillStyle=`rgba(0,0,0,${dark})`; g.fillRect(0,0,16,16);} };
+  face(1,0.5,-1,0.5,16,0,0); face(1,0.5,0,1,0,8,0.22); face(1,-0.5,0,1,16,16,0.4);
+  g.setTransform(1,0,0,1,0,0); return cv;
+}
+
+/* ================= palette ================= */
+const tip=$("tip");
+const num=v=>v<1?`<span class="b">${v}</span>`:`<span class="s">${v}</span>`;
+function showTip(m,e){
+  tip.innerHTML = m.kind==="rod" ? `<div>Reactor Rod</div><div class="g">Holds ${fmt(cfg.rodMax)} fuel units (${fmt(cfg.rodMax/FUELS[state.fuel].units,2)} ${FUELS[state.fuel].item}s)</div><div class="g">Loses ${fmt(cfg.penalty*100)}% per side touching a rod or the casing</div>`
+    : `<div>${m.name}</div><div class="g">Fuel <span class="s">${m.fuel}</span> · Energy ${num(m.energy)}</div><div class="g">Overheating ${m.heat} (instability only)</div><div class="m">${m.src}</div>`;
+  tip.hidden=false; moveTip(e);
+}
+function moveTip(e){ const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY-h-8; if(x+w>innerWidth-8) x=e.clientX-w-14; if(y<8) y=e.clientY+18; tip.style.left=x+"px"; tip.style.top=y+"px"; }
+function renderSlots(){
+  const box=$("slots"); box.textContent="";
+  const list=[ROD,...SINKS.filter(sinkOn)];
+  for(const m of list){
+    const b=document.createElement("button"); b.type="button"; b.className="slot"; b.setAttribute("aria-pressed",state.tool===m.id); b.setAttribute("aria-label",`Paint with ${m.name}`);
+    b.appendChild(iconFor(m)); b.onclick=()=>{ state.tool=m.id; renderSlots(); };
+    b.onpointerenter=e=>showTip(m,e); b.onpointermove=moveTip; b.onpointerleave=()=>tip.hidden=true;
+    box.appendChild(b);
+  }
+  const cur=state.tool==="rod"?ROD:SINK[state.tool];
+  $("jeiFoot").textContent=`Painting: ${cur.name}`+(cur.kind==="rod"?"":` · fuel ×${cur.fuel}, energy ×${cur.energy}`);
+}
+
+/* ================= core editor ================= */
+const core=$("core"); let painting=false;
+function cellPx(){ const iz=state.Z-2, ix=state.X-2; return Math.max(6,Math.min(26,Math.floor(400/Math.max(ix,iz)))); }
+function drawCore(){
+  const ix=state.X-2, iz=state.Z-2, p=cellPx(), dpr=Math.min(2,devicePixelRatio||1);
+  core.width=(ix*p+2)*dpr; core.height=(iz*p+2)*dpr; core.style.width=(ix*p+2)+"px"; core.style.height=(iz*p+2)+"px";
+  const g=core.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.imageSmoothingEnabled=false;
+  g.fillStyle="#0F1417"; g.fillRect(0,0,ix*p+2,iz*p+2);
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){
+    const id=state.cells[x*iz+z], X=1+x*p, Z=1+z*p;
+    if(id==="air"){ g.fillStyle="#1C2226"; g.fillRect(X,Z,p-1,p-1); continue; }
+    g.drawImage(id==="rod"?rodTex():sinkTex(SINK[id]),X,Z,p-1,p-1);
+  }
+}
+function renderLegend(){
+  const used=[...new Set(state.cells)].filter(i=>i!=="air");
+  $("legend").innerHTML=used.map(id=>{ const m=id==="rod"?ROD:SINK[id]; return `<span><i style="background:${m.color}"></i>${m.name} ×${state.cells.filter(c=>c===id).length}</span>`; }).join("")||`<span>Empty core: pick a block above and paint, or use a Reactor Builder layout.</span>`;
+}
+function paintAt(e){
+  const r=core.getBoundingClientRect(), p=cellPx(), x=Math.floor((e.clientX-r.left-1)/p), z=Math.floor((e.clientY-r.top-1)/p);
+  const ix=state.X-2, iz=state.Z-2; if(x<0||z<0||x>=ix||z>=iz) return;
+  const i=x*iz+z; if(state.cells[i]===state.tool) return;
+  state.cells[i]=state.tool; drawCore(); schedule();
+}
+core.addEventListener("pointerdown",e=>{ painting=true; core.setPointerCapture(e.pointerId); paintAt(e); });
+core.addEventListener("pointermove",e=>{ if(painting) paintAt(e); });
+core.addEventListener("pointerup",()=>{ painting=false; renderLegend(); });
+core.addEventListener("pointercancel",()=>painting=false);
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, groups={}, clip, buildStart=0;
+let matCache={};
+function mat(key,canvas,opts={}){ if(matCache[key]) return matCache[key]; const t=new THREE.CanvasTexture(canvas); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
+  return matCache[key]=new THREE.MeshLambertMaterial(Object.assign({map:t,clippingPlanes:[clip]},opts)); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(38,1,0.1,1200);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0);
+  root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera around a target point. Left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms.
+const orbit={theta:0.75,phi:1.0,radius:20,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};   // build guide: show layers 1..layer (counted from the floor)
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(260,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(260,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+const framing=()=>({x:0, y:0, z:0, r:Math.max(state.X,state.Z,state.Y)*1.9+4});
+function fit(){ orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; }
+let buildTop=0, buildBottom=0, lastT=performance.now(), casingOn=true, modsOn=true;
+const anims=[];   // per-block swaps: {mesh, kind:"in"|"out", t0, dur, y}
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=off.y+guide.layer-0.5+0.001;   // top of layer n (block y = n-1)
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100), e=1-Math.pow(1-p,3);
+    clip.constant=buildBottom+(buildTop-buildBottom)*e; }   // full builds only: plane rises layer by layer
+  for(let i=anims.length-1;i>=0;i--){
+    const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=a.show();
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); }
+    else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"){ a.mesh.parent&&a.mesh.parent.remove(a.mesh); } anims.splice(i,1); }
+  }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+
+/* Every block of the structure, keyed by position. Diffing two of these tells us exactly which blocks changed. */
+const SHELL_KINDS=new Set(["casing","glass","controller","power","resIn","resOut"]);
+const groupOf=k=>SHELL_KINDS.has(k)?"shell":k.startsWith("m:")?"mods":"core";
+function blockMap(){
+  const {X,Y,Z}=state, ix=X-2, iz=Z-2, H=Y-2, map=new Map();
+  for(let y=0;y<Y;y++)for(let x=0;x<X;x++)for(let z=0;z<Z;z++){
+    const bx=x===0||x===X-1, by=y===0||y===Y-1, bz=z===0||z===Z-1, n=bx+by+bz; if(!n) continue;
+    let k=n>=2?"casing":"glass";
+    if(y===Y-1&&!bx&&!bz&&state.cells[(x-1)*iz+(z-1)]==="rod") k="rodctl";
+    map.set(x+","+y+","+z,k);
+  }
+  // ports in the +X wall, bottom row first; the controller stands outside the +Z face
+  const wall=[]; for(let y=1;y<Y-1;y++) for(let z=1;z<Z-1;z++) wall.push((X-1)+","+y+","+z);
+  wall.sort((a,b)=>{ const [,ya,za]=a.split(",").map(Number), [,yb,zb]=b.split(",").map(Number); return ya-yb||Math.abs(za-(Z-1)/2)-Math.abs(zb-(Z-1)/2); });
+  const ports=state.coolant==="water"?["resIn","resOut"]:["power","resIn","resOut"];
+  ports.forEach((k,i)=>{ if(wall[i]) map.set(wall[i],k); });
+  map.set(Math.floor((X-1)/2)+","+Math.max(1,Math.floor((Y-1)/2))+","+Z,"controller");
+  for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue;
+    const k=id==="rod"?"rod":"m:"+id; for(let y=1;y<=H;y++) map.set((x+1)+","+y+","+(z+1),k); }
+  return map;
+}
+function texFor(k){ if(TEX[k]) return TEX[k](); if(k==="rod") return rodTex(); return sinkTex(SINK[k.slice(2)]); }
+function matFor(k){
+  const key=k+(k==="rod"?":"+state.fuel:"")+(atlas?"":"~");
+  if(k==="glass") return mat(key,texFor(k),{transparent:true,opacity:0.3,depthWrite:false});
+  if(k==="rod") return mat(key,texFor(k),{transparent:true,opacity:0.95});
+  if(k.startsWith("m:")&&SINK[k.slice(2)].kind==="fluid") return mat(key,texFor(k),{transparent:true,opacity:0.55,depthWrite:false});
+  return mat(key,texFor(k));
+}
+const CUBE=()=>CUBE.g||(CUBE.g=new THREE.BoxGeometry(1,1,1));
+let off={x:0,y:0,z:0};
+const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+off.x,y+off.y,z+off.z]; };
+const visibleFor=g=>()=>g==="shell"?casingOn:g==="mods"?modsOn:true;
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), sc=new THREE.Vector3(0.97,1,0.97);
+  for(const k in buckets){
+    const keys=buckets[k], mesh=new THREE.InstancedMesh(CUBE(),matFor(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); if(k.startsWith("m:")) m4.scale(sc); mesh.setMatrixAt(i,m4); });
+    if(k==="glass") mesh.renderOrder=2;
+    const g=groupOf(k); (groups[g]=groups[g]||new THREE.Group()).add(mesh);
+  }
+  for(const k in groups) root.add(groups[k]);
+  if(groups.shell) groups.shell.visible=casingOn; if(groups.mods) groups.mods.visible=modsOn;
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0;
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(force){
+  if(!renderer) return;
+  const {X,Y,Z}=state, shape=`${X}|${Y}|${Z}|${state.fuel}`, map=blockMap();
+  off={x:-(X-1)/2, y:-(Y-1)/2, z:-(Z-1)/2};
+  clearSwaps();
+  if(force||!shownMap||shape!==shownShape){
+    const sizeChanged=!shownShape||shape.split("|").slice(0,3).join()!==shownShape.split("|").slice(0,3).join();
+    buildInstanced(map);
+    if(sizeChanged){ buildBottom=-(Y/2)-0.5; buildTop=Y/2+0.6; buildStart=performance.now();
+      fit(); if(!shownShape){ const g=orbit.goal; orbit.target={x:g.x,y:g.y,z:g.z}; orbit.radius=g.r; orbit.goal=null; } }
+    shownMap=map; shownShape=shape; return;
+  }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map;
+  if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>3000){ buildInstanced(map); return; }
+  const addedKeys=new Set(added.map(a=>a[0]));
+  buildInstanced(map,addedKeys);
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now(), sc=0.97;
+  for(const [key,k] of removed){ const m=new THREE.Mesh(CUBE(),matFor(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); if(k.startsWith("m:")) m.scale.set(sc,1,sc);
+    swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y,show:visibleFor(groupOf(k))}); }
+  const ys=added.map(([key])=>+key.split(",")[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45);
+  let end=now;
+  for(const [key,k] of added){ const m=new THREE.Mesh(CUBE(),matFor(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); m.visible=false;
+    const t0=now+160+(y1>y0?((+key.split(",")[1]-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y,show:visibleFor(groupOf(k))}); }
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+
+/* ================= UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  $("cfgHint").innerHTML=`Rod power <b>n^${cfg.eMode===1?cfg.eExp:cfg.eMode===2?"sat":"log"}</b> · water → steam <b>${cfg.waterFactor} × ${cfg.steamPerWater}</b> · turbine <b>${cfg.turbineRf} RF/mB</b>, <b>${fmt(cfg.bladeSteam)} mB/t</b> a blade · max <b>${cfg.maxW}×${cfg.maxL}×${cfg.maxH}</b>`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label,min,max,int,head] of CFG_FIELDS){
+    if(head){ const h=document.createElement("h3"); h.textContent=head; g.append(h); }
+    const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.min=min; i.max=max; i.step=int?"1":"any";
+    i.onchange=()=>{ const v=+i.value; if(!Number.isFinite(v)){ i.value=cfg[k]; return; } cfg[k]=Math.min(max,Math.max(min,int?Math.round(v):v)); cfgPreset="custom"; saveCfg(); update(); };
+    g.append(l,i);
+  }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("cr-reactor-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+function clampSize(){
+  const L=limits();
+  state.X=Math.min(L.maxX,Math.max(3,state.X)); state.Z=Math.min(L.maxZ,Math.max(3,state.Z)); state.Y=Math.min(L.maxY,Math.max(3,state.Y));
+  const ix=state.X-2, iz=state.Z-2;
+  if(ix!==state.cix||iz!==state.ciz){ state.cells=resizeCells(ix,iz,state.cells,state.cix,state.ciz); state.cix=ix; state.ciz=iz; }
+  // heat sinks or fuel the pack doesn't have become air / uranium
+  for(let i=0;i<state.cells.length;i++){ const c=state.cells[i]; if(c!=="rod"&&!sinkOn(SINK[c])) state.cells[i]="air"; }
+  if(!fuelOn(state.fuel)) state.fuel="uranium";
+  if(state.tool!=="rod"&&!sinkOn(SINK[state.tool])) state.tool="rod";
+}
+function renderFuelSeg(){
+  const seg=$("fuelSeg"); seg.textContent="";
+  for(const [id,f] of Object.entries(FUELS)){ if(!fuelOn(id)) continue;
+    const b=document.createElement("button"); b.type="button"; b.textContent=f.name; b.setAttribute("aria-pressed",state.fuel===id);
+    b.onclick=()=>{ state.fuel=id; update(); }; seg.append(b); }
+}
+function syncInputs(){
+  const L=limits();
+  $("cNone").setAttribute("aria-pressed",state.coolant==="none"); $("cWater").setAttribute("aria-pressed",state.coolant==="water");
+  renderFuelSeg();
+  for(const [k,mx] of [["extX",L.maxX],["extZ",L.maxZ],["extY",L.maxY]]){ const key=k.slice(3); $(k).max=mx; $(k+"N").max=mx; $(k).value=state[key]; $(k+"N").value=state[key]; }
+  $("casingHint").textContent=`Up to ${L.maxX} × ${L.maxZ} × ${L.maxY} blocks, casing included (maxReactorWidth, maxReactorLength, maxReactorHeight).`;
+  $("bMode").value=String(state.bMode);
+  $("builderHint").textContent=`The rods the Reactor Builder places. ${["Optimized keeps rods off the walls and fills every other cell","Production runs rods to the walls and fills every other cell","Economy keeps rods off the walls and fills only cells touching a rod","Super economy keeps rods off the walls and fills only cells touching a rod, inside the rod area"][state.bMode]} with the block selected above (air if a rod is selected).`;
+}
+
+let result=null;
+const per=(v,unit)=>`${v} <small>${unit}</small>`;
+function renderResults(R){
+  const F=FUELS[state.fuel];
+  $("dims").innerHTML=`<span>Exterior <b>${state.X}×${state.Z}×${state.Y}</b></span><span>Interior <b>${R.ix}×${R.iz}×${R.H}</b></span><span>Rod columns <b>${R.cols}</b></span><span>Rods <b>${fmt(R.rods)}</b></span>`+(R.ok?`<span>Fuel capacity <b>${fmt(R.fuelCap/F.units,1)} ${F.item}s</b></span>`:"");
+  if(!R.ok){ $("results").innerHTML=""; $("hudMain").textContent="No rods"; $("hudSub").textContent="";
+    $("notes").innerHTML=`<li class="bad">Paint at least one Reactor Rod column. Pick the rod at the start of the list, then click the grid, or use a Reactor Builder layout.</li>`; return; }
+  const water=R.water, ingotTicks=F.units/R.fuel, perHour=R.fuel*72000/F.units;
+  $("hudMain").innerHTML=water?`${fmt(R.steam)} <small>mB/t steam</small>`:`${fmt(R.rfOut)} <small>RF/t</small>`;
+  $("hudSub").textContent=`${fmt(perHour,1)} ${F.item}s an hour · ${fmt(R.eff,2)} effective rods`;
+  const cells=[
+    water?["Steam output",per(fmt(R.steam),"mB/t"),"hero"]:["Energy output",per(fmt(R.rfOut),"RF/t"),"hero"],
+    ["Fuel burn",per(fmt(R.fuel,4),"units/t")],
+    ["Fuel per hour",per(fmt(perHour,2),F.item+"s")],
+    ["One ingot lasts",per(fmt(ingotTicks/1200,1),"min")],
+    water?["Steam per "+F.item,per(fmt(R.steam*ingotTicks),"mB")]:["RF per "+F.item,per(fmt(R.rfOut*ingotTicks),"RF")],
+    ["Effective rods",per(fmt(R.eff,2),"of "+fmt(R.rods))],
+    ["Heat sink power",per("×"+fmt(R.sinkFactor,3),R.countAdj+R.countNon>0?"avg × coverage × "+cfg.hsRf:"no heat sink cells")],
+    ["Heat sink fuel",per("÷"+fmt(R.hsFuel,3),"weighted fuel value")],
+    water?["Water boiled",per(fmt(R.waterIn),"mB/t")]:["Rod power factor",per(fmt(R.energyRod,2),"n^"+(cfg.eMode===1?cfg.eExp:"…"))],
+  ];
+  if(water){
+    const blades=Math.ceil(R.steam/cfg.bladeSteam/4)*4;
+    cells.push(["Turbine blades",per(fmt(blades),"in rings of 4")]);
+    cells.push(["Turbine at 100%",per(fmt(R.steam*cfg.turbineRf),"RF/t")]);
+    cells.push(["vs. RF straight out",per(fmt(Math.floor(R.rf)),"RF/t")]);
+  }
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  const sinks=R.countAdj+R.countNon>0;
+  if(R.rfRaw<cfg.minRf) n.push(["bad",`The formula gives ${fmt(R.rfRaw)} RF/t, below the floor of ${fmt(cfg.minRf)} (minRfPerTick), so the reactor makes ${fmt(cfg.minRf)}.`+(R.adjAvg<=0?" The heat sinks touching the rods average a negative energy value: graphite and ice wipe out power.":R.countAdj===0&&sinks?" No heat sink touches a rod, so coverage is zero.":"")]);
+  if(sinks&&R.coverage<1&&R.countAdj>0) n.push(["warn",`Only ${fmt(R.countAdj)} cells touch a rod for ${fmt(R.rods)} rod blocks, so power is cut to ${fmt(R.coverage*100,0)}%. Leave more space between rods.`]);
+  if(R.wallSides>0) n.push(["warn",`Rods touch the casing on ${fmt(R.wallSides/R.H)} side${R.wallSides/R.H>1?"s":""} per layer. Each one costs that rod ${fmt(cfg.penalty*100)}%. Optimized mode keeps rods a block off the walls.`]);
+  if(R.rodSides>0) n.push(["warn",`Rods touch each other on ${fmt(R.rodSides/R.H)} side${R.rodSides/R.H>1?"s":""} per layer (counted from both rods). Each costs that rod ${fmt(cfg.penalty*100)}%. A checkerboard has rods touch only at corners, which don't count.`]);
+  if(!sinks) n.push(["warn","The interior is all rods: no heat sink cells, so power uses the plain formula and fuel burns at the full rate."]);
+  const air=state.cells.filter((c,i)=>c==="air"&&touchesRod(state.cells,R.ix,R.iz,Math.floor(i/R.iz),i%R.iz)).length;
+  if(air>0&&R.adjAvg<1.25) n.push(["good",`${air} column${air>1?"s":""} touching a rod ${air>1?"are":"is"} air. Air counts as energy ×1.0; gold (×1.25), netherite (×1.75), Ender Goo (×2.0) or Gelid Breezium (×3.0) there multiply the power.`]);
+  if(R.countNon>R.cappedNon) n.push(["warn",`${fmt(R.countNon)} cells don't touch a rod, more than the 4 per rod block the code counts. It caps their count but not their fuel values, so they stretch fuel a bit more than their weight; they never add power.`]);
+  else if(R.countNon>0) n.push(["good",`${fmt(R.countNon)} cells don't touch a rod. They only change fuel burn (at half weight), never power, so cheap blocks or air are fine there.`]);
+  if(R.fuelRaw<cfg.minFuel) n.push(["good",`Fuel burn is at the floor of ${cfg.minFuel} units/t (minFuelUnitsPerTick).`]);
+  if(water){
+    n.push(["good",`While water lasts the power port gets nothing: all ${fmt(Math.floor(R.rf))} RF/t goes into boiling ${fmt(R.waterIn)} mB/t of water. If the water runs short, the share it can't boil comes out as RF.`]);
+    n.push(["good",`A turbine makes ${cfg.turbineRf} RF per mB before coil and blade efficiency, so this steam is worth ${fmt(R.steam*cfg.turbineRf/Math.max(1,Math.floor(R.rf)),2)}× the reactor's own RF at 100%. Each valid blade takes up to ${fmt(cfg.bladeSteam)} mB/t. <a href="/tools/colossal-reactors/turbine-calculator/#${PRESETS[cfgPreset]&&cfgPreset!=="default"?cfgPreset+"&":""}steam=${R.steam}">Size a turbine for this steam</a>.`]);
+  }
+  if(cfgPreset==="ftb-evolution-2") n.push(["good","FTB Evolution 2: no Red Cake fuel, reactors capped at 32 blocks, and Industrial Coolant (Dry Ice dropped in still water) works as a heat sink. Peridot does nothing there: no block has the tag."]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+}
+
+/* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
+// in-game names: assets/colossal_reactors/lang/en_us.json
+const PART_NAMES={casing:"Reactor Casing",glass:"Reactor Glass",rodctl:"Reactor Rod Controller",rod:"Reactor Rod",controller:"Reactor Controller",
+  power:"Reactor Power Port",resIn:"Reactor Resource Port",resOut:"Reactor Resource Port"};
+const PART_NOTES={glass:"or Reactor Casing",controller:"outside the casing",resIn:"Insert: fuel in",resOut:"Extract: waste out"};
+const PART_ORDER=["casing","glass","rodctl","controller","power","resIn","resOut","rod"];
+const partName=k=>{ if(k.startsWith("m:")){ const m=SINK[k.slice(2)]; return m.kind==="fluid"?`${m.name} <small>· fluid${m.id==="water"?"":", source blocks"}</small>`:m.name; }
+  const note=state.coolant==="water"&&k==="resIn"?"Insert: fuel and water in":state.coolant==="water"&&k==="resOut"?"Extract: steam and waste out":PART_NOTES[k];
+  return PART_NAMES[k]+(note?` <small>· ${note}</small>`:""); };
+const swatch=k=>texFor(k).toDataURL();
+function tally(map,layer){ const c={};
+  for(const [key,k] of map){ if(layer!=null&&+key.split(",")[1]!==layer-1) continue; c[k]=(c[k]||0)+1; }
+  const rank=k=>k.startsWith("m:")?PART_ORDER.length+SINK[k.slice(2)].order:PART_ORDER.indexOf(k);
+  return Object.keys(c).sort((a,b)=>rank(a)-rank(b)).map(k=>[k,c[k]]); }
+const partsList=rows=>`<ul class="parts">${rows.map(([k,n])=>`<li><img src="${swatch(k)}" alt=""><span>${partName(k)}</span><span class="n">${fmt(n)}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const top=state.Y; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const map=blockMap(), n=guide.layer, where=n===1?"floor":n===top?"roof":`layer ${n} of ${top}`;
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(map,n))}`;
+  $("gParts").innerHTML=`<h3>Whole reactor <small>· ${state.X}×${state.Z}×${state.Y}</small></h3>${partsList(tally(map))}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+function stepLayer(d){ guide.layer+=d; renderGuide(); }
+
+let timer=0;
+function schedule(){ clearTimeout(timer); timer=setTimeout(run,30); share.render(); }
+function run(){ result=simulate(state,cfg); renderResults(result); rebuild3D(); renderGuide(); }
+function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); drawCore(); renderLegend(); schedule(); }
+
+/* wiring */
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,off] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(off) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+$("cNone").onclick=()=>{ state.coolant="none"; update(); }; $("cWater").onclick=()=>{ state.coolant="water"; update(); };
+for(const [k,key] of [["extX","X"],["extZ","Z"],["extY","Y"]]){ const set=v=>{ state[key]=Math.floor(+v||3); update(); }; $(k).oninput=e=>set(e.target.value); $(k+"N").onchange=e=>set(e.target.value); }
+$("bMode").onchange=e=>{ state.bMode=+e.target.value; syncInputs(); };
+document.querySelectorAll("[data-pattern]").forEach(b=>b.onclick=()=>{ applyBuilder(+b.dataset.pattern); drawCore(); renderLegend(); schedule(); });
+document.querySelectorAll("[data-fill]").forEach(b=>b.onclick=()=>{ applyFill(b.dataset.fill); drawCore(); renderLegend(); schedule(); });
+$("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
+$("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",modsOn); if(groups.mods) groups.mods.visible=modsOn; };
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
+$("tFit").onclick=fit;
+
+/* design code (mdcr1): the whole reactor as one string, used by share links.
+   mdcr1.coolant.fuel.X.Z.Y.palette.cells
+   coolant n|w (none|water), fuel u|a|r (uranium|azurite|red cake); X, Z, Y exterior.
+   palette: the ids used inside, comma-separated, in order of first appearance (column 0 first): "rod" or a heat sink id.
+   cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits each, least significant bit first,
+   base64url without padding. Column i = x*(Z-2)+z. */
+const FUEL_CODE={uranium:"u",azurite:"a",red_cake:"r"}, FUEL_OF={u:"uranium",a:"azurite",r:"red_cake"};
+const palBits=n=>Math.max(1,Math.ceil(Math.log2(n)));
+function encodeDesign(){ const pal=[], idx={}, vals=state.cells.map(c=>idx[c]??(idx[c]=pal.push(c)-1));
+  return ["mdcr1",state.coolant==="water"?"w":"n",FUEL_CODE[state.fuel],state.X,state.Z,state.Y,
+    pal.join(","),mdShare.b64u.enc(mdShare.packBits(vals,palBits(pal.length)))].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split(".");
+  if(p.length!==8||p[0]!=="mdcr1"||!/^[nw]$/.test(p[1])||!FUEL_OF[p[2]]) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={coolant:p[1]==="w"?"water":"none",fuel:FUEL_OF[p[2]],X:int(3,3,65),Z:int(4,3,65),Y:int(5,3,65)};
+  if(Object.values(d).some(v=>Number.isNaN(v))) return null;
+  const pal=p[6].split(","); if(pal.some(id=>id!=="rod"&&!SINK[id])||new Set(pal).size!==pal.length) return null;
+  let bytes; try{ bytes=mdShare.b64u.dec(p[7]); }catch(e){ return null; }
+  const vals=mdShare.unpackBits(bytes,(d.X-2)*(d.Z-2),palBits(pal.length)); if(!vals||vals.some(v=>v>=pal.length)) return null;
+  d.cells=vals.map(v=>pal[v]); return d; }
+const cutNote=d=>state.X!==d.X||state.Z!==d.Z||state.Y!==d.Y?`Loaded, but cut down to ${state.X}×${state.Z}×${state.Y}: the design is ${d.X}×${d.Z}×${d.Y} and this config allows less.`:null;
+const applyDesign=d=>{ Object.assign(state,d,{cix:d.X-2,ciz:d.Z-2}); update(); };
+const share=mdShare({prefix:"mdcr1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:applyDesign, loaded:cutNote, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+
+// starting design: 9x9x9, the Reactor Builder's Optimized dots with air (9 rod columns)
+state.cells=resizeCells(state.X-2,state.Z-2); state.cix=state.X-2; state.ciz=state.Z-2; state.tool="air"; applyBuilder(0); state.tool="rod";
+initGL();
+// the real textures arrive after the first draw: redraw everything that used the stand-ins
+{ const img=new Image(); img.onload=()=>{ atlas=img; matCache={}; renderSlots(); drawCore(); rebuild3D(true); renderGuide(); }; img.src="/img/colossal-reactors/blocks.png"; }
+if(share.atLoad.design){ applyDesign(share.atLoad.design); const n=cutNote(share.atLoad.design); if(n) share.say(n); } else update();
+share.live();
+})();
+</script>
+</body>
+</html>

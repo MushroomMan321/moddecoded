@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/colossal-reactors/turbine-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>Colossal Reactors Turbine Calculator (FTB Evolution 2)</title>
+<meta name="description" content="Colossal Reactors turbine calculator: casing size, rod layout, blade rings and coil blocks give RF/t, steam use, coil and blade efficiency and a parts list from the mod's real formulas (26.1.2-2.4.1.0.0), with the FTB Evolution 2 config built in and every number checked in game.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+img{max-width:100%}
+[hidden]{display:none!important}
+code{font-family:var(--font-mono);font-size:.9em}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+.crumbs a:hover{text-decoration:underline}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.lede{max-width:70ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.lede a{color:var(--accent-ink)}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+.stage.guiding{position:relative;top:0}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:1/1;max-height:64vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible,.layerbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.layerbar{position:absolute;right:8px;top:8px;display:flex;align-items:center;gap:4px;font:600 12px var(--font-mono);color:#F2E36A;background:rgba(10,14,16,.72);border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:2px}
+.layerbar button{font:600 13px var(--font-mono);background:transparent;color:#DDE6E2;border:0;border-radius:3px;padding:3px 9px;cursor:pointer}
+.layerbar button:disabled{opacity:.35;cursor:default}
+.layerbar span{min-width:92px;text-align:center}
+@media (max-width:520px){.layerbar{top:66px}}
+.view-hint{margin-top:-4px}
+.guide-cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+@media (max-width:520px){.guide-cols{grid-template-columns:minmax(0,1fr)}}
+.guide h3{font-size:14px;margin:0 0 6px}
+.guide h3 small{font-weight:400;color:var(--muted)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:center;gap:8px;font-size:13.5px}
+.parts li img{width:16px;height:16px;image-rendering:pixelated;flex:0 0 16px;border-radius:2px;background:#3A4248}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums}
+.parts li small{color:var(--muted)}
+.guide details summary{cursor:pointer;font-size:14px;font-weight:700}
+.guide details[open] summary{margin-bottom:8px}
+.guide ol{margin:4px 0 0;padding-left:20px;font-size:13.5px;display:flex;flex-direction:column;gap:4px}
+.dims{font-family:var(--font-mono);font-size:12px;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 14px}
+.dims b{color:var(--ink);font-weight:600}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+.row{display:grid;grid-template-columns:120px minmax(0,1fr) 84px;align-items:center;gap:10px}
+@media (max-width:460px){.row{grid-template-columns:96px minmax(0,1fr) 72px}}
+.row label{font-size:14px;color:var(--muted)}
+.row input[type=range]{width:100%;accent-color:var(--accent)}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.steam-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.steam-row .num{width:150px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 12px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.seg-label{font-size:13px;color:var(--muted);margin:0 0 -4px}
+#pAtm .caret{display:inline-block;margin-left:6px;font-size:10px;transition:transform .15s}
+#pAtm[aria-expanded="true"] .caret{transform:rotate(180deg)}
+.atm-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.atm-list button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;font:600 13px var(--font-body);padding:6px 10px;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:5px;cursor:pointer;text-align:left}
+.atm-list button small{font:500 11px var(--font-mono);color:var(--muted)}
+.atm-list button[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+.atm-list button:disabled{opacity:.5;cursor:not-allowed}
+.atm-list button:focus-visible,#pAtm:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer}
+.btn:hover{border-color:var(--accent)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btns{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.cfg-hint{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);margin:0}
+.cfg-hint b{color:var(--ink);font-weight:600}
+details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.cfg-grid{display:grid;grid-template-columns:minmax(0,1fr) 90px;gap:6px 10px;align-items:center;margin-top:10px}
+.cfg-grid label{font-family:var(--font-mono);font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.cfg-grid h3{grid-column:1/-1;font:600 12.5px var(--font-body);color:var(--ink);margin:8px 0 0}
+.from-reactor{font-size:13px;color:var(--ink);background:var(--accent-soft);border:1px solid var(--accent);border-radius:5px;padding:6px 10px;margin:0}
+.from-reactor a{color:var(--accent-ink)}
+.picks{display:flex;flex-direction:column;gap:8px}
+.pick{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;align-items:center;border:1px solid var(--line);border-radius:5px;padding:8px 10px;background:var(--surface)}
+.pick b{font-size:14px}
+.pick span{font:12.5px var(--font-mono);color:var(--muted);grid-column:1}
+.pick .btn{grid-column:2;grid-row:1/span 2}
+
+/* JEI palette: fixed Minecraft GUI look in both themes */
+.jei{background:#C6C6C6;border:2px solid;border-color:#FFFFFF #555555 #555555 #FFFFFF;box-shadow:0 0 0 2px #000;border-radius:3px;padding:8px;color:#3F3F3F;font-family:var(--font-display);display:flex;flex-direction:column;gap:8px}
+.jei-head{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.jei-title{font-size:20px;line-height:1;color:#404040;margin-right:auto}
+.slots{display:grid;grid-template-columns:repeat(auto-fill,40px);justify-content:start}
+.slot{width:40px;height:40px;background:#8B8B8B;border:2px solid;border-color:#373737 #FFFFFF #FFFFFF #373737;display:grid;place-items:center;cursor:pointer;padding:0;position:relative}
+.slot:hover,.slot:focus-visible{background:#A9A9A9;outline:none}
+.slot[aria-pressed="true"]{background:#C8C850;box-shadow:inset 0 0 0 2px #FFFF55}
+.slot canvas{width:32px;height:32px;image-rendering:pixelated}
+.jei-foot{font-size:12px;color:#555;font-family:var(--font-mono)}
+.tip{position:fixed;z-index:20;pointer-events:none;background:rgba(16,0,16,.94);border:2px solid;border-image:linear-gradient(#5000FF,#28007F) 1;padding:6px 8px;font:400 19px/1.15 var(--font-display);color:#fff;max-width:300px}
+.tip .g{color:#AAAAAA;font-size:17px}.tip .s{color:#55FF55}.tip .m{color:#5555FF;font-style:italic;font-size:17px}
+
+/* rotor editor */
+.editor{display:flex;flex-direction:column;gap:8px}
+.ed-bar{display:flex;align-items:center;gap:6px;font:600 12px var(--font-mono);color:var(--muted)}
+.ed-bar button{font:600 13px var(--font-mono);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:2px 9px;cursor:pointer}
+.ed-bar button:disabled{opacity:.35;cursor:default}
+.core-wrap{overflow:auto;max-width:100%;border:1px solid var(--line);border-radius:6px;background:var(--viewport-2);padding:8px;width:max-content;max-height:440px}
+#core{display:block;image-rendering:pixelated;touch-action:none;cursor:crosshair}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+
+/* results */
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes a{color:var(--accent-ink)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink);overflow-wrap:anywhere}
+.fact table{border-collapse:collapse;font:12.5px var(--font-mono);color:var(--ink)}
+.fact th,.fact td{border:1px solid var(--line);padding:3px 8px;text-align:right}
+.fact th:first-child,.fact td:first-child{text-align:left}
+.fact th{color:var(--muted);font-weight:600}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Colossal Reactors / Turbine Calculator</nav>
+  <header class="top">
+    <h1>Colossal Reactors <span class="y">Turbine Calculator</span></h1>
+    <span class="src">Uses the Colossal Reactors 26.1.2-2.4.1.0.0 turbine formulas</span>
+  </header>
+  <p class="lede">Set the casing, place rods, pick blade rings and coil blocks, and see the RF/t and steam the turbine controller will show. Pick <b>FTB Evolution 2</b> under Modpack for that pack's values. Got steam from a reactor? The <a href="/tools/colossal-reactors/reactor-calculator/">reactor calculator</a> links here with it filled in.</p>
+
+  <div class="grid">
+    <section class="stage" aria-label="3D turbine preview">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="Rotating 3D model of the turbine design"></canvas>
+        <div class="hud"><span class="big" id="hudMain">—</span><span id="hudSub"></span></div>
+        <div class="layerbar" id="layerbar" hidden>
+          <button type="button" id="gDown" aria-label="Previous layer">◀</button>
+          <span id="gLabel" aria-live="polite"></span>
+          <button type="button" id="gUp" aria-label="Next layer">▶</button>
+        </div>
+        <div class="viewbar">
+          <button id="tFit" type="button" title="Re-centre and zoom to fit the turbine">Fit</button>
+          <button id="tCasing" aria-pressed="true" type="button">Casing</button>
+          <button id="tMods" aria-pressed="true" type="button">Coils</button>
+          <button id="tGuide" aria-pressed="false" aria-controls="guide" type="button">Build guide</button>
+        </div>
+      </div>
+      <p class="hint view-hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom.</p>
+      <div class="dims" id="dims"></div>
+      <div class="box guide" id="guide" hidden>
+        <h2>Build guide</h2>
+        <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
+        <div class="guide-cols"><div id="gLayer"></div><div id="gParts"></div></div>
+        <details open><summary>How it goes together</summary>
+          <ol>
+            <li>The outside is a closed box of <b>Turbine Casing</b>, <b>Turbine Glass</b> and ports. The guide puts casing on the edges and glass on the faces; any mix works.</li>
+            <li><b>Turbine Rods</b> stand on the floor and go straight up to the deck. Place each rod by right-clicking the floor (or the rod below it). A rod that doesn't reach the floor stops the turbine forming.</li>
+            <li>Above the rods is the <b>deck</b>: one layer of casing or glass with the <b>Turbine Rod Controller</b>, facing up, in the middle cell. The deck must be solid: an air gap makes the controller look for it in the wrong place ("coil/rod partition wall incomplete or wrong").</li>
+            <li>Blades: hold <b>Turbine Blades</b> and right-click a rod block. Each click adds one blade, ring by ring, on every rod block of every layer. The guide's blade counts are what each rod takes; with several rods, go column by column: start at the west wall, do each rod from north to south, then the next column east. Rods that share a blade need fewer clicks, and the per-rod counts on each layer below assume that order.</li>
+            <li>Everything above the deck is the <b>coil zone</b>: air or coil blocks (metal storage blocks from the list). Any other block stops it forming.</li>
+            <li>A <b>Turbine Resource Port</b> set to Insert takes steam; one set to Extract gives the water back. A <b>Turbine Power Port</b> sends the RF out. The <b>Turbine Controller</b> goes outside the box against a side wall (not top or bottom). Exactly one. At most one <b>Turbine Redstone Port</b>.</li>
+          </ol>
+          <p class="hint" style="margin-top:8px">From <code>TurbineValidation</code> and <code>TurbineBladePlacement</code> in the Colossal Reactors 26.1.2-2.4.1.0.0 jar.</p>
+        </details>
+      </div>
+      <div class="box">
+        <h2>Casing size</h2>
+        <div class="row"><label for="extX">Width (X)</label><input type="range" id="extX" min="3" max="65"><input class="num" id="extXN" type="number" min="3" max="65" aria-label="Exterior width X in blocks"></div>
+        <div class="row"><label for="extZ">Length (Z)</label><input type="range" id="extZ" min="3" max="65"><input class="num" id="extZN" type="number" min="3" max="65" aria-label="Exterior length Z in blocks"></div>
+        <div class="row"><label for="extY">Height (Y)</label><input type="range" id="extY" min="5" max="65"><input class="num" id="extYN" type="number" min="5" max="65" aria-label="Exterior height Y in blocks"></div>
+        <p class="hint" id="casingHint"></p>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Turbine inputs and results">
+      <div class="sect">
+        <h2>Server config</h2>
+        <div class="seg" role="group" aria-label="Server config preset">
+          <button type="button" id="pDefault" aria-pressed="true">Mod defaults</button>
+          <button type="button" id="pAtm" aria-pressed="false" aria-expanded="false" aria-controls="atmList"><span id="pAtmLabel">Modpack</span><span class="caret" aria-hidden="true">▾</span></button>
+          <button type="button" id="pCustom" aria-pressed="false">Custom</button>
+        </div>
+        <div class="atm-list" id="atmList" role="group" aria-label="Modpack" hidden></div>
+        <p class="cfg-hint" id="cfgHint"></p>
+        <details class="cfg" id="cfgMore">
+          <summary>Edit values from config/colossal_reactors-common.toml and the turbine recipes</summary>
+          <p class="hint" style="margin-top:8px">The numbered keys are in the config file. The rest come from the datapack recipes in <code>data/colossal_reactors/recipe/turbine/</code>, which packs can replace.</p>
+          <div class="cfg-grid" id="cfgGrid"></div>
+        </details>
+      </div>
+
+      <div class="sect">
+        <h2>Steam in</h2>
+        <p class="from-reactor" id="fromReactor" hidden></p>
+        <div class="steam-row">
+          <input class="num" id="steamN" type="number" min="0" step="1" placeholder="all it takes" aria-label="Steam piped in, mB per tick">
+          <span class="hint">mB/t of steam. Leave empty to run the turbine flat out.</span>
+        </div>
+        <div class="btns"><button class="btn" type="button" id="suggestBtn">Find a turbine for this steam</button></div>
+        <div class="picks" id="picks"></div>
+      </div>
+
+      <div class="sect">
+        <h2>Rotor</h2>
+        <div class="editor">
+          <div class="btns">
+            <button class="btn" type="button" id="rShaft">One shaft</button>
+            <button class="btn" type="button" id="rGrid">Rod grid</button>
+            <button class="btn" type="button" id="rClear">Clear</button>
+          </div>
+          <div class="ed-bar"><button type="button" id="eDown" aria-label="Lower rod layer">◀</button><span id="eLabel" aria-live="polite"></span><button type="button" id="eUp" aria-label="Higher rod layer">▶</button></div>
+          <div class="core-wrap"><canvas id="core" aria-label="Top-down view of one rod layer. Click or drag to add or remove rods."></canvas></div>
+          <div class="legend" id="legend"></div>
+          <p class="hint">Top-down view of one rod layer. Click a cell to add or remove a rod column (it runs from the floor to the deck). The outlined cell is where the rod controller sits in the deck. One shaft is what the Turbine Builder makes; the rod grid fits about twice the blades of one shaft on a 7-wide inside, and more as it grows.</p>
+          <p class="seg-label">Blade rings on each rod</p>
+          <div class="btns">
+            <div class="seg" role="group" aria-label="Blade ring profile">
+              <button type="button" id="bFull" aria-pressed="true">Same every layer</button>
+              <button type="button" id="bClimb" aria-pressed="false">Climbing (1, 2, 3 …)</button>
+            </div>
+          </div>
+          <div class="row"><label for="ring">Rings (max)</label><input type="range" id="ring" min="0" max="31"><input class="num" id="ringN" type="number" min="0" max="31" aria-label="Blade rings per rod"></div>
+          <p class="hint" id="ringHint"></p>
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Coils</h2>
+        <div class="jei">
+          <div class="jei-head"><span class="jei-title">Coil block</span></div>
+          <div class="slots" id="slots" role="toolbar" aria-label="Coil block"></div>
+          <div class="jei-foot" id="jeiFoot"></div>
+        </div>
+        <div class="row"><label for="coilL">Coil layers</label><input type="range" id="coilL" min="1" max="30"><input class="num" id="coilLN" type="number" min="1" max="30" aria-label="Coil layers above the deck"></div>
+        <p class="seg-label">How many coil blocks</p>
+        <div class="seg" role="group" aria-label="Coil fill">
+          <button type="button" id="fFull" aria-pressed="true">Fill the coil zone</button>
+          <button type="button" id="fOne" aria-pressed="false">One block</button>
+        </div>
+        <p class="hint" id="coilHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Output</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows.</p>
+      </div>
+      <div class="box" id="share">
+        <h2>Share this design</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact turbine. Paste a design code above to load it.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>One coil block is enough</h3>
+        <p>Coil efficiency is the average of the coil blocks in the coil zone. Air isn't counted, so a single gold block in an otherwise empty zone gives the same 100% as a zone full of gold. Only a zone with no coil block at all drops to 30%. In game, one gold block and 25 gold blocks both gave 54,000 RF/t.</p>
+<pre>coilEff = Σ eff_coe / coil blocks   (air skipped)
+        = 0.3 if there are none</pre>
+        <span class="ref">TurbineValidation.validateInternal</span>
+      </div>
+      <div class="fact">
+        <h3>Air counts as coil, so the deck must be solid</h3>
+        <p>The controller finds the coil zone by counting layers down from the roof that hold a coil block, and its coil check says yes to air. The count only stops at a layer with no air at all. Leave a gap in the deck around the rod controller and the count runs down into the rotor, and the turbine won't form.</p>
+<pre>inferCoilLayersFromStructure
+  isCoilBlock(air) == true</pre>
+        <span class="ref">TurbineValidation · ElecCoilLoader.getModifiersForBlock</span>
+      </div>
+      <div class="fact">
+        <h3>Blades count, not shafts</h3>
+        <p>Steam capacity is every blade below the deck, and rods can stand anywhere there. The Turbine Builder only makes one centre shaft, but a grid of rods on every other cell fills half the rotor with blades. On a 9×9 casing that's 140 blades instead of 60.</p>
+<pre>steam/t = blades × 150 mB   (mod: 1000)
+RF/t    = steam × 9 × coil × blade eff
+          (mod: 4 RF per mB)</pre>
+        <span class="ref">TurbineProductionMath.compute</span>
+      </div>
+      <div class="fact">
+        <h3>Climbing rings pay 3% a step</h3>
+        <p>For each layer that has more blades on its busiest rod than the layer below, output goes up 3%, until the first layer with fewer; from then on every drop costs 3%. Equal layers do nothing. A single shaft climbing to 14 rings on a 32-wide casing gets +39%.</p>
+<pre>eff = 1 + 0.03 × steps up − 0.03 × steps down</pre>
+        <span class="ref">TurbineBladeEfficiency.computeMultiplier</span>
+      </div>
+      <div class="fact">
+        <h3>Blade counts run into each other</h3>
+        <p>A rod's blade count is the unbroken run of blades in each of its four directions, and another rod's blades count if they touch the run. The total on every rod must be a multiple of 4, or the turbine won't form. That's also why one blade on its own is not enough: they go on in rings of four.</p>
+<pre>count = Σ 4 sides (blades in a row from the rod)
+count % 4 == 0  for every rod</pre>
+        <span class="ref">TurbineBladePlacement.totalBladesOnRod</span>
+      </div>
+      <div class="fact">
+        <h3>The guides are out of date</h3>
+        <p>The mod's own guide still says 7 RF per mB and that empty coil space drags the average down. FTB Evolution 2's guide gives 48 mB per blade. The calculator uses what the code and the pack's config do.</p>
+        <table>
+          <tr><th></th><th>Guide</th><th>Code</th></tr>
+          <tr><td>RF per mB steam</td><td>7</td><td>4 (Evo 2: 9)</td></tr>
+          <tr><td>Steam per blade, mB/t</td><td>48 (Evo 2)</td><td>150 (Evo 2)</td></tr>
+          <tr><td>Empty coil space</td><td>counts 30%</td><td>skipped</td></tr>
+        </table>
+        <span class="ref">guide/turbine/turbine_generation_and_coils.md · kubejs/assets/ftb/guides/ftb/power/colossal_reactors.md</span>
+      </div>
+    </div>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Block textures for turbine parts are from <a href="https://github.com/unfamily/Colossal-Reactors">Colossal Reactors</a>, used under the <a href="/img/colossal-reactors/LICENSE.txt">MIT license</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="/data/packs.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+
+/* ================= mod data ================= */
+/* MODEL START (research/colossal-reactors-2.4.1.0.0-turbine.md; the test harness evals this block) */
+// data/colossal_reactors/recipe/turbine/elec_coils.json: [id, name, selector, color, eff_coe, eff_max, pack key].
+// Only eff_coe reaches the controller: TurbineValidation takes min(avg eff_coe, avg eff_max), and no shipped block
+// has eff_max below eff_coe. FTB Evolution 2 replaces the list ("overwrite": true) with the same twelve plus FTB's coils.
+const COILS = [
+ ["graphite","Block of Graphite","#c:storage_blocks/graphite","#34373A",0.5,0.66],
+ ["iron","Block of Iron","#c:storage_blocks/iron","#D8D8D8",0.66,0.75],
+ ["tin","Block of Tin","#c:storage_blocks/tin","#B9C4C9",0.75,0.8],
+ ["nickel","Block of Nickel","#c:storage_blocks/nickel","#CFC79A",0.75,0.9],
+ ["aluminum","Block of Aluminum","#c:storage_blocks/aluminum","#C9CED6",0.8,0.9],
+ ["copper","Block of Copper","#c:storage_blocks/copper_all · any copper block","#C8693F",0.8,1.0],
+ ["bronze","Block of Bronze","#c:storage_blocks/bronze","#C8913A",0.85,1.0],
+ ["constantan","Block of Constantan","#c:storage_blocks/constantan","#D49A6A",0.9,1.0],
+ ["silver","Block of Silver","#c:storage_blocks/silver","#C4D2DE",1.0,1.0],
+ ["gold","Block of Gold","#c:storage_blocks/gold","#F2CF34",1.0,1.3],
+ ["electrum","Block of Electrum","#c:storage_blocks/electrum","#E6D66A",1.15,1.3],
+ ["netherite","Block of Netherite","#c:storage_blocks/netherite","#4B4346",1.3,1.5],
+ ["adamantite","Adamantite Turbine Coil","ftb:adamantite_turbine_coil","#B0324A",1.45,1.7,"coil.ftb"],
+ ["aeternium","Aeternium Turbine Coil","ftb:aeternium_turbine_coil","#3FB8A8",1.6,1.9,"coil.ftb"],
+ ["aurichalcum","Aurichalcum Turbine Coil","ftb:aurichalcum_turbine_coil","#E39A3A",1.8,2.2,"coil.ftb"],
+].map(([id,name,src,color,coe,max,key],i)=>({id,name,src,color,coe,max,key,order:i}));
+const COIL = Object.fromEntries(COILS.map(c=>[c.id,c]));
+
+// TurbineRodControllerLayout.bestPrimaryCenter: the rod controller's cell in the closure deck. On an even side the
+// lower of the two middle cells wins (both are equally close to the middle; the first one checked is kept).
+function rodCenter(iw,id){ return {x: iw&1 ? iw>>1 : (iw>>1)-1, z: id&1 ? id>>1 : (id>>1)-1}; }
+// TurbineBladePlacement.maxRingForRodColumn: the Turbine Builder's ring limit for the centre rod
+function centerRing(iw,id,maxRing){ const c=rodCenter(iw,id); return Math.min(maxRing, c.x, iw-1-c.x, c.z, id-1-c.z); }
+
+/* One rod layer of blades, placed the only way the game allows: right-clicking a rod with a Turbine Blade
+   (TurbineBladePlacement.placeNextBlade). Each click puts one blade at distance currentRing (the first distance at which
+   some side has no blade) on the side chooseLateralDirection picks: among the sides missing a blade at that distance, the
+   ones with the shortest unbroken blade run, index total % count (total = blades counted on the rod), sides in the order
+   north, south, west, east; after the first blade it goes opposite. If that cell isn't air (casing, a rod, a coil) the
+   click does nothing, and since the choice doesn't change, nor will any later click. Runs count other rods' blades too.
+   Rods are filled one after another in grid order (x, then z), each up to `target` rings, and a ring the rod can't
+   finish is left out: you'd stop clicking at the last full ring. grid: -1 air, -2 rod, else the cell of the rod that
+   placed the blade. */
+const DIRS=[[0,-1],[0,1],[-1,0],[1,0]];   // north (−z), south (+z), west (−x), east (+x)
+function bladeLayer(iw,id,rods,target,maxRing,balanced){
+  let grid=new Int32Array(iw*id).fill(-1); for(const r of rods) grid[r]=-2;
+  const cellAt=(r,d,k)=>{ const x=Math.floor(r/id)+DIRS[d][0]*k, z=r%id+DIRS[d][1]*k; return x<0||z<0||x>=iw||z>=id?-1:x*id+z; };
+  const isBlade=c=>c>=0&&grid[c]>=0;
+  const depth=(r,d)=>{ let n=0; while(n<maxRing&&isBlade(cellAt(r,d,n+1))) n++; return n; };
+  const total=r=>depth(r,0)+depth(r,1)+depth(r,2)+depth(r,3);
+  const ringOf=r=>{ for(let k=1;k<=maxRing;k++) for(let d=0;d<4;d++) if(!isBlade(cellAt(r,d,k))) return k; return maxRing+1; };
+  function choose(r){
+    const tot=total(r); if(tot>=maxRing*4) return -1;
+    const k=ringOf(r); if(k>maxRing) return -1;
+    const missing=[0,1,2,3].filter(d=>!isBlade(cellAt(r,d,k))); if(!missing.length) return -1;
+    if(tot===1) for(let d=0;d<4;d++) if(depth(r,d)===1){ const o=d^1; if(missing.includes(o)) return o; break; }
+    const min=Math.min(...missing.map(d=>depth(r,d))), cand=missing.filter(d=>depth(r,d)===min);
+    return cand[tot%cand.length];
+  }
+  const clicks=new Map();
+  for(const r of rods){ let n=0;
+    while(ringOf(r)<=target){
+      const snap=grid.slice(), n0=n, k0=ringOf(r); let ok=true;
+      while(ringOf(r)===k0){ const d=choose(r); if(d<0){ ok=false; break; }
+        const c=cellAt(r,d,ringOf(r)); if(c<0||grid[c]!==-1){ ok=false; break; }
+        grid[c]=r; n++; }
+      if(!ok){ grid=snap; n=n0; break; }
+    }
+    clicks.set(r,n); }
+  // what the controller counts: blades in the layer, and each rod's run total (must be a multiple of 4)
+  let blades=0; for(const v of grid) if(v>=0) blades++;
+  const counts=new Map(), bad=[]; let maxPerRod=0;
+  for(const r of rods){ const t=total(r); counts.set(r,t); if(balanced&&t%4) bad.push(r); else maxPerRod=Math.max(maxPerRod,t); }
+  return {grid,blades,counts,bad,maxPerRod,clicks};
+}
+
+/* s: {X, Z, Y exterior; rods: interior cells (x*id+z) holding a rod column; rings: target blade ring per rod layer,
+       bottom first; coil: coil id or "air"; coilLayers; coilFill: "full" | "one" (a single block); mix: optional
+       {coilId: count} overriding coil/coilFill; steam: mB/t piped in (null = all it can take)}
+   Rotor vertical (rod controller facing up). Horizontal rotors work the same with the axes swapped. */
+function simulate(s,cfg){
+  const iw=s.X-2, id=s.Z-2, L=s.Y-2;
+  const out={iw,id,L,ok:false,err:null};
+  if(iw<1||id<1||L<3){ out.err="small"; return out; }
+  // TurbineValidation.inferCoilLayersFromStructure: the coil zone is the run of interior layers, counted down from the
+  // roof, that hold a coil block, and ElecCoilLoader.isCoilBlock says yes to air. So the run only stops at a layer with
+  // no air at all: the closure deck, which must be solid casing or glass around the rod controller. Every layer above
+  // the deck is coil zone, full or empty.
+  const mix=s.mix&&Object.keys(s.mix).length?s.mix:null;
+  const hasCoil=mix?Object.values(mix).some(n=>n>0):s.coil!=="air";
+  const c=Math.min(Math.max(1,s.coilLayers|0),L-2);
+  const rodLayers=Math.max(0,L-c-1);   // closure deck (rod controller's layer) = interior layer rodLayers
+  Object.assign(out,{c,rodLayers,hasCoil});
+  if(rodLayers<1){ out.err="noRotor"; return out; }
+  const ctr=rodCenter(iw,id), maxRing=Math.max(1,cfg.maxRing|0);
+  const rods=[...new Set(s.rods)].filter(i=>i>=0&&i<iw*id).sort((a,b)=>a-b);
+  const layers=[];
+  for(let t=0;t<rodLayers;t++) layers.push(bladeLayer(iw,id,rods,Math.max(0,(s.rings&&s.rings[t])|0),maxRing,cfg.balanced));
+  const validBlades=layers.reduce((a,l)=>a+l.blades,0);
+  const unbalanced=layers.reduce((a,l,t)=>a.concat(l.bad.map(r=>({t,r}))),[]);
+  // TurbineBladeEfficiency.computeMultiplier over the rod layers (largest balanced blade count on one rod per layer),
+  // leading empty layers dropped: +bonus for each layer with more than the one below until the first layer with fewer,
+  // then −malus for every layer with fewer. Floor 0.01.
+  const counts=layers.map(l=>l.maxPerRod); while(counts.length>1&&counts[0]===0) counts.shift();
+  let bladeEff=1, broken=false, ups=0, downs=0;
+  for(let i=1;i<counts.length;i++){ if(counts[i]>counts[i-1]){ if(!broken){ bladeEff+=cfg.bonus; ups++; } } else if(counts[i]<counts[i-1]){ broken=true; bladeEff-=cfg.malus; downs++; } }
+  bladeEff=Math.max(0.01,bladeEff);
+  // coil zone: average eff_coe (and eff_max) over the coil blocks only. Air in the coil zone is skipped, so it doesn't
+  // pull the average down; emptyCoilEfficiency (0.3) applies only when the zone holds no coil block at all.
+  const zone=iw*id;
+  let coilBlocks=0, sumCoe=0, sumMax=0; const coilCounts={};
+  if(hasCoil){
+    const m=mix||{[s.coil]:s.coilFill==="one"?1:c*zone};
+    for(const [k,n] of Object.entries(m)){ const v=Math.max(0,Math.min(c*zone,n|0)); if(!v||!COIL[k]) continue; coilBlocks+=v; sumCoe+=v*COIL[k].coe; sumMax+=v*COIL[k].max; coilCounts[k]=v; }
+  }
+  const coilEff=coilBlocks>0?Math.min(sumCoe/coilBlocks,sumMax/coilBlocks):cfg.emptyCoil;
+  // TurbineProductionMath.compute
+  const steamCap=validBlades*cfg.bladeSteam*cfg.cons;
+  let rfMax=steamCap*cfg.rfPerMb*coilEff*bladeEff*cfg.prod; rfMax=Math.max(rfMax,cfg.minRf);
+  // TurbineSimulation.tick: takes up to ceil(steamCap) mB a tick (less if less is piped in) and scales RF by the share
+  // it got; the RF pushed to the power ports is a whole number.
+  const want=Math.ceil(steamCap), supply=s.steam==null?Infinity:Math.max(0,Math.floor(s.steam));
+  const used=Math.min(want,supply), scale=steamCap>0?Math.min(1,used/steamCap):0;
+  // a rod whose blade count isn't a multiple of 4 stops the turbine forming (UNBALANCED_BLADES)
+  const formed=!unbalanced.length;
+  const rf=formed?Math.trunc(rfMax*scale):0;
+  Object.assign(out,{ok:true,formed,unbalanced,rods,ctr,layers,validBlades,counts,bladeEff,ups,downs,coilBlocks,coilCounts,coilEff,steamCap,rfMax,used,scale,rf,
+    rfPerMb:steamCap>0?rf/Math.max(1,used):0});
+  return out;
+}
+/* MODEL END */
+
+// Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
+// FTB Evolution 2 (1.4.1) values live in /data/packs.js.
+const DEFAULTS={maxW:65,maxL:65,maxH:65,minRf:0,prod:1,cons:1,maxRing:31,bonus:0.03,malus:0.03,balanced:1,bladeSteam:1000,emptyCoil:0.3,rfPerMb:4,ftbCoils:0};
+const CFG_FIELDS=[
+  ["maxW","turbine.size.000_maxTurbineWidth",3,65,1],["maxL","turbine.size.001_maxTurbineLength",3,65,1],["maxH","turbine.size.002_maxTurbineHeight",5,65,1],
+  ["minRf","turbine.base.101b_minRfPerTick",0,1e9],
+  ["prod","turbine.balance.000_productionMultiplier",0,100],["cons","turbine.balance.001_consumptionMultiplier",0,100],
+  ["maxRing","turbine.blade.000_maxBladeRing",1,64,1],["bonus","turbine.blade.001_efficiencyBonusPerAscendingLayer",0,1],
+  ["malus","turbine.blade.002_efficiencyMalusPerDescendingLayer",0,1],["balanced","turbine.blade.003_requireBalancedBladeRings",0,1,1],
+  ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],["emptyCoil","turbine.coil.000_emptyCoilEfficiency",0,10],
+  ["rfPerMb","turbine.water.rf_production",0,1e6,0,"Datapack recipes (1 = present, 0 = not)"],["ftbCoils","coil.ftb",0,1,1],
+];
+const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEFAULTS, CFG_FIELDS);
+let cfgPreset="default", cfg={...PRESETS.default};
+try{ const s=JSON.parse(localStorage.getItem("cr-turbine-cfg")||localStorage.getItem("cr-reactor-cfg")||"null");
+  if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg&&localStorage.getItem("cr-turbine-cfg")){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
+const coilOn=c=>c==="air"||!COIL[c].key||cfg.ftbCoils>0;
+
+/* ================= state ================= */
+const state={X:9, Z:9, Y:9, rods:[], profile:"full", ring:1, coil:"gold", coilLayers:1, coilFill:"full", steam:null, edLayer:0};
+function limits(){ return {maxX:Math.min(65,cfg.maxW), maxZ:Math.min(65,cfg.maxL), maxY:Math.min(65,cfg.maxH)}; }
+const iwOf=()=>state.X-2, idOf=()=>state.Z-2;
+function shaftRods(){ const c=rodCenter(iwOf(),idOf()); return [c.x*idOf()+c.z]; }
+// Rod grid: the layout with the most blades out of a few tried ones. Rods on every cell with odd x and odd z (away from
+// the casing) put a blade on every cell with one odd coordinate, half the rotor; on 7- to 11-wide insides a staggered
+// grid (every 4th cell, rows 2 apart, 3 rings) fits a few more.
+const layoutCache={};
+function bestLayout(iw,id){
+  const key=iw+"x"+id+"|"+cfg.maxRing+"|"+cfg.balanced; if(layoutCache[key]) return layoutCache[key];
+  const cands=[], g=[]; for(let x=1;x<=iw-2;x+=2) for(let z=1;z<=id-2;z+=2) g.push(x*id+z); if(g.length) cands.push({rods:g,ring:1});
+  for(let a=0;a<4;a++) for(let R=1;R<=3;R++){ const rods=[]; let row=0; for(let z=1;z<id;z+=2,row++) for(let x=(a+(row%2)*2)%4;x<iw;x+=4) rods.push(x*id+z); cands.push({rods,ring:R}); }
+  const c=rodCenter(iw,id); cands.push({rods:[c.x*id+c.z],ring:centerRing(iw,id,cfg.maxRing)});
+  let best=null; for(const o of cands){ if(o.ring>cfg.maxRing) continue; const L=bladeLayer(iw,id,o.rods,o.ring,cfg.maxRing,cfg.balanced); if(L.bad.length) continue;
+    if(!best||L.blades>best.blades) best={...o,blades:L.blades,L}; }
+  return layoutCache[key]=best; }
+const gridRods=()=>bestLayout(iwOf(),idOf()).rods;
+const ringsOf=(rl)=>[...Array(Math.max(0,rl))].map((_,t)=>state.profile==="climb"?Math.min(state.ring,1+t):state.ring);
+function modelState(st=state){
+  const L=st.Y-2, c=Math.min(Math.max(1,st.coilLayers),Math.max(1,L-2)), rl=Math.max(0,L-c-1);
+  return {X:st.X,Z:st.Z,Y:st.Y,rods:st.rods,rings:ringsOf(rl),coil:st.coil,coilLayers:c,coilFill:st.coilFill,steam:st.steam};
+}
+
+/* ================= textures + icons ================= */
+// /img/colossal-reactors/turbine.png: 16×16 tiles from the mod jar (MIT), in this order. Rod and blade are model UV sheets.
+const TILES=["casing","glass","rod","blade","rodTop","rodSide","ctrl","power","port","redstone"];
+let atlas=null;
+function rng(seed){ let x=0; for(const ch of seed) x=(x*31+ch.charCodeAt(0))>>>0; return ()=>((x=(x*1664525+1013904223)>>>0)/4294967296); }
+function hexRgb(h){ const n=parseInt(h.slice(1),16); return [n>>16&255,n>>8&255,n&255]; }
+function shade([r,g,b],k){ const f=v=>Math.max(0,Math.min(255,Math.round(v*k))); return `rgb(${f(r)},${f(g)},${f(b)})`; }
+const texCache={};
+function tex(key,draw){ if(texCache[key]) return texCache[key]; const c=document.createElement("canvas"); c.width=c.height=16; const g=c.getContext("2d"); g.imageSmoothingEnabled=false; draw(g); return texCache[key]=c; }
+const tile=(g,name,sx=0,sw=16,sh=16)=>{ if(!atlas) return false; g.drawImage(atlas,TILES.indexOf(name)*16+sx,0,sw,sh,0,0,16,16); return true; };
+function plain(g,rgb,seed){ const R=rng(seed); for(let y=0;y<16;y++)for(let x=0;x<16;x++){ g.fillStyle=shade(rgb,0.88+R()*0.2); g.fillRect(x,y,1,1); }
+  g.fillStyle=shade(rgb,1.22); g.fillRect(0,0,16,1); g.fillRect(0,0,1,16); g.fillStyle=shade(rgb,0.62); g.fillRect(0,15,16,1); g.fillRect(15,0,1,16); }
+// metal storage blocks: drawn look-alikes (vanilla textures aren't ours to use)
+function coilTex(m){ return tex("c:"+m.id,g=>{ const base=hexRgb(m.color); plain(g,base,m.id);
+  g.fillStyle=shade(base,0.78); g.fillRect(2,2,12,1); g.fillRect(2,2,1,12); g.fillStyle=shade(base,1.12); g.fillRect(2,13,12,1); g.fillRect(13,2,1,12);
+  if(m.key){ g.fillStyle=shade(base,0.55); for(let i=4;i<12;i+=3) g.fillRect(3,i,10,1); } }); }
+const named=(name,rgb)=>tex(name+(atlas?"":"~"),g=>{ if(!tile(g,name)) plain(g,rgb,name); });
+const TEX={casing:()=>named("casing",[92,98,104]), deck:()=>named("casing",[92,98,104]),
+  glass:()=>tex("glass"+(atlas?"":"~"),g=>{ if(tile(g,"glass")) return; g.fillStyle="rgba(170,190,200,0.9)"; g.fillRect(0,0,16,1); g.fillRect(0,15,16,1); g.fillRect(0,0,1,16); g.fillRect(15,0,1,16); }),
+  rod:()=>tex("rod"+(atlas?"":"~"),g=>{ if(tile(g,"rod",0,8,16)) return; plain(g,[120,126,132],"rod"); }),
+  blade:()=>tex("blade"+(atlas?"":"~"),g=>{ if(tile(g,"blade",2,12,16)) return; plain(g,[214,218,222],"blade"); }),
+  rodctl:()=>named("rodTop",[70,78,96]), controller:()=>named("ctrl",[60,70,90]),
+  power:()=>named("power",[200,40,30]), resIn:()=>named("port",[24,24,30]), resOut:()=>named("port",[24,24,30])};
+function iconFor(id,size=32){
+  const cv=document.createElement("canvas"); cv.width=cv.height=size; const g=cv.getContext("2d"); g.imageSmoothingEnabled=false;
+  if(id==="air"){ g.strokeStyle="#5A5A5A"; g.setLineDash([3,3]); g.strokeRect(6.5,6.5,19,19); return cv; }
+  const t=coilTex(COIL[id]), s=size/32;
+  const face=(a,b,c,d,e,f,dark)=>{ g.setTransform(a*s,b*s,c*s,d*s,e*s,f*s); g.drawImage(t,0,0); if(dark){ g.fillStyle=`rgba(0,0,0,${dark})`; g.fillRect(0,0,16,16);} };
+  face(1,0.5,-1,0.5,16,0,0); face(1,0.5,0,1,0,8,0.22); face(1,-0.5,0,1,16,16,0.4);
+  g.setTransform(1,0,0,1,0,0); return cv;
+}
+
+/* ================= coil palette ================= */
+const tip=$("tip");
+function showTip(id,e){
+  const m=COIL[id];
+  tip.innerHTML=id==="air"?`<div>Air</div><div class="g">No coil blocks: coil efficiency ${fmt(cfg.emptyCoil*100)}%</div>`
+    :`<div>${m.name}</div><div class="g">Coil efficiency <span class="s">${fmt(m.coe*100)}%</span></div><div class="g">JEI also shows a cap of ${fmt(m.max*100)}%; the controller doesn't use it</div><div class="m">${m.src}</div>`;
+  tip.hidden=false; moveTip(e);
+}
+function moveTip(e){ const w=tip.offsetWidth,h=tip.offsetHeight; let x=e.clientX+14,y=e.clientY-h-8; if(x+w>innerWidth-8) x=e.clientX-w-14; if(y<8) y=e.clientY+18; tip.style.left=x+"px"; tip.style.top=y+"px"; }
+function renderSlots(){
+  const box=$("slots"); box.textContent="";
+  for(const id of ["air",...COILS.map(c=>c.id)]){ if(!coilOn(id)) continue;
+    const b=document.createElement("button"); b.type="button"; b.className="slot"; b.setAttribute("aria-pressed",state.coil===id); b.setAttribute("aria-label",id==="air"?"No coil blocks":`Coil: ${COIL[id].name}`);
+    b.appendChild(iconFor(id)); b.onclick=()=>{ state.coil=id; update(); };
+    b.onpointerenter=e=>showTip(id,e); b.onpointermove=moveTip; b.onpointerleave=()=>tip.hidden=true;
+    box.appendChild(b); }
+  $("jeiFoot").textContent=state.coil==="air"?`No coil blocks · ${fmt(cfg.emptyCoil*100)}%`:`${COIL[state.coil].name} · ${fmt(COIL[state.coil].coe*100)}% · ${COIL[state.coil].src}`;
+}
+
+/* ================= rotor editor ================= */
+const core=$("core"); let painting=null, result=null;
+function cellPx(){ return Math.max(6,Math.min(26,Math.floor(400/Math.max(iwOf(),idOf())))); }
+function drawCore(){
+  const iw=iwOf(), id=idOf(), p=cellPx(), dpr=Math.min(2,devicePixelRatio||1);
+  core.width=(iw*p+2)*dpr; core.height=(id*p+2)*dpr; core.style.width=(iw*p+2)+"px"; core.style.height=(id*p+2)+"px";
+  const g=core.getContext("2d"); g.setTransform(dpr,0,0,dpr,0,0); g.imageSmoothingEnabled=false;
+  g.fillStyle="#0F1417"; g.fillRect(0,0,iw*p+2,id*p+2);
+  const L=result&&result.ok?result.layers[Math.min(state.edLayer,result.layers.length-1)]:null;
+  const bad=new Set(L?L.bad:[]), rods=new Set(state.rods);
+  for(let x=0;x<iw;x++)for(let z=0;z<id;z++){
+    const i=x*id+z, X=1+x*p, Z=1+z*p;
+    if(rods.has(i)){ g.drawImage(TEX.rodctl(),X,Z,p-1,p-1); g.fillStyle="rgba(90,170,230,.35)"; g.fillRect(X,Z,p-1,p-1);
+      if(bad.has(i)){ g.strokeStyle="#EE7B7B"; g.lineWidth=2; g.strokeRect(X+1,Z+1,p-3,p-3); } continue; }
+    if(L&&L.grid[i]>=0){ g.drawImage(TEX.blade(),X,Z,p-1,p-1); continue; }
+    g.fillStyle="#1C2226"; g.fillRect(X,Z,p-1,p-1);
+  }
+  const c=rodCenter(iw,id); g.strokeStyle="#E2D03A"; g.lineWidth=1.5; g.strokeRect(1+c.x*p+0.75,1+c.z*p+0.75,p-2.5,p-2.5);
+}
+function renderLegend(){
+  const R=result; if(!R||!R.ok){ $("legend").innerHTML=""; return; }
+  const L=R.layers[Math.min(state.edLayer,R.layers.length-1)];
+  $("legend").innerHTML=`<span><i style="background:#5AAAE6"></i>Turbine Rod ×${state.rods.length}</span><span><i style="background:#D6DADE"></i>Turbine Blade ×${L?L.blades:0} on this layer</span><span><i style="border:1.5px solid #E2D03A"></i>Rod controller (in the deck)</span>`+(L&&L.bad.length?`<span style="color:var(--bad)">Unbalanced rod ×${L.bad.length}</span>`:"");
+  $("eLabel").textContent=`Rod layer ${Math.min(state.edLayer,R.layers.length-1)+1} of ${R.layers.length}`;
+  $("eDown").disabled=state.edLayer<=0; $("eUp").disabled=state.edLayer>=R.layers.length-1;
+}
+function cellAt(e){ const r=core.getBoundingClientRect(), p=cellPx(), x=Math.floor((e.clientX-r.left-1)/p), z=Math.floor((e.clientY-r.top-1)/p);
+  return x<0||z<0||x>=iwOf()||z>=idOf()?-1:x*idOf()+z; }
+function paintAt(e){ const i=cellAt(e); if(i<0) return; const has=state.rods.includes(i);
+  if(painting===null) painting=!has;
+  if(painting&&!has) state.rods=[...state.rods,i].sort((a,b)=>a-b); else if(!painting&&has) state.rods=state.rods.filter(r=>r!==i); else return;
+  run(); }
+core.addEventListener("pointerdown",e=>{ painting=null; core.setPointerCapture(e.pointerId); paintAt(e); });
+core.addEventListener("pointermove",e=>{ if(painting!==null) paintAt(e); });
+core.addEventListener("pointerup",()=>{ painting=null; schedule(); });
+core.addEventListener("pointercancel",()=>painting=null);
+
+/* ================= three.js ================= */
+const view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer=null, scene, camera, root, groups={}, clip, buildStart=0;
+let matCache={};
+function mat(key,canvas,opts={}){ if(matCache[key]) return matCache[key]; const t=new THREE.CanvasTexture(canvas); t.magFilter=THREE.NearestFilter; t.minFilter=THREE.NearestFilter;
+  return matCache[key]=new THREE.MeshLambertMaterial(Object.assign({map:t,clippingPlanes:[clip]},opts)); }
+function initGL(){
+  if(typeof THREE==="undefined") return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); renderer.setClearColor(0,0); }catch(e){ renderer=null; return; }
+  renderer.localClippingEnabled=true; renderer.setPixelRatio(Math.min(2,devicePixelRatio||1));
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(38,1,0.1,1200);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,0.95)); const sun=new THREE.DirectionalLight(0xffffff,0.75); sun.position.set(9,16,7); scene.add(sun);
+  clip=new THREE.Plane(new THREE.Vector3(0,-1,0),0);
+  root=new THREE.Group(); scene.add(root);
+  new ResizeObserver(resize).observe(view); resize(); requestAnimationFrame(frame);
+}
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+const orbit={theta:0.75,phi:1.0,radius:20,target:{x:0,y:0,z:0},goal:null,idle:0,pan:false};
+const guide={on:false,layer:1};
+const ptrs=new Map();
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(260,Math.max(3,orbit.goal.r*f)); else orbit.radius=Math.min(260,Math.max(3,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId); if(!p) return;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.5,Math.max(0.2,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+const framing=()=>({x:0, y:0, z:0, r:Math.max(state.X,state.Z,state.Y)*1.9+4});
+function fit(){ orbit.goal={...framing(),...(guide.on?{phi:0.8}:{})}; }
+let buildTop=0, buildBottom=0, lastT=performance.now(), casingOn=true, modsOn=true;
+const anims=[];
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>2.5&&!reduce&&!guide.on) orbit.theta+=dt*0.1; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  if(guide.on) clip.constant=off.y+guide.layer-0.5+0.001;
+  else { const p=reduce?1:Math.min(1,(t-buildStart)/1100), e=1-Math.pow(1-p,3); clip.constant=buildBottom+(buildTop-buildBottom)*e; }
+  for(let i=anims.length-1;i>=0;i--){
+    const a=anims[i]; if(t<a.t0){ a.mesh.visible=false; continue; }
+    const q=Math.min(1,(t-a.t0)/a.dur); a.mesh.visible=a.show();
+    if(a.kind==="in"){ const k=1-Math.pow(1-q,3); a.mesh.position.y=a.y+(1-k)*2.5; a.mesh.scale.setScalar(0.4+0.6*k); }
+    else a.mesh.scale.setScalar(Math.max(0.001,1-q));
+    if(q>=1){ if(a.kind==="out"){ a.mesh.parent&&a.mesh.parent.remove(a.mesh); } anims.splice(i,1); }
+  }
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+
+/* Every block of the structure, keyed by position (x,y,z from the casing's min corner). */
+const SHELL_KINDS=new Set(["casing","glass","controller","power","resIn","resOut"]);
+const groupOf=k=>SHELL_KINDS.has(k)?"shell":k.startsWith("c:")?"mods":"core";
+function blockMap(R){
+  const {X,Y,Z}=state, iw=X-2, id=Z-2, map=new Map();
+  for(let y=0;y<Y;y++)for(let x=0;x<X;x++)for(let z=0;z<Z;z++){
+    const bx=x===0||x===X-1, by=y===0||y===Y-1, bz=z===0||z===Z-1, n=bx+by+bz; if(!n) continue;
+    map.set(x+","+y+","+z,n>=2?"casing":"glass");
+  }
+  // ports in the +X wall, bottom row first, nearest the middle; the controller stands outside the +Z face
+  const wall=[]; for(let y=1;y<Y-1;y++) for(let z=1;z<Z-1;z++) wall.push((X-1)+","+y+","+z);
+  wall.sort((a,b)=>{ const [,ya,za]=a.split(",").map(Number), [,yb,zb]=b.split(",").map(Number); return ya-yb||Math.abs(za-(Z-1)/2)-Math.abs(zb-(Z-1)/2); });
+  ["power","resIn","resOut"].forEach((k,i)=>{ if(wall[i]) map.set(wall[i],k); });
+  map.set(Math.floor((X-1)/2)+","+Math.max(1,Math.floor((Y-1)/2))+","+Z,"controller");
+  if(!R||!R.ok) return map;
+  const rl=R.rodLayers, ctr=R.ctr;
+  R.layers.forEach((L,t)=>{ for(let i=0;i<iw*id;i++){ const v=L.grid[i]; if(v===-1) continue;
+    const x=Math.floor(i/id), z=i%id, key=(x+1)+","+(t+1)+","+(z+1);
+    if(v===-2) map.set(key,"rod"); else map.set(key,Math.floor(v/id)!==x?"bladeX":"bladeZ"); } });
+  for(let x=0;x<iw;x++)for(let z=0;z<id;z++) map.set((x+1)+","+(rl+1)+","+(z+1),x===ctr.x&&z===ctr.z?"rodctl":"deck");
+  if(state.coil!=="air"){
+    const top=rl+1+R.c;
+    if(state.coilFill==="one") map.set((ctr.x+1)+","+(rl+2)+","+(ctr.z+1),"c:"+state.coil);
+    else for(let y=rl+2;y<=top;y++) for(let x=0;x<iw;x++)for(let z=0;z<id;z++) map.set((x+1)+","+y+","+(z+1),"c:"+state.coil);
+  }
+  return map;
+}
+function texFor(k){ if(TEX[k]) return TEX[k](); if(k.startsWith("blade")) return TEX.blade(); return coilTex(COIL[k.slice(2)]); }
+function matFor(k){
+  const key=k+(atlas?"":"~");
+  if(k==="glass") return mat(key,texFor(k),{transparent:true,opacity:0.3,depthWrite:false});
+  if(k.startsWith("blade")) return mat("blade"+(atlas?"":"~"),texFor(k),{side:THREE.DoubleSide});
+  return mat(key,texFor(k));
+}
+// Turbine Rod: an 8-pixel post; Turbine Blade: a 12×2.3-pixel plank along its arm, tilted 22.5° (models/block/turbine)
+const GEO={};
+function geoFor(k){
+  if(GEO[k]) return GEO[k];
+  if(k==="rod") return GEO[k]=new THREE.BoxGeometry(0.5,1,0.5);
+  if(k==="bladeX"){ const g=new THREE.BoxGeometry(1,0.14,0.75); g.rotateX(Math.PI/8); return GEO[k]=g; }
+  if(k==="bladeZ"){ const g=new THREE.BoxGeometry(0.75,0.14,1); g.rotateZ(Math.PI/8); return GEO[k]=g; }
+  return GEO.cube||(GEO.cube=new THREE.BoxGeometry(1,1,1));
+}
+let off={x:0,y:0,z:0};
+const posOf=key=>{ const [x,y,z]=key.split(",").map(Number); return [x+off.x,y+off.y,z+off.z]; };
+const visibleFor=g=>()=>g==="shell"?casingOn:g==="mods"?modsOn:true;
+function buildInstanced(map,skip){
+  for(const k in groups){ root.remove(groups[k]); groups[k].traverse(o=>{ if(o.isInstancedMesh) o.dispose(); }); }
+  groups={};
+  const buckets={}; for(const [key,k] of map){ if(skip&&skip.has(key)) continue; (buckets[k]=buckets[k]||[]).push(key); }
+  const m4=new THREE.Matrix4(), sc=new THREE.Vector3(0.97,1,0.97);
+  for(const k in buckets){
+    const keys=buckets[k], mesh=new THREE.InstancedMesh(geoFor(k),matFor(k),keys.length);
+    keys.forEach((key,i)=>{ const [x,y,z]=posOf(key); m4.makeTranslation(x,y,z); if(k.startsWith("c:")) m4.scale(sc); mesh.setMatrixAt(i,m4); });
+    if(k==="glass") mesh.renderOrder=2;
+    const g=groupOf(k); (groups[g]=groups[g]||new THREE.Group()).add(mesh);
+  }
+  for(const k in groups) root.add(groups[k]);
+  if(groups.shell) groups.shell.visible=casingOn; if(groups.mods) groups.mods.visible=modsOn;
+}
+let shownMap=null, shownShape="", swapGroup=null, settleTimer=0;
+function clearSwaps(){ clearTimeout(settleTimer); anims.length=0; if(swapGroup){ root.remove(swapGroup); swapGroup=null; } }
+function rebuild3D(force){
+  if(!renderer) return;
+  const {X,Y,Z}=state, shape=`${X}|${Y}|${Z}`, map=blockMap(result);
+  off={x:-(X-1)/2, y:-(Y-1)/2, z:-(Z-1)/2};
+  clearSwaps();
+  if(force||!shownMap||shape!==shownShape){
+    const sizeChanged=shape!==shownShape;
+    buildInstanced(map);
+    if(sizeChanged){ buildBottom=-(Y/2)-0.5; buildTop=Y/2+0.6; buildStart=performance.now();
+      fit(); if(!shownShape){ const g=orbit.goal; orbit.target={x:g.x,y:g.y,z:g.z}; orbit.radius=g.r; orbit.goal=null; } }
+    shownMap=map; shownShape=shape; return;
+  }
+  const removed=[], added=[];
+  for(const [key,k] of shownMap){ const nk=map.get(key); if(nk!==k){ removed.push([key,k]); if(nk) added.push([key,nk]); } }
+  for(const [key,k] of map) if(!shownMap.has(key)) added.push([key,k]);
+  shownMap=map;
+  if(!removed.length&&!added.length) return;
+  if(reduce||removed.length+added.length>3000){ buildInstanced(map); return; }
+  const addedKeys=new Set(added.map(a=>a[0]));
+  buildInstanced(map,addedKeys);
+  swapGroup=new THREE.Group(); root.add(swapGroup);
+  const now=performance.now(), sc=0.97;
+  for(const [key,k] of removed){ const m=new THREE.Mesh(geoFor(k),matFor(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); if(k.startsWith("c:")) m.scale.set(sc,1,sc);
+    swapGroup.add(m); anims.push({mesh:m,kind:"out",t0:now,dur:180,y,show:visibleFor(groupOf(k))}); }
+  const ys=added.map(([key])=>+key.split(",")[1]), y0=Math.min(...ys), y1=Math.max(...ys), span=Math.min(700,(y1-y0)*45);
+  let end=now;
+  for(const [key,k] of added){ const m=new THREE.Mesh(geoFor(k),matFor(k)); const [x,y,z]=posOf(key); m.position.set(x,y,z); m.visible=false;
+    const t0=now+160+(y1>y0?((+key.split(",")[1]-y0)/(y1-y0))*span:0); end=Math.max(end,t0+260);
+    swapGroup.add(m); anims.push({mesh:m,kind:"in",t0,dur:260,y,show:visibleFor(groupOf(k))}); }
+  settleTimer=setTimeout(()=>{ buildInstanced(shownMap); clearSwaps(); },end-now+40);
+}
+
+/* ================= UI ================= */
+function renderCfg(){
+  renderPresetButtons();
+  $("cfgHint").innerHTML=`<b>${fmt(cfg.bladeSteam)} mB/t</b> a blade · <b>${cfg.rfPerMb} RF</b> per mB · rings ±<b>${fmt(cfg.bonus*100)}%</b> a step · max <b>${cfg.maxW}×${cfg.maxL}×${cfg.maxH}</b>`;
+  const g=$("cfgGrid");
+  if(!g.childElementCount) for(const [k,label,min,max,int,head] of CFG_FIELDS){
+    if(head){ const h=document.createElement("h3"); h.textContent=head; g.append(h); }
+    const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;
+    const i=document.createElement("input"); i.className="num"; i.type="number"; i.id="cfg-"+k; i.min=min; i.max=max; i.step=int?"1":"any";
+    i.onchange=()=>{ const v=+i.value; if(!Number.isFinite(v)){ i.value=cfg[k]; return; } cfg[k]=Math.min(max,Math.max(min,int?Math.round(v):v)); cfgPreset="custom"; saveCfg(); update(); };
+    g.append(l,i);
+  }
+  for(const [k] of CFG_FIELDS) $("cfg-"+k).value=cfg[k];
+}
+function saveCfg(){ try{ localStorage.setItem("cr-turbine-cfg",JSON.stringify({preset:cfgPreset,cfg})); }catch(e){} }
+function usePreset(k){ cfgPreset=k; if(PRESETS[k]) cfg={...PRESETS[k]}; else $("cfgMore").open=true; saveCfg(); update(); }
+
+let rodDims="";
+function clampSize(){
+  const Lm=limits();
+  state.X=Math.min(Lm.maxX,Math.max(3,state.X)); state.Z=Math.min(Lm.maxZ,Math.max(3,state.Z)); state.Y=Math.min(Lm.maxY,Math.max(5,state.Y));
+  const dims=iwOf()+"x"+idOf();
+  if(rodDims&&dims!==rodDims){ // keep rods that still fit; an empty rotor gets the shaft
+    const [ow,od]=rodDims.split("x").map(Number), iw=iwOf(), id=idOf();
+    const wasGrid=state.rods.join()===gridRodsFor(ow,od).join(), wasShaft=state.rods.join()===shaftRodsFor(ow,od).join();
+    if(wasGrid) state.ring=bestLayout(iwOf(),idOf()).ring;
+    state.rods=wasGrid?gridRods():wasShaft?shaftRods():state.rods.map(i=>[Math.floor(i/od),i%od]).filter(([x,z])=>x<iw&&z<id).map(([x,z])=>x*id+z).sort((a,b)=>a-b);
+  }
+  rodDims=dims;
+  state.coilLayers=Math.min(Math.max(1,state.coilLayers),Math.max(1,state.Y-4));
+  state.ring=Math.min(Math.max(0,state.ring),cfg.maxRing);
+  if(!coilOn(state.coil)) state.coil="gold";
+}
+function shaftRodsFor(iw,id){ const c=rodCenter(iw,id); return [c.x*id+c.z]; }
+const gridRodsFor=(iw,id)=>bestLayout(iw,id).rods;
+function syncInputs(){
+  const Lm=limits();
+  for(const [k,mx] of [["extX",Lm.maxX],["extZ",Lm.maxZ],["extY",Lm.maxY]]){ const key=k.slice(3); $(k).max=mx; $(k+"N").max=mx; $(k).value=state[key]; $(k+"N").value=state[key]; }
+  $("casingHint").textContent=`Up to ${Lm.maxX} × ${Lm.maxZ} × ${Lm.maxY} blocks, casing included (maxTurbineWidth, maxTurbineLength, maxTurbineHeight). The rotor here stands upright; a rod controller facing sideways makes the same turbine on its side.`;
+  $("bFull").setAttribute("aria-pressed",state.profile==="full"); $("bClimb").setAttribute("aria-pressed",state.profile==="climb");
+  $("ring").max=cfg.maxRing; $("ringN").max=cfg.maxRing; $("ring").value=state.ring; $("ringN").value=state.ring;
+  const cmax=Math.max(1,state.Y-4); $("coilL").max=cmax; $("coilLN").max=cmax; $("coilL").value=state.coilLayers; $("coilLN").value=state.coilLayers;
+  $("fFull").setAttribute("aria-pressed",state.coilFill==="full"); $("fOne").setAttribute("aria-pressed",state.coilFill==="one");
+  if(document.activeElement!==$("steamN")) $("steamN").value=state.steam==null?"":state.steam;
+  $("suggestBtn").disabled=!(state.steam>0);
+}
+
+const per=(v,unit)=>`${v} <small>${unit}</small>`;
+const pct=v=>fmt(v*100,v*100%1?1:0)+"%";
+function renderResults(R){
+  const iw=iwOf(), id=idOf();
+  $("dims").innerHTML=`<span>Exterior <b>${state.X}×${state.Z}×${state.Y}</b></span><span>Inside <b>${iw}×${id}×${state.Y-2}</b></span>`+(R.ok?`<span>Rod layers <b>${R.rodLayers}</b></span><span>Deck <b>1</b></span><span>Coil layers <b>${R.c}</b></span>`:"");
+  $("ringHint").textContent=state.profile==="climb"?`Rod layer 1 gets 1 ring, layer 2 gets 2, and so on up to ${state.ring}. A ring is 4 blades; a rod stops early where a ring would hit the casing, another rod or a blade.`:`Every rod layer gets ${state.ring} ring${state.ring===1?"":"s"} (${state.ring*4} blades) per rod where they fit. A ring is 4 blades; a rod stops at the last ring that fits.`;
+  $("coilHint").textContent=R.ok?`The coil zone is the ${R.c} layer${R.c>1?"s":""} above the deck, ${fmt(iw*id*R.c)} cells. `+(state.coil==="air"?`With no coil block in it, coil efficiency is ${pct(cfg.emptyCoil)}.`:state.coilFill==="one"?`One block anywhere in it sets the efficiency; the rest stays air.`:`Air left in the zone wouldn't lower the efficiency, so one block does the same job.`):"";
+  if(!R.ok){ $("results").innerHTML=""; $("hudMain").textContent="—"; $("hudSub").textContent="";
+    $("notes").innerHTML=`<li class="bad">${R.err==="noRotor"?"No room for a rotor: the inside needs at least one rod layer, the deck and one coil layer. Make the casing taller or use fewer coil layers.":"The casing is too small."}</li>`; return; }
+  $("hudMain").innerHTML=R.formed?`${fmt(R.rf)} <small>RF/t</small>`:`Won't form`;
+  $("hudSub").textContent=R.formed?`${fmt(R.used)} mB/t steam · ${fmt(R.validBlades)} blades`:"unbalanced blades";
+  const cells=[
+    ["Energy output",per(fmt(R.rf),"RF/t"),"hero"],
+    ["Steam used",per(fmt(R.used),"mB/t of "+fmt(R.steamCap)+" max")],
+    ["RF per mB steam",per(fmt(R.steamCap>0?R.rfMax/R.steamCap:0,2),"RF")],
+    ["Blades",per(fmt(R.validBlades),`${state.rods.length} rod${state.rods.length===1?"":"s"} × ${R.rodLayers} layers`)],
+    ["Max output",per(fmt(Math.trunc(R.rfMax)),"RF/t with all the steam")],
+    ["Coil efficiency",per("×"+fmt(R.coilEff,3),R.coilBlocks?fmt(R.coilBlocks)+" coil block"+(R.coilBlocks>1?"s":""):"no coil blocks")],
+    ["Blade efficiency",per("×"+fmt(R.bladeEff,2),R.ups||R.downs?`${R.ups} step${R.ups===1?"":"s"} up, ${R.downs} down`:"no steps")],
+    ["Water out",per(fmt(R.formed?R.used:0),"mB/t, 1 per mB steam")],
+    ["Steam buffer",per(fmt(R.validBlades*10000),"mB inside the controller")],
+  ];
+  $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+  const n=[];
+  if(!R.formed){ const first=R.unbalanced[0], x=Math.floor(first.r/id), z=first.r%id, L=R.layers[first.t];
+    n.push(["bad",`The turbine won't form: the rod at ${x+1}, ${z+1} (from the north-west inside corner) counts ${L.counts.get(first.r)} blades on rod layer ${first.t+1}, not a multiple of 4 ("blades are not balanced"). Its run of blades touches another rod's. ${R.unbalanced.length>1?`${R.unbalanced.length} rod layers have this. `:""}Move the rods apart or use fewer rings; the red outlines in the rotor view show which rods.`]); }
+  if(!state.rods.length) n.push(["bad","No rods: the turbine forms but has no blades, so it takes no steam and makes nothing. Use One shaft or Rod grid, or click cells in the rotor view."]);
+  if(R.formed&&state.steam!=null&&state.steam>R.steamCap) n.push(["warn",`${fmt(state.steam-R.steamCap)} mB/t of the steam has nowhere to go: the blades take ${fmt(R.steamCap)}. That needs ${fmt(Math.ceil((state.steam-R.steamCap)/cfg.bladeSteam/cfg.cons))} more blades. Steam that isn't used backs up in the pipes.`]);
+  if(R.formed&&state.steam!=null&&state.steam<R.steamCap) n.push(["good",`The blades could take ${fmt(R.steamCap)} mB/t; with ${fmt(state.steam)} piped in the turbine makes ${pct(R.scale)} of its maximum. RF per mB doesn't change with the load.`]);
+  if(R.formed&&state.coil!=="air"&&state.coilFill==="full"&&R.coilBlocks>1) n.push(["good",`One ${COIL[state.coil].name.replace("Block of ","").toLowerCase()} block in the coil zone gives the same ${pct(R.coilEff)} coil efficiency as these ${fmt(R.coilBlocks)}. The controller averages only the coil blocks and skips air. Checked in game.`]);
+  if(state.coil==="air") n.push(["warn",`No coil blocks: coil efficiency is ${pct(cfg.emptyCoil)}. A single block of iron (66%) or gold (100%) anywhere above the deck fixes that.`]);
+  if(R.c>1) n.push(["warn",`${R.c} coil layers. More coil layers don't raise the efficiency, they only take rod layers away: with 1 coil layer this casing would have ${R.rodLayers+R.c-1} rod layers.`]);
+  if(R.formed&&state.rods.length===1&&state.rods[0]===R.ctr.x*id+R.ctr.z&&iw>=5&&id>=5){
+    const b=bestLayout(iw,id), ms=modelState(), g=simulate({...ms,rods:b.rods,rings:ms.rings.map(()=>b.ring)},cfg);
+    if(g.formed&&g.validBlades>R.validBlades) n.push(["good",`One shaft, like the Turbine Builder makes. A rod grid in the same casing holds ${fmt(g.validBlades)} blades instead of ${fmt(R.validBlades)}: ${fmt(g.steamCap)} mB/t of steam and up to ${fmt(Math.trunc(g.rfMax))} RF/t. Rods can stand anywhere below the deck; the controller only needs its rod controller in the middle of the deck.`]); }
+  if(R.formed&&state.profile==="full"&&state.ring>1){
+    const cl=simulate({...modelState(),rings:modelState().rings.map((_,t)=>Math.min(state.ring,1+t))},cfg);
+    if(cl.formed&&cl.bladeEff>R.bladeEff) n.push(["good",`Climbing rings (1, 2, 3 … ${state.ring}) would give ×${fmt(cl.bladeEff,2)} blade efficiency, ${fmt(cl.rfMax/cl.steamCap,2)} RF per mB instead of ${fmt(R.rfMax/R.steamCap,2)}, with ${fmt(cl.validBlades)} blades. Worth it when you have more blades than steam.`]); }
+  if(R.downs>0) n.push(["warn",`A rod layer has fewer blades on its busiest rod than the one below it ${R.downs} time${R.downs>1?"s":""}: each costs ${pct(cfg.malus)}, and the climbing bonus stops at the first one.`]);
+  if((iw%2===0||id%2===0)&&R.formed) n.push(["warn",`An even inside width puts the rod controller on the ${iw%2===0?"west":"north"} one of the two middle cells, and a centre shaft gets one ring less than an odd width would allow. Odd casing sizes waste less.`]);
+  if(cfgPreset==="ftb-evolution-2") n.push(["good","FTB Evolution 2: 150 mB/t per blade, 9 RF per mB, turbines up to 32 blocks, and three extra coils from FTB Armory (Adamantite 145%, Aeternium 160%, Aurichalcum 180%). The pack's guide still says 48 mB per blade."]);
+  $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
+}
+
+/* steam → turbine: the smallest square turbine that takes all of it, and the one that gets the most RF out of it */
+function suggest(S){
+  const coilEff=state.coil==="air"?cfg.emptyCoil:COIL[state.coil].coe, maxN=Math.min(cfg.maxW,cfg.maxL), out=[];
+  for(let n=5;n<=maxN;n++){ const iw=n-2;
+    for(const pat of ["grid","shaft"]){
+      const best=bestLayout(iw,iw), rods=pat==="grid"?best.rods:shaftRodsFor(iw,iw), rmax=pat==="grid"?best.ring:centerRing(iw,iw,cfg.maxRing);
+      const L=[]; for(let t=1;t<=rmax;t++) L[t]=bladeLayer(iw,iw,rods,t,cfg.maxRing,cfg.balanced);
+      if(L[rmax].bad.length) continue;
+      for(let Y=5;Y<=cfg.maxH;Y++){ const rl=Y-4;
+        for(const prof of pat==="grid"?["full"]:["full","climb"]){
+          let blades=0, prev=-1, eff=1, broken=false;
+          for(let t=0;t<rl;t++){ const l=L[prof==="climb"?Math.min(rmax,1+t):rmax]; blades+=l.blades;
+            if(prev>=0){ if(l.maxPerRod>prev){ if(!broken) eff+=cfg.bonus; } else if(l.maxPerRod<prev){ broken=true; eff-=cfg.malus; } } prev=l.maxPerRod; }
+          const cap=blades*cfg.bladeSteam*cfg.cons, rfMax=Math.max(cap*cfg.rfPerMb*coilEff*eff*cfg.prod,cfg.minRf);
+          const rf=cap>0?Math.trunc(rfMax*Math.min(1,Math.min(Math.ceil(cap),S)/cap)):0;   // same order as simulate (TurbineSimulation.tick)
+          out.push({n,Y,pat,prof,ring:rmax,blades,cap,rf,eff,vol:n*n*Y});
+        } } } }
+  const all=out.filter(o=>o.cap>=S).sort((a,b)=>a.vol-b.vol||b.rf-a.rf)[0];
+  const most=out.slice().sort((a,b)=>b.rf-a.rf||a.vol-b.vol)[0];
+  return [all,most].filter(Boolean).filter((o,i,a)=>a.indexOf(o)===i);
+}
+function renderPicks(list,S){
+  const box=$("picks"); box.textContent="";
+  if(!list){ return; }
+  if(!list.length){ box.innerHTML=`<p class="hint">Nothing fits in ${cfg.maxW}×${cfg.maxL}×${cfg.maxH}.</p>`; return; }
+  list.forEach((o,i)=>{
+    const d=document.createElement("div"); d.className="pick";
+    const what=o.pat==="grid"?"rod grid":o.prof==="climb"?`one shaft, climbing to ${o.ring} rings`:`one shaft, ${o.ring} rings`;
+    const title=o.cap>=S&&i===0?"Smallest that takes all the steam":"Most RF from this steam";
+    d.innerHTML=`<b>${title}: ${o.n}×${o.n}×${o.Y}, ${what}</b><span>${fmt(o.rf)} RF/t · ${fmt(Math.min(S,o.cap))} of ${fmt(S)} mB/t used · ${fmt(o.blades)} blades · blade efficiency ×${fmt(o.eff,2)}</span>`;
+    const b=document.createElement("button"); b.className="btn"; b.type="button"; b.textContent="Use this";
+    b.onclick=()=>{ Object.assign(state,{X:o.n,Z:o.n,Y:o.Y,coilLayers:1,profile:o.prof,ring:o.ring}); rodDims=""; clampSize();
+      state.rods=o.pat==="grid"?gridRods():shaftRods(); state.ring=o.ring; update(); };
+    d.append(b); box.append(d); });
+  if(list.length===1&&list[0].cap<S) box.insertAdjacentHTML("afterbegin",`<p class="hint">No turbine up to ${cfg.maxW}×${cfg.maxL}×${cfg.maxH} takes all ${fmt(S)} mB/t. Build two, or this one and pipe the rest elsewhere.</p>`);
+}
+
+/* build guide */
+const PART_NAMES={casing:"Turbine Casing",glass:"Turbine Glass",deck:"Turbine Casing",rodctl:"Turbine Rod Controller",rod:"Turbine Rod",blade:"Turbine Blade",
+  controller:"Turbine Controller",power:"Turbine Power Port",resIn:"Turbine Resource Port",resOut:"Turbine Resource Port"};
+const PART_NOTES={glass:"or Turbine Casing",deck:"the deck, or glass",rodctl:"in the deck, facing up",controller:"outside the casing",resIn:"Insert: steam in",resOut:"Extract: water out",blade:"right-click a rod"};
+const PART_ORDER=["casing","glass","deck","rodctl","controller","power","resIn","resOut","rod","blade"];
+const partKey=k=>k.startsWith("blade")?"blade":k;
+const partName=k=>k.startsWith("c:")?COIL[k.slice(2)].name:PART_NAMES[k]+(PART_NOTES[k]?` <small>· ${PART_NOTES[k]}</small>`:"");
+const swatch=k=>texFor(k).toDataURL();
+function tally(map,layer){ const c={};
+  for(const [key,k0] of map){ if(layer!=null&&+key.split(",")[1]!==layer-1) continue; const k=partKey(k0); c[k]=(c[k]||0)+1; }
+  const rank=k=>k.startsWith("c:")?PART_ORDER.length+COIL[k.slice(2)].order:PART_ORDER.indexOf(k);
+  return Object.keys(c).sort((a,b)=>rank(a)-rank(b)).map(k=>[k,c[k]]); }
+const partsList=rows=>`<ul class="parts">${rows.map(([k,n])=>`<li><img src="${swatch(k)}" alt=""><span>${partName(k)}</span><span class="n">${fmt(n)}</span></li>`).join("")}</ul>`;
+function renderGuide(){
+  const top=state.Y; guide.layer=Math.min(Math.max(1,guide.layer),top);
+  $("gLabel").textContent=`Layer ${guide.layer} / ${top}`; $("gDown").disabled=guide.layer<=1; $("gUp").disabled=guide.layer>=top;
+  if(!guide.on) return;
+  const map=blockMap(result), n=guide.layer, R=result, t=n-2;
+  const where=n===1?"floor":n===top?"roof":R&&R.ok?(t<R.rodLayers?`rod layer ${t+1}`:t===R.rodLayers?"the deck":"coil zone"):`layer ${n}`;
+  let extra="";
+  if(R&&R.ok&&t>=0&&t<R.rodLayers&&state.rods.length>1){ const L=R.layers[t], id=idOf();
+    const rows=state.rods.filter(r=>L.clicks.get(r)).slice(0,12).map(r=>`${Math.floor(r/id)+1},${r%id+1}: ${L.clicks.get(r)}`);
+    extra=`<p class="hint" style="margin-top:6px">Blades per rod, in click order (x,z from the north-west inside corner): ${rows.join(" · ")}${state.rods.length>12?" …":""}</p>`; }
+  $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(map,n))}${extra}`;
+  $("gParts").innerHTML=`<h3>Whole turbine <small>· ${state.X}×${state.Z}×${state.Y}</small></h3>${partsList(tally(map))}`;
+}
+function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
+  if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }
+
+let timer=0;
+function schedule(){ clearTimeout(timer); timer=setTimeout(()=>{ rebuild3D(); renderGuide(); },30); share.render(); }
+function run(){ result=simulate(modelState(),cfg); if(result.ok) state.edLayer=Math.min(state.edLayer,result.rodLayers-1); renderResults(result); drawCore(); renderLegend(); schedule(); }
+function update(){ clampSize(); renderCfg(); syncInputs(); renderSlots(); run(); }
+
+/* wiring */
+function renderPresetButtons(){
+  const atm=ATM_PACKS.find(p=>p[0]===cfgPreset);
+  $("pDefault").setAttribute("aria-pressed",cfgPreset==="default"); $("pCustom").setAttribute("aria-pressed",cfgPreset==="custom");
+  $("pAtm").setAttribute("aria-pressed",!!atm); $("pAtmLabel").textContent=atm?atm[1]:"Modpack";
+  for(const b of $("atmList").children) b.setAttribute("aria-pressed",b.dataset.key===cfgPreset);
+}
+function setAtmOpen(open){ $("atmList").hidden=!open; $("pAtm").setAttribute("aria-expanded",open); }
+for(const [key,name,note,offp] of ATM_PACKS){
+  const b=document.createElement("button"); b.type="button"; b.dataset.key=key; b.append(name);
+  const s=document.createElement("small"); s.textContent=note; b.append(s);
+  if(offp) b.disabled=true; else b.onclick=()=>{ setAtmOpen(false); usePreset(key); $("pAtm").focus(); };
+  $("atmList").append(b);
+}
+renderPresetButtons();
+$("pAtm").onclick=()=>setAtmOpen($("atmList").hidden);
+$("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").focus(); } };
+$("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
+for(const [k,key] of [["extX","X"],["extZ","Z"],["extY","Y"]]){ const set=v=>{ state[key]=Math.floor(+v||3); update(); }; $(k).oninput=e=>set(e.target.value); $(k+"N").onchange=e=>set(e.target.value); }
+$("ring").oninput=e=>{ state.ring=+e.target.value; update(); }; $("ringN").onchange=e=>{ state.ring=Math.floor(+e.target.value||0); update(); };
+$("coilL").oninput=e=>{ state.coilLayers=+e.target.value; update(); }; $("coilLN").onchange=e=>{ state.coilLayers=Math.floor(+e.target.value||1); update(); };
+$("bFull").onclick=()=>{ state.profile="full"; update(); }; $("bClimb").onclick=()=>{ state.profile="climb"; update(); };
+$("fFull").onclick=()=>{ state.coilFill="full"; update(); }; $("fOne").onclick=()=>{ state.coilFill="one"; update(); };
+$("rShaft").onclick=()=>{ state.rods=shaftRods(); if(state.ring<2) state.ring=centerRing(iwOf(),idOf(),cfg.maxRing); update(); };
+$("rGrid").onclick=()=>{ const b=bestLayout(iwOf(),idOf()); state.rods=b.rods; state.ring=b.ring; state.profile="full"; update(); };
+$("rClear").onclick=()=>{ state.rods=[]; update(); };
+$("eDown").onclick=()=>{ state.edLayer=Math.max(0,state.edLayer-1); drawCore(); renderLegend(); };
+$("eUp").onclick=()=>{ state.edLayer++; if(result&&result.ok) state.edLayer=Math.min(state.edLayer,result.rodLayers-1); drawCore(); renderLegend(); };
+$("steamN").oninput=e=>{ const v=e.target.value.trim(); state.steam=v===""||!Number.isFinite(+v)?null:Math.max(0,Math.floor(+v)); $("picks").textContent=""; syncInputs(); run(); };
+$("suggestBtn").onclick=()=>{ if(state.steam>0) renderPicks(suggest(state.steam),state.steam); };
+$("tCasing").onclick=e=>{ casingOn=!casingOn; e.target.setAttribute("aria-pressed",casingOn); if(groups.shell) groups.shell.visible=casingOn; };
+$("tMods").onclick=e=>{ modsOn=!modsOn; e.target.setAttribute("aria-pressed",modsOn); if(groups.mods) groups.mods.visible=modsOn; };
+$("tGuide").onclick=()=>setGuide(!guide.on);
+$("gDown").onclick=()=>{ guide.layer--; renderGuide(); }; $("gUp").onclick=()=>{ guide.layer++; renderGuide(); };
+$("tFit").onclick=fit;
+
+/* design code (mdct1): the whole turbine as one string, used by share links.
+   mdct1.X.Z.Y.profile.ring.coil.coilLayers.fill.steam.rods
+   profile f|c (same every layer | climbing); coil: a coil id or "air"; fill a|o (fill the zone | one block);
+   steam: mB/t piped in, or "-" for all it takes; rods: one bit per inside cell (cell x*(Z-2)+z), least significant bit
+   first, base64url without padding. */
+function encodeDesign(){
+  const iw=iwOf(), id=idOf(), bits=new Array(iw*id).fill(0); for(const r of state.rods) bits[r]=1;
+  return ["mdct1",state.X,state.Z,state.Y,state.profile==="climb"?"c":"f",state.ring,state.coil,state.coilLayers,state.coilFill==="one"?"o":"a",
+    state.steam==null?"-":state.steam,mdShare.b64u.enc(mdShare.packBits(bits,1))].join("."); }
+function decodeDesign(code){
+  const p=String(code||"").trim().split(".");
+  if(p.length!==11||p[0]!=="mdct1"||!/^[fc]$/.test(p[4])||!/^[ao]$/.test(p[8])||(p[6]!=="air"&&!COIL[p[6]])) return null;
+  const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
+  const d={X:int(1,3,65),Z:int(2,3,65),Y:int(3,5,65),ring:int(5,0,64),coilLayers:int(7,1,63),steam:p[9]==="-"?null:int(9,0,1e12)};
+  if(Object.values(d).some(v=>Number.isNaN(v))) return null;
+  let bytes; try{ bytes=mdShare.b64u.dec(p[10]); }catch(e){ return null; }
+  const bits=mdShare.unpackBits(bytes,(d.X-2)*(d.Z-2),1); if(!bits) return null;
+  d.rods=bits.map((b,i)=>b?i:-1).filter(i=>i>=0); d.profile=p[4]==="c"?"climb":"full"; d.coil=p[6]; d.coilFill=p[8]==="o"?"one":"full";
+  return d; }
+const cutNote=d=>state.X!==d.X||state.Z!==d.Z||state.Y!==d.Y?`Loaded, but cut down to ${state.X}×${state.Z}×${state.Y}: the design is ${d.X}×${d.Z}×${d.Y} and this config allows less.`:null;
+const applyDesign=d=>{ rodDims=(d.X-2)+"x"+(d.Z-2); Object.assign(state,d); update(); };
+const share=mdShare({prefix:"mdct1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+  apply:applyDesign, loaded:cutNote, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
+if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
+// the reactor calculator links here with #<pack>&steam=<mB/t>
+const fromHash=decodeURIComponent(location.hash.slice(1)).split("&").find(s=>/^steam=\d+$/.test(s));
+
+// starting design: 9x9x9 rod grid, one coil layer of gold
+rodDims=(state.X-2)+"x"+(state.Z-2); state.rods=gridRods(); state.ring=bestLayout(state.X-2,state.Z-2).ring;
+initGL();
+{ const img=new Image(); img.onload=()=>{ atlas=img; for(const k in texCache) delete texCache[k]; matCache={}; drawCore(); rebuild3D(true); renderGuide(); }; img.src="/img/colossal-reactors/turbine.png"; }
+if(share.atLoad.design){ applyDesign(share.atLoad.design); const n=cutNote(share.atLoad.design); if(n) share.say(n); }
+else {
+  if(fromHash){ state.steam=+fromHash.slice(6);
+    $("fromReactor").innerHTML=`${fmt(state.steam)} mB/t of steam from the <a href="/tools/colossal-reactors/reactor-calculator/">reactor calculator</a>. Below: turbines that take it.`; $("fromReactor").hidden=false; }
+  update();
+  if(fromHash&&state.steam>0) renderPicks(suggest(state.steam),state.steam);
+}
+share.live();
+})();
+</script>
+</body>
+</html>

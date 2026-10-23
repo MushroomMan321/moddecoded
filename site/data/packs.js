@@ -9,6 +9,8 @@
 //                      kubejs.atmOreProcessing: 1 when the pack ships ATM's kubejs/server_scripts/mods/Mekanism/ore_processing.js)
 //   ryzergen        -> config/ryzergen-common.toml
 //   advanced_ae     -> config/advanced_ae-common.toml (its section is "quantum computer", with the space)
+//   colossal_reactors -> config/colossal_reactors-common.toml (keys keep their numbered prefix: "reactor.size.000_maxReactorWidth");
+//                      keys without one are datapack values from data/colossal_reactors/recipe/reactor|turbine/*.json
 // The keys each calculator reads are listed in its "Edit values" panel and in CONTRIBUTING.md.
 //
 //   id      URL-safe slug. It is also the deep link: /tools/.../turbine-calculator/#<id>
@@ -172,6 +174,23 @@ window.MD_PACKS = [
     source: { repo: "https://www.feed-the-beast.com/modpacks/130-ftb-stoneblock-4", version: "1.23.0", checked: "2026-10-20" },
     mods: {
       mekanism: { config: {}, note: "mod defaults · up to 32 upgrades" },
+    },
+  },
+  {
+    // FTB Evolution 2 1.4.1 (FTB App pack 135, version 100567) ships Colossal Reactors 2.4.1.0.0. Values from its
+    // config/colossal_reactors-common.toml and datapacks/ftb/data/colossal_reactors/recipe/{reactor,turbine}/*.json, which
+    // replace the jar's recipe files. The pack's own guide page still shows the 1.3.0 values (exponent 0.55, 0.8 steam per mB, 48 mB a blade).
+    // Keys without a numbered prefix are datapack values (see the Colossal Reactors calculator's CFG_FIELDS); 1/0 = present or not.
+    id: "ftb-evolution-2", name: "FTB Evolution 2", mc: "26.1.2",
+    source: { repo: "https://www.feed-the-beast.com/modpacks/135-ftb-evolution-2", version: "1.4.1", checked: "2026-10-20" },
+    mods: {
+      colossal_reactors: { config: {
+        "reactor.size.000_maxReactorWidth": 32, "reactor.size.001_maxReactorLength": 32, "reactor.size.002_maxReactorHeight": 32,
+        "reactor.balance.001_rodEnergyScalingExponent": 0.76, "turbine.blade.004_steamMbPerBladePerTick": 150.0,
+        "coolant.water.rf_to_coolant_factor": 0.085, "coolant.water.steam_per_coolant": 3.93, "turbine.water.rf_production": 9.0,
+        "fuel.red_cake": 0, "heat_sink.industrial_coolant": 1, "heat_sink.ftb_armory": 1, "tag.peridot": 0,
+        "turbine.size.000_maxTurbineWidth": 32, "turbine.size.001_maxTurbineLength": 32, "turbine.size.002_maxTurbineHeight": 32,
+        "coil.ftb": 1 } },
     },
   },
 ];
