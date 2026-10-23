@@ -188,7 +188,7 @@ window.MD_PACKS = [
         "reactor.size.000_maxReactorWidth": 32, "reactor.size.001_maxReactorLength": 32, "reactor.size.002_maxReactorHeight": 32,
         "reactor.balance.001_rodEnergyScalingExponent": 0.76, "turbine.blade.004_steamMbPerBladePerTick": 150.0,
         "coolant.water.rf_to_coolant_factor": 0.085, "coolant.water.steam_per_coolant": 3.93, "turbine.water.rf_production": 9.0,
-        "fuel.red_cake": 0, "heat_sink.industrial_coolant": 1, "tag.peridot": 0,
+        "fuel.red_cake": 0, "heat_sink.industrial_coolant": 1, "heat_sink.ftb_armory": 1, "tag.peridot": 0,
         "turbine.size.000_maxTurbineWidth": 32, "turbine.size.001_maxTurbineLength": 32, "turbine.size.002_maxTurbineHeight": 32,
         "coil.ftb": 1 } },
     },

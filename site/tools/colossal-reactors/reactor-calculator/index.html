@@ -289,7 +289,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Output</h2>
         <div class="results" id="results"></div>
         <ul class="notes" id="notes"></ul>
-        <p class="hint">Checked in game with the FTB Evolution 2 config: eight test reactors (air, gold, diamond, emerald, graphite, Ender Goo and Gelid Breezium, uranium and azurite, with and without water) matched the page's RF/t, steam and water to the unit, and fuel burn to four digits.</p>
+        <p class="hint">Checked in game with the FTB Evolution 2 config: eight test reactors (air, gold, diamond, emerald, graphite, Ender Goo and Gelid Breezium, uranium and azurite, with and without water) matched the page's RF/t, steam and water to the unit, and fuel burn to four digits. In the full pack, FTB Armory's adamantite, aeternium and aurichalcum blocks and Industrial Coolant matched too.</p>
         <p class="hint">Assumes fuel is kept topped up, waste is taken out, and the power port (or the steam port and its water supply) keeps up. Reactor instability is off by default and in FTB Evolution 2, so heat sinks' overheating value isn't used.</p>
       </div>
       <div class="box" id="share">
@@ -402,6 +402,10 @@ const SINKS = [
  ["ender_goo","Ender Goo","#c:ender_molten · source blocks","#0F6E5A",1.5,2.0,3.0,"fluid"],
  ["industrial_coolant","Industrial Coolant","#c:industrial_coolant · source blocks","#7FD8F0",1.75,2.15,3.2,"fluid","heat_sink.industrial_coolant"],
  ["gelid_breezium","Refrigerant Gelid Breezium","#c:breezium · source blocks","#9FE6F2",1.5,3.0,5.0,"fluid"],
+ // FTB Armory's own heat_sinks recipe (armory_heat_sinks.json in its jar), so these exist wherever FTB Armory is installed
+ ["adamantite","Block of Adamantite","#c:storage_blocks/adamantite · FTB Armory","#4E9C8E",1.6,2.0,1.8,"block","heat_sink.ftb_armory"],
+ ["aeternium","Block of Aeternium","#c:storage_blocks/aeternium · FTB Armory","#7A3FC8",1.7,2.4,2.0,"block","heat_sink.ftb_armory"],
+ ["aurichalcum","Block of Aurichalcum","#c:storage_blocks/aurichalcum · FTB Armory","#E08A2A",1.8,2.8,2.2,"block","heat_sink.ftb_armory"],
 ].map(([id,name,src,color,fuel,energy,heat,kind,key],i)=>({id,name,src,color,fuel,energy,heat,kind:kind||"block",key,order:i}));
 const SINK = Object.fromEntries(SINKS.map(m=>[m.id,m]));
 const NEUTRAL = {fuel:1,energy:1,heat:1};   // HeatSinkLoader's fallback when a fluid has no heat sink entry
@@ -494,7 +498,7 @@ function simulate(s,cfg){
 const DEFAULTS = {maxW:65,maxL:65,maxH:65, minRf:500, minFuel:0.05, rodMax:10000, rfLoss:0.2, fuelEff:1, prod:1, cons:1,
   consScale:1.72, decay:400, penalty:0.25, eMode:1, eExp:0.9, eK:600, fMode:1, fExp:1, fK:600,
   wAdj:1, wNon:0.5, hsDiv:1.35, hsRf:1.16, hsFuel:1.21,
-  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1};
+  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1, ftbArmory:0};
 const CFG_FIELDS=[
   ["maxW","reactor.size.000_maxReactorWidth",3,65,1],["maxL","reactor.size.001_maxReactorLength",3,65,1],["maxH","reactor.size.002_maxReactorHeight",3,65,1],
   ["minRf","reactor.base.101b_minRfPerTick",0,1e9],["minFuel","reactor.base.101c_minFuelUnitsPerTick",0,100],["rodMax","reactor.base.000_rodMaxFuelUnits",1,1e9,1],
@@ -508,13 +512,13 @@ const CFG_FIELDS=[
   ["hsDiv","reactor.heatSink.106f_heatSinkConsumptionDivisor",0.1,10],["hsRf","reactor.heatSink.106g_heatSinkRfMultiplier",0.1,5],["hsFuel","reactor.heatSink.106h_heatSinkFuelUnitsMultiplier",0.1,5],
   ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],
   ["waterFactor","coolant.water.rf_to_coolant_factor",0,100,0,"Datapack recipes (1 = present, 0 = not)"],["steamPerWater","coolant.water.steam_per_coolant",0,100],
-  ["turbineRf","turbine.water.rf_production",0,1e6],["redCake","fuel.red_cake",0,1,1],["industrialCoolant","heat_sink.industrial_coolant",0,1,1],["peridot","tag.peridot",0,1,1],
+  ["turbineRf","turbine.water.rf_production",0,1e6],["redCake","fuel.red_cake",0,1,1],["industrialCoolant","heat_sink.industrial_coolant",0,1,1],["peridot","tag.peridot",0,1,1],["ftbArmory","heat_sink.ftb_armory",0,1,1],
 ];
 const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEFAULTS, CFG_FIELDS);
 let cfgPreset="default", cfg={...PRESETS.default};
 try{ const s=JSON.parse(localStorage.getItem("cr-reactor-cfg")||"null");
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
-const sinkOn=m=>!m.key||cfg[{"heat_sink.industrial_coolant":"industrialCoolant","tag.peridot":"peridot"}[m.key]]>0;
+const sinkOn=m=>!m.key||cfg[{"heat_sink.industrial_coolant":"industrialCoolant","tag.peridot":"peridot","heat_sink.ftb_armory":"ftbArmory"}[m.key]]>0;
 const fuelOn=f=>!FUELS[f].key||cfg.redCake>0;
 
 /* ================= state ================= */
