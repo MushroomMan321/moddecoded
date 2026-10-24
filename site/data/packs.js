@@ -190,7 +190,9 @@ window.MD_PACKS = [
         "coolant.water.rf_to_coolant_factor": 0.085, "coolant.water.steam_per_coolant": 3.93, "turbine.water.rf_production": 9.0,
         "fuel.red_cake": 0, "heat_sink.industrial_coolant": 1, "heat_sink.ftb_armory": 1, "tag.peridot": 0,
         "turbine.size.000_maxTurbineWidth": 32, "turbine.size.001_maxTurbineLength": 32, "turbine.size.002_maxTurbineHeight": 32,
-        "coil.ftb": 1 } },
+        "coil.ftb": 1,
+        // the pack ships Colossal Reactors 2.4.1, which skips air when averaging the coil zone (fixed in 2.4.2)
+        "turbine.coil.001_legacyIgnoreAirInCoilAverage": 1 } },
     },
   },
 ];

@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Colossal Reactors Turbine Calculator (FTB Evolution 2)</title>
-<meta name="description" content="Colossal Reactors turbine calculator: casing size, rod layout, blade rings and coil blocks give RF/t, steam use, coil and blade efficiency and a parts list from the mod's real formulas (26.1.2-2.4.1.0.0), with the FTB Evolution 2 config built in and every number checked in game.">
+<meta name="description" content="Colossal Reactors turbine calculator: casing size, rod layout, blade rings and coil blocks give RF/t, steam use, coil and blade efficiency and a parts list from the mod's real formulas (26.1.2-2.4.2.0.0.0), with the FTB Evolution 2 config built in and every number checked in game.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
@@ -181,7 +181,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Colossal Reactors / Turbine Calculator</nav>
   <header class="top">
     <h1>Colossal Reactors <span class="y">Turbine Calculator</span></h1>
-    <span class="src">Uses the Colossal Reactors 26.1.2-2.4.1.0.0 turbine formulas</span>
+    <span class="src">Uses the Colossal Reactors 26.1.2-2.4.2.0.0.0 turbine formulas</span>
   </header>
   <p class="lede">Set the casing, place rods, pick blade rings and coil blocks, and see the RF/t and steam the turbine controller will show. Pick <b>FTB Evolution 2</b> under Modpack for that pack's values. Got steam from a reactor? The <a href="/tools/colossal-reactors/reactor-calculator/">reactor calculator</a> links here with it filled in.</p>
 
@@ -217,7 +217,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
             <li>Everything above the deck is the <b>coil zone</b>: air or coil blocks (metal storage blocks from the list). Any other block stops it forming.</li>
             <li>A <b>Turbine Resource Port</b> set to Insert takes steam; one set to Extract gives the water back. A <b>Turbine Power Port</b> sends the RF out. The <b>Turbine Controller</b> goes outside the box against a side wall (not top or bottom). Exactly one. At most one <b>Turbine Redstone Port</b>.</li>
           </ol>
-          <p class="hint" style="margin-top:8px">From <code>TurbineValidation</code> and <code>TurbineBladePlacement</code> in the Colossal Reactors 26.1.2-2.4.1.0.0 jar.</p>
+          <p class="hint" style="margin-top:8px">From <code>TurbineValidation</code> and <code>TurbineBladePlacement</code> in the Colossal Reactors 26.1.2-2.4.2.0.0.0 jar.</p>
         </details>
       </div>
       <div class="box">
@@ -316,10 +316,11 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
     <h2>What the code actually says</h2>
     <div class="facts">
       <div class="fact">
-        <h3>One coil block is enough</h3>
-        <p>Coil efficiency is the average of the coil blocks in the coil zone. Air isn't counted, so a single gold block in an otherwise empty zone gives the same 100% as a zone full of gold. Only a zone with no coil block at all drops to 30%. In game, one gold block and 25 gold blocks both gave 54,000 RF/t.</p>
-<pre>coilEff = Σ eff_coe / coil blocks   (air skipped)
-        = 0.3 if there are none</pre>
+        <h3>Fill the whole coil layer</h3>
+        <p>Since Colossal Reactors 2.4.2, coil efficiency is the average over every cell of the coil zone, and an empty cell counts as 30%. One gold block in a 25-cell layer gives 32.8%, not 100%. In game on 2.4.2: one gold block 17,711 RF/t, a full layer of gold 54,000. Any metal block beats an empty cell, so a mixed layer beats gaps, and a full layer of your best metal beats both. Up to 2.4.1 air was skipped and one block did the job of a full layer; the author called that a bug. FTB Evolution 2 1.4.1 still ships 2.4.1, so its preset keeps the old rule (config <code>001_legacyIgnoreAirInCoilAverage</code>).</p>
+<pre>coilEff = Σ eff_coe / coil-zone cells   (air = 0.3)
+2.4.1, or legacyIgnoreAirInCoilAverage:
+coilEff = Σ eff_coe / coil blocks       (air skipped)</pre>
         <span class="ref">TurbineValidation.validateInternal</span>
       </div>
       <div class="fact">
@@ -381,7 +382,7 @@ const $=id=>document.getElementById(id);
 const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
 
 /* ================= mod data ================= */
-/* MODEL START (research/colossal-reactors-2.4.1.0.0-turbine.md; the test harness evals this block) */
+/* MODEL START (research/colossal-reactors-2.4.1.0.0-turbine.md, plus the 2.4.2 coil-average change; the test harness evals this block) */
 // data/colossal_reactors/recipe/turbine/elec_coils.json: [id, name, selector, color, eff_coe, eff_max, pack key].
 // Only eff_coe reaches the controller: TurbineValidation takes min(avg eff_coe, avg eff_max), and no shipped block
 // has eff_max below eff_coe. FTB Evolution 2 replaces the list ("overwrite": true) with the same twelve plus FTB's coils.
@@ -483,14 +484,24 @@ function simulate(s,cfg){
   let bladeEff=1, broken=false, ups=0, downs=0;
   for(let i=1;i<counts.length;i++){ if(counts[i]>counts[i-1]){ if(!broken){ bladeEff+=cfg.bonus; ups++; } } else if(counts[i]<counts[i-1]){ broken=true; bladeEff-=cfg.malus; downs++; } }
   bladeEff=Math.max(0.01,bladeEff);
-  // coil zone: average eff_coe (and eff_max) over the coil blocks only. Air in the coil zone is skipped, so it doesn't
-  // pull the average down; emptyCoilEfficiency (0.3) applies only when the zone holds no coil block at all.
-  const zone=iw*id;
+  // coil zone (TurbineValidation, 2.4.2+): every cell of the zone is averaged, air at emptyCoilEfficiency (0.3, the
+  // datapack's minecraft:air entry or the config fallback). With 001_legacyIgnoreAirInCoilAverage (2.4.1 and older, and
+  // FTB Evolution 2 until it ships 2.4.2) air is skipped and 0.3 only applies to a zone with no coil block at all.
+  // The game adds one cell at a time while scanning x, y, z, so the sum is built the same way: an empty 25-cell layer
+  // sums to 7.499999999999999, not 7.5, and reads 16,199 RF/t, not 16,200 (checked in game).
+  const zone=iw*id, cells=c*zone;
   let coilBlocks=0, sumCoe=0, sumMax=0; const coilCounts={};
+  const order=[];   // one entry per coil-zone cell in scan order: a coil id, or null for air
   if(hasCoil){
-    const m=mix||{[s.coil]:s.coilFill==="one"?1:c*zone};
-    for(const [k,n] of Object.entries(m)){ const v=Math.max(0,Math.min(c*zone,n|0)); if(!v||!COIL[k]) continue; coilBlocks+=v; sumCoe+=v*COIL[k].coe; sumMax+=v*COIL[k].max; coilCounts[k]=v; }
+    const m=mix||{[s.coil]:s.coilFill==="one"?1:cells};
+    for(const [k,n] of Object.entries(m)){ const v=Math.max(0,Math.min(cells,n|0)); if(!v||!COIL[k]) continue; coilCounts[k]=v; for(let i=0;i<v;i++) order.push(k); }
   }
+  if(!cfg.legacyAir){ // the one-block case: the block sits in the middle of the zone, air around it
+    const air=Math.max(0,cells-order.length);
+    if(order.length===1){ const mid=Math.floor(cells/2); for(let i=0;i<air;i++) order.splice(i<mid?i:order.length,0,null); }
+    else for(let i=0;i<air;i++) order.push(null);
+  }
+  for(const k of order){ coilBlocks++; if(k){ sumCoe+=COIL[k].coe; sumMax+=COIL[k].max; } else { sumCoe+=cfg.emptyCoil; sumMax+=cfg.emptyCoil; } }
   const coilEff=coilBlocks>0?Math.min(sumCoe/coilBlocks,sumMax/coilBlocks):cfg.emptyCoil;
   // TurbineProductionMath.compute
   const steamCap=validBlades*cfg.bladeSteam*cfg.cons;
@@ -510,14 +521,14 @@ function simulate(s,cfg){
 
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
 // FTB Evolution 2 (1.4.1) values live in /data/packs.js.
-const DEFAULTS={maxW:65,maxL:65,maxH:65,minRf:0,prod:1,cons:1,maxRing:31,bonus:0.03,malus:0.03,balanced:1,bladeSteam:1000,emptyCoil:0.3,rfPerMb:4,ftbCoils:0};
+const DEFAULTS={maxW:65,maxL:65,maxH:65,minRf:0,prod:1,cons:1,maxRing:31,bonus:0.03,malus:0.03,balanced:1,bladeSteam:1000,emptyCoil:0.3,legacyAir:0,rfPerMb:4,ftbCoils:0};
 const CFG_FIELDS=[
   ["maxW","turbine.size.000_maxTurbineWidth",3,65,1],["maxL","turbine.size.001_maxTurbineLength",3,65,1],["maxH","turbine.size.002_maxTurbineHeight",5,65,1],
   ["minRf","turbine.base.101b_minRfPerTick",0,1e9],
   ["prod","turbine.balance.000_productionMultiplier",0,100],["cons","turbine.balance.001_consumptionMultiplier",0,100],
   ["maxRing","turbine.blade.000_maxBladeRing",1,64,1],["bonus","turbine.blade.001_efficiencyBonusPerAscendingLayer",0,1],
   ["malus","turbine.blade.002_efficiencyMalusPerDescendingLayer",0,1],["balanced","turbine.blade.003_requireBalancedBladeRings",0,1,1],
-  ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],["emptyCoil","turbine.coil.000_emptyCoilEfficiency",0,10],
+  ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],["emptyCoil","turbine.coil.000_emptyCoilEfficiency",0,10],["legacyAir","turbine.coil.001_legacyIgnoreAirInCoilAverage",0,1,1],
   ["rfPerMb","turbine.water.rf_production",0,1e6,0,"Datapack recipes (1 = present, 0 = not)"],["ftbCoils","coil.ftb",0,1,1],
 ];
 const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEFAULTS, CFG_FIELDS);
@@ -847,7 +858,7 @@ function renderResults(R){
   const iw=iwOf(), id=idOf();
   $("dims").innerHTML=`<span>Exterior <b>${state.X}×${state.Z}×${state.Y}</b></span><span>Inside <b>${iw}×${id}×${state.Y-2}</b></span>`+(R.ok?`<span>Rod layers <b>${R.rodLayers}</b></span><span>Deck <b>1</b></span><span>Coil layers <b>${R.c}</b></span>`:"");
   $("ringHint").textContent=state.profile==="climb"?`Rod layer 1 gets 1 ring, layer 2 gets 2, and so on up to ${state.ring}. A ring is 4 blades; a rod stops early where a ring would hit the casing, another rod or a blade.`:`Every rod layer gets ${state.ring} ring${state.ring===1?"":"s"} (${state.ring*4} blades) per rod where they fit. A ring is 4 blades; a rod stops at the last ring that fits.`;
-  $("coilHint").textContent=R.ok?`The coil zone is the ${R.c} layer${R.c>1?"s":""} above the deck, ${fmt(iw*id*R.c)} cells. `+(state.coil==="air"?`With no coil block in it, coil efficiency is ${pct(cfg.emptyCoil)}.`:state.coilFill==="one"?`One block anywhere in it sets the efficiency; the rest stays air.`:`Air left in the zone wouldn't lower the efficiency, so one block does the same job.`):"";
+  $("coilHint").textContent=R.ok?`The coil zone is the ${R.c} layer${R.c>1?"s":""} above the deck, ${fmt(iw*id*R.c)} cells. `+(state.coil==="air"?`With no coil block in it, coil efficiency is ${pct(cfg.emptyCoil)}.`:cfg.legacyAir?(state.coilFill==="one"?`One block anywhere in it sets the efficiency; the rest stays air (this config skips air).`:`This config skips air, so one block would do the same job.`):state.coilFill==="one"?`The other ${fmt(iw*id*R.c-1)} cells are air and count as ${pct(cfg.emptyCoil)} each: fill the layer.`:`Every cell counts, so the zone is full.`):"";
   if(!R.ok){ $("results").innerHTML=""; $("hudMain").textContent="—"; $("hudSub").textContent="";
     $("notes").innerHTML=`<li class="bad">${R.err==="noRotor"?"No room for a rotor: the inside needs at least one rod layer, the deck and one coil layer. Make the casing taller or use fewer coil layers.":"The casing is too small."}</li>`; return; }
   $("hudMain").innerHTML=R.formed?`${fmt(R.rf)} <small>RF/t</small>`:`Won't form`;
@@ -870,7 +881,8 @@ function renderResults(R){
   if(!state.rods.length) n.push(["bad","No rods: the turbine forms but has no blades, so it takes no steam and makes nothing. Use One shaft or Rod grid, or click cells in the rotor view."]);
   if(R.formed&&state.steam!=null&&state.steam>R.steamCap) n.push(["warn",`${fmt(state.steam-R.steamCap)} mB/t of the steam has nowhere to go: the blades take ${fmt(R.steamCap)}. That needs ${fmt(Math.ceil((state.steam-R.steamCap)/cfg.bladeSteam/cfg.cons))} more blades. Steam that isn't used backs up in the pipes.`]);
   if(R.formed&&state.steam!=null&&state.steam<R.steamCap) n.push(["good",`The blades could take ${fmt(R.steamCap)} mB/t; with ${fmt(state.steam)} piped in the turbine makes ${pct(R.scale)} of its maximum. RF per mB doesn't change with the load.`]);
-  if(R.formed&&state.coil!=="air"&&state.coilFill==="full"&&R.coilBlocks>1) n.push(["good",`One ${COIL[state.coil].name.replace("Block of ","").toLowerCase()} block in the coil zone gives the same ${pct(R.coilEff)} coil efficiency as these ${fmt(R.coilBlocks)}. The controller averages only the coil blocks and skips air. Checked in game.`]);
+  if(R.formed&&state.coil!=="air"&&state.coilFill==="full"&&R.coilBlocks>1&&cfg.legacyAir) n.push(["good",`On this config one ${COIL[state.coil].name.replace("Block of ","").toLowerCase()} block in the coil zone gives the same ${pct(R.coilEff)} coil efficiency as these ${fmt(R.coilBlocks)}: air is skipped (Colossal Reactors 2.4.1 and older). From 2.4.2 every cell counts. Checked in game on both.`]);
+  if(R.formed&&state.coil!=="air"&&state.coilFill==="one"&&!cfg.legacyAir) n.push(["warn",`One coil block in a ${fmt(iw*id*R.c)}-cell zone gives ${pct(R.coilEff)}: every empty cell counts as ${pct(cfg.emptyCoil)} (Colossal Reactors 2.4.2+). Fill the layer for ${pct(Math.min(COIL[state.coil].coe,COIL[state.coil].max))}.`]);
   if(state.coil==="air") n.push(["warn",`No coil blocks: coil efficiency is ${pct(cfg.emptyCoil)}. A single block of iron (66%) or gold (100%) anywhere above the deck fixes that.`]);
   if(R.c>1) n.push(["warn",`${R.c} coil layers. More coil layers don't raise the efficiency, they only take rod layers away: with 1 coil layer this casing would have ${R.rodLayers+R.c-1} rod layers.`]);
   if(R.formed&&state.rods.length===1&&state.rods[0]===R.ctr.x*id+R.ctr.z&&iw>=5&&id>=5){
@@ -887,8 +899,10 @@ function renderResults(R){
 
 /* steam → turbine: the smallest square turbine that takes all of it, and the one that gets the most RF out of it */
 function suggest(S){
-  const coilEff=state.coil==="air"?cfg.emptyCoil:COIL[state.coil].coe, maxN=Math.min(cfg.maxW,cfg.maxL), out=[];
+  const maxN=Math.min(cfg.maxW,cfg.maxL), out=[];
   for(let n=5;n<=maxN;n++){ const iw=n-2;
+    const cells=iw*iw, coe=state.coil==="air"?cfg.emptyCoil:COIL[state.coil].coe;   // one coil layer
+    const coilEff=state.coil==="air"?cfg.emptyCoil:state.coilFill==="one"&&!cfg.legacyAir?(coe+(cells-1)*cfg.emptyCoil)/cells:coe;
     for(const pat of ["grid","shaft"]){
       const best=bestLayout(iw,iw), rods=pat==="grid"?best.rods:shaftRodsFor(iw,iw), rmax=pat==="grid"?best.ring:centerRing(iw,iw,cfg.maxRing);
       const L=[]; for(let t=1;t<=rmax;t++) L[t]=bladeLayer(iw,iw,rods,t,cfg.maxRing,cfg.balanced);
