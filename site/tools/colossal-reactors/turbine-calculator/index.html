@@ -318,7 +318,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
     <div class="facts">
       <div class="fact">
         <h3>Fill the whole coil layer</h3>
-        <p>Since Colossal Reactors 2.4.2, coil efficiency is the average over every cell of the coil zone, and an empty cell counts as 30%. One gold block in a 25-cell layer gives 32.8%, not 100%. In game on 2.4.2: one gold block 17,711 RF/t, a full layer of gold 54,000. Any metal block beats an empty cell, so a mixed layer beats gaps, and a full layer of your best metal beats both. Up to 2.4.1 air was skipped and one block did the job of a full layer; the author called that a bug. FTB Evolution 2 1.4.1 still ships 2.4.1, so its preset keeps the old rule (config <code>001_legacyIgnoreAirInCoilAverage</code>).</p>
+        <p>Since Colossal Reactors 2.4.2, coil efficiency is the average over every cell of the coil zone, and an empty cell counts as 30%. One gold block in a 25-cell layer gives 32.8%, not 100%. In game on 2.4.2: one gold block 17,711 RF/t, a full layer of gold 54,000. Any metal block beats an empty cell, so a mixed layer beats gaps, and a full layer of your best metal beats both. Up to 2.4.1 air was skipped and one block did the job of a full layer; the author called that a bug. FTB Evolution 2 1.5.1 still ships 2.4.1, so its preset keeps the old rule (config <code>001_legacyIgnoreAirInCoilAverage</code>).</p>
 <pre>coilEff = Σ eff_coe / coil-zone cells   (air = 0.3)
 2.4.1, or legacyIgnoreAirInCoilAverage:
 coilEff = Σ eff_coe / coil blocks       (air skipped)</pre>
@@ -326,7 +326,7 @@ coilEff = Σ eff_coe / coil blocks       (air skipped)</pre>
       </div>
       <div class="fact">
         <h3>A rod controller on every rod</h3>
-        <p>From Colossal Reactors 2.5 a turbine can have several rod controllers: all in the deck, all facing the same way, each right on top of a rod. If any rod has none, blade efficiency is multiplied by 0.95. The Turbine Builder puts one on every rod it places. Up to 2.4 a turbine had exactly one, in the middle of the deck, and FTB Evolution 2 1.4.1 still ships 2.4.1.</p>
+        <p>From Colossal Reactors 2.5 a turbine can have several rod controllers: all in the deck, all facing the same way, each right on top of a rod. If any rod has none, blade efficiency is multiplied by 0.95. The Turbine Builder puts one on every rod it places. Up to 2.4 a turbine had exactly one, in the middle of the deck, and FTB Evolution 2 1.5.1 still ships 2.4.1.</p>
 <pre>bladeEff × 0.95   if a rod has no
                   rod controller above it</pre>
         <span class="ref">TurbineBladeEfficiency.computeFromRotorLayout · TurbineValidation</span>
@@ -561,7 +561,7 @@ function simulate(s,cfg){
 /* MODEL END */
 
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
-// FTB Evolution 2 (1.4.1) values live in /data/packs.js.
+// FTB Evolution 2 (1.5.1) values live in /data/packs.js.
 const DEFAULTS={maxW:65,maxL:65,maxH:65,minRf:0,prod:1,cons:1,maxRing:31,bonus:0.03,malus:0.03,balanced:1,bladeSteam:1000,emptyCoil:0.3,legacyAir:0,rfPerMb:4,ftbCoils:0,v25:1};
 const CFG_FIELDS=[
   ["maxW","turbine.size.000_maxTurbineWidth",3,65,1],["maxL","turbine.size.001_maxTurbineLength",3,65,1],["maxH","turbine.size.002_maxTurbineHeight",5,65,1],
@@ -949,7 +949,7 @@ function renderResults(R){
 // TurbineBuilderBlockEntity Website pattern (Colossal Reactors 2.5+): reads this page's mdct1 code
 // (builder/web/ModDecodedTurbineDesign), builds the casing, deck, a rod controller per rod, rods, blades and coils.
 function renderBuilder(R){
-  if(!(cfg.v25>0)){ $("dBuilder").innerHTML=`From Colossal Reactors 2.5 the Turbine Builder can build a design from this code (its Website pattern). FTB Evolution 2 1.4.1 ships 2.4.1, which doesn't have it.`; return; }
+  if(!(cfg.v25>0)){ $("dBuilder").innerHTML=`From Colossal Reactors 2.5 the Turbine Builder can build a design from this code (its Website pattern). FTB Evolution 2 1.5.1 ships 2.4.1, which doesn't have it.`; return; }
   let t=`Colossal Reactors 2.5 or newer: put a Turbine Builder on its <b>Website</b> pattern and paste the code or link (Ctrl+V). It builds the casing, deck, rod controllers, rods, blades and coils; the Turbine Controller and ports are yours to add.`;
   if(R.ok&&R.formed&&state.rods.length){
     const B=simulate({...modelState(),coilFill:"full",builder:true},cfg), why=[];

@@ -297,7 +297,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
         <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
         <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
-        <p class="hint">Colossal Reactors 2.5 or newer: put a Reactor Builder on its <b>Website</b> pattern and paste the code or link (Ctrl+V). It builds the casing, rods, rod controllers and every heat sink where it is here; the Reactor Controller and ports are yours to add. FTB Evolution 2 1.4.1 ships 2.4.1, which doesn't have the Website pattern.</p>
+        <p class="hint">Colossal Reactors 2.5 or newer: put a Reactor Builder on its <b>Website</b> pattern and paste the code or link (Ctrl+V). It builds the casing, rods, rod controllers and every heat sink where it is here; the Reactor Controller and ports are yours to add. FTB Evolution 2 1.5.1 ships 2.4.1, which doesn't have the Website pattern.</p>
       </div>
     </section>
   </div>
@@ -349,7 +349,7 @@ k = 0.5 × (0.4 + 0.5 × 400/(n+400))</pre>
       </div>
       <div class="fact">
         <h3>FTB Evolution 2's guide is out of date</h3>
-        <p>The pack's in-game guide still describes its 1.3.0 values. Pack 1.3.1 changed the config and the water coolant again; the calculator uses what the pack ships now (1.4.1).</p>
+        <p>The pack's in-game guide still describes its 1.3.0 values. Pack 1.3.1 changed the config and the water coolant again; the calculator uses what the pack ships now (1.5.1).</p>
         <table>
           <tr><th></th><th>Guide</th><th>Config</th></tr>
           <tr><td>Rod power exponent</td><td>0.55</td><td>0.76</td></tr>
@@ -495,7 +495,7 @@ function simulate(s,cfg){
 /* MODEL END */
 
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
-// FTB Evolution 2 (1.4.1) values live in /data/packs.js.
+// FTB Evolution 2 (1.5.1) values live in /data/packs.js.
 const DEFAULTS = {maxW:65,maxL:65,maxH:65, minRf:500, minFuel:0.05, rodMax:10000, rfLoss:0.2, fuelEff:1, prod:1, cons:1,
   consScale:1.72, decay:400, penalty:0.25, eMode:1, eExp:0.9, eK:600, fMode:1, fExp:1, fK:600,
   wAdj:1, wNon:0.5, hsDiv:1.35, hsRf:1.16, hsFuel:1.21,
