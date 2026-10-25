@@ -192,7 +192,9 @@ window.MD_PACKS = [
         "turbine.size.000_maxTurbineWidth": 32, "turbine.size.001_maxTurbineLength": 32, "turbine.size.002_maxTurbineHeight": 32,
         "coil.ftb": 1,
         // the pack ships Colossal Reactors 2.4.1, which skips air when averaging the coil zone (fixed in 2.4.2)
-        "turbine.coil.001_legacyIgnoreAirInCoilAverage": 1 } },
+        "turbine.coil.001_legacyIgnoreAirInCoilAverage": 1,
+        // and the 2.4 rotor: one rod controller in the middle of the deck, and a rod counts every blade touching its run (2.5 changed both)
+        "rotor.2_5": 0 } },
     },
   },
 ];

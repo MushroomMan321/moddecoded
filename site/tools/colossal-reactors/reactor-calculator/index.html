@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Colossal Reactors Reactor Calculator (FTB Evolution 2)</title>
-<meta name="description" content="Colossal Reactors reactor calculator: paint rods and heat sinks or use the Reactor Builder patterns, and get RF/t, steam, fuel burn and turbine needs from the mod's real formulas (26.1.2-2.4.2.0.0.0), with the FTB Evolution 2 config built in.">
+<meta name="description" content="Colossal Reactors reactor calculator: paint rods and heat sinks or use the Reactor Builder patterns, and get RF/t, steam, fuel burn and turbine needs from the mod's real formulas (26.1.2-2.5.0.0.0), with the FTB Evolution 2 config built in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
@@ -174,7 +174,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Colossal Reactors / Reactor Calculator</nav>
   <header class="top">
     <h1>Colossal Reactors <span class="y">Reactor Calculator</span></h1>
-    <span class="src">Uses the Colossal Reactors 26.1.2-2.4.2.0.0.0 reactor formulas</span>
+    <span class="src">Uses the Colossal Reactors 26.1.2-2.5.0.0.0 reactor formulas</span>
   </header>
   <p class="lede">Paint rods and heat sinks, or lay out the same patterns the Reactor Builder uses, and see the RF/t or steam, fuel burn and turbine needs the controller will show. Pick <b>FTB Evolution 2</b> under Modpack for that pack's config: it changes the numbers a lot.</p>
 
@@ -210,7 +210,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
             <li>A <b>Reactor Resource Port</b> set to Insert takes fuel (and water); one set to Extract gives waste (and steam). The default filter handles both. Press Reboot on the controller after changing a port's mode or filter.</li>
             <li>With no coolant inside, the reactor sends RF out of a <b>Reactor Power Port</b>. Pipe water in and it turns its RF into steam instead.</li>
           </ol>
-          <p class="hint" style="margin-top:8px">From <code>ReactorValidation.validate</code> in the Colossal Reactors 26.1.2-2.4.2.0.0.0 jar.</p>
+          <p class="hint" style="margin-top:8px">From <code>ReactorValidation.validate</code> in the Colossal Reactors 26.1.2-2.5.0.0.0 jar.</p>
         </details>
       </div>
       <div class="box">
@@ -297,6 +297,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
         <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
         <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
+        <p class="hint">Colossal Reactors 2.5 or newer: put a Reactor Builder on its <b>Website</b> pattern and paste the code or link (Ctrl+V). It builds the casing, rods, rod controllers and every heat sink where it is here; the Reactor Controller and ports are yours to add. FTB Evolution 2 1.4.1 ships 2.4.1, which doesn't have the Website pattern.</p>
       </div>
     </section>
   </div>
@@ -377,7 +378,7 @@ const $=id=>document.getElementById(id);
 const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
 
 /* ================= mod data ================= */
-/* MODEL START (research/colossal-reactors-2.4.1.0.0-reactor.md; reactor maths unchanged in 2.4.2; the test harness evals this block) */
+/* MODEL START (research/colossal-reactors-2.4.1.0.0-reactor.md; reactor maths unchanged in 2.4.2 and 2.5; the test harness evals this block) */
 // data/colossal_reactors/recipe/reactor/reactor_fuel.json. units = units_per_fuel (one item), rf = base_rf_per_tick,
 // burn = base_fuel_units_per_tick, waste = units_per_waste. Mekanism fissile fuel (a chemical) is left out: no Mekanism on 26.1.
 const FUELS = {
