@@ -301,7 +301,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Output</h2>
         <div class="results" id="results"></div>
         <ul class="notes" id="notes"></ul>
-        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. The Colossal Reactors 2.5 rotor rules (a rod controller per rod, which blades a rod counts, the Turbine Builder's Website import) come from the 2.5 source.</p>
+        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. Checked in game on Colossal Reactors 2.5 too (2026-10-25, same config values): a shaft, five rods with a rod controller on every rod (135,000 RF/t) and with one taken away (128,250), the Turbine Builder's Hyperflow layout, a Website import of a rod grid, and a deck with a gap, all as the page shows.</p>
       </div>
       <div class="box" id="share">
         <h2>Share this design</h2>
@@ -333,7 +333,7 @@ coilEff = Σ eff_coe / coil blocks       (air skipped)</pre>
       </div>
       <div class="fact">
         <h3>2.4: air counts as coil, so the deck must be solid</h3>
-        <p>Up to 2.4 the controller finds the coil zone by counting layers down from the roof that hold a coil block, and its coil check says yes to air. The count only stops at a layer with no air at all. Leave a gap in the deck around the rod controller and the count runs down into the rotor, and the turbine won't form. From 2.5 it takes the deck from the layer the rod controllers sit in instead.</p>
+        <p>Up to 2.4 the controller finds the coil zone by counting layers down from the roof that hold a coil block, and its coil check says yes to air. The count only stops at a layer with no air at all. Leave a gap in the deck around the rod controller and the count runs down into the rotor, and the turbine won't form. From 2.5 it takes the deck from the layer the rod controllers sit in instead, and a gap in the deck no longer matters (checked in game).</p>
 <pre>2.4: inferCoilLayersFromStructure
        isCoilBlock(air) == true
 2.5: coilLayersFromControllerDeck</pre>
