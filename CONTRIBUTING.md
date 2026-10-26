@@ -85,6 +85,7 @@ Defaults are for Mekanism 10.7 (MC 1.21.1). Older Mekanism versions use some dif
 | `usage.chemicalOxidizer` | machine-usage.toml | 200 |
 | `usage.rotaryCondensentrator` | machine-usage.toml | 50 |
 | `kubejs.atmOreProcessing` | 1 if the pack ships ATM's `kubejs/server_scripts/mods/Mekanism/ore_processing.js` (ore processing calculator) | 0 |
+| `mekanism_unleashed.maxUpgrades` | `[Tweaks] maxUpgrades` in `config/mekanism_unleashed-startup.toml`, if the pack ships the Mekanism Unleashed add-on: the most speed and energy upgrades a machine takes (ore processing and fusion calculators). Leave it out if the pack doesn't ship the mod | 8 |
 
 ### Ryzer Gen: `config/ryzergen-common.toml`
 
