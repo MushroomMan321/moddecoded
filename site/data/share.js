@@ -8,7 +8,8 @@
      share.atLoad            -> {preset, design} parsed from the link on page load (design already decoded, or null)
      share.render()          -> call at the end of every update
      share.live()            -> call once after the first update, so a plain visit keeps a clean URL
-   apply(design) must store the design and re-render the page. preset() returns the current pack preset key. */
+   apply(design) must store the design and re-render the page. preset() returns the current pack preset key.
+   prefixes (optional): every code prefix the page reads, if it writes more than one format. */
 (function(){
 "use strict";
 const b64u={
@@ -37,7 +38,9 @@ const quietReplace=u=>{ try{ history.replaceState(null,"",u); }catch(e){} };
 
 function mdShare(o){
   const $=id=>document.getElementById(id), box=$("dCode"), msg=$("dMsg");
-  const find=v=>{ const m=new RegExp(o.prefix.replace(/\./g,"\\.")+"\\.[^&\\s#]+").exec(safeDecode(v||"")); return m?o.decode(m[0]):null; };
+  // prefixes: every format the page reads, when it writes more than one (prefix stays the main one)
+  const prefixes=o.prefixes||[o.prefix];
+  const find=v=>{ const m=new RegExp("(?:"+prefixes.map(p=>p.replace(/\./g,"\\.")).join("|")+")\\.[^&\\s#]+").exec(safeDecode(v||"")); return m?o.decode(m[0]):null; };
   const readHash=()=>{ let preset=null, design=null;
     for(const part of safeDecode(location.hash.slice(1)).split("&")) if(part.startsWith("d=")) design=find(part.slice(2)); else if(o.isPreset(part)) preset=part;
     return {preset,design}; };
@@ -53,7 +56,7 @@ function mdShare(o){
   $("dLink").onclick=()=>copy(url(),"Link copied.");
   $("dCopy").onclick=()=>copy(o.encode(),"Design code copied.");
   box.oninput=()=>{ const d=find(box.value); if(d){ o.apply(d); say(o.loaded?o.loaded(d)||"Design loaded.":"Design loaded."); } };
-  box.onchange=()=>{ if(!find(box.value)) say(`That isn't a design code for this calculator. Codes here start with ${o.prefix}.`); box.value=o.encode(); };
+  box.onchange=()=>{ if(!find(box.value)) say(`That isn't a design code for this calculator. Codes here start with ${prefixes.join(" or ")}.`); box.value=o.encode(); };
   let live=false, timer=0;
   // onPreset(key) switches the pack preset and re-renders; apply(design) loads the design and re-renders
   addEventListener("hashchange",()=>{ const h=readHash(); if(h.preset&&o.onPreset) o.onPreset(h.preset); if(h.design) o.apply(h.design); });

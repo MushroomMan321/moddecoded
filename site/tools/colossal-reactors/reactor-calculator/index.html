@@ -272,7 +272,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
               </select>
               <button class="btn" type="button" data-pattern="0">Dots</button>
               <button class="btn" type="button" data-pattern="1">Checkerboard</button>
-              <button class="btn" type="button" data-pattern="2">Expansion</button>
+              <button class="btn" type="button" data-pattern="2">Frame</button>
             </div>
             <p class="hint" id="builderHint">The same rods the Reactor Builder places. Its heat sink is the block selected above (pick air for none).</p>
           </div>
@@ -412,25 +412,28 @@ const SINK = Object.fromEntries(SINKS.map(m=>[m.id,m]));
 const NEUTRAL = {fuel:1,energy:1,heat:1};   // HeatSinkLoader's fallback when a fluid has no heat sink entry
 const ROD = {id:"rod",name:"Reactor Rod",src:"Colossal Reactors",color:"#5BC236",kind:"rod"};
 
-// RodPatternLogic: 0 dots, 1 checkerboard, 2 expansion. Modes: 0 optimized, 1 production, 2 economy, 3 super economy.
-// Production puts rods right up to the walls (inset 1); the rest keep a ring of non-rod cells along the walls (inset 2).
-function expansionCol(rx,rz,rw,rd,layers,center){
-  if(rx===0||rx===rw-1||rz===0||rz===rd-1) return true;
-  for(let L=1;L<layers;L++) if(rx===L||rx===rw-1-L||rz===L||rz===rd-1-L) return true;
+// RodPatternLogic: 0 dots, 1 checkerboard, 2 expansion (the game's "Frame"). Modes: 0 optimized, 1 production, 2 economy,
+// 3 super economy. Production puts rods right up to the walls (inset 1); the rest keep a ring of non-rod cells along the
+// walls (inset 2). Frame up to 2.5: nested rectangles with no gap (layers 1-3); 2.6 (v26): rings two cells apart, a rod
+// where the distance to the edge is even and under 2 × layers, as many layers as fit.
+function expansionCol(rx,rz,rw,rd,layers,center,v26){
+  if(v26){ const dist=Math.min(rx,rw-1-rx,rz,rd-1-rz); if(dist%2===0&&dist/2<layers) return true; }
+  else { if(rx===0||rx===rw-1||rz===0||rz===rd-1) return true;
+    for(let L=1;L<layers;L++) if(rx===L||rx===rw-1-L||rz===L||rz===rd-1-L) return true; }
   if(!center) return false;
   const cx=rw>>1, cz=rd>>1, inX=rw&1?rx===cx:rx>=cx-1&&rx<=cx, inZ=rd&1?rz===cz:rz>=cz-1&&rz<=cz;
   return inX&&inZ;
 }
-function expansionCount(rw,rd,layers,center){ let n=0; for(let x=0;x<rw;x++)for(let z=0;z<rd;z++) if(expansionCol(x,z,rw,rd,layers,center)) n++; return n; }
+function expansionCount(rw,rd,layers,center,v26){ let n=0; for(let x=0;x<rw;x++)for(let z=0;z<rd;z++) if(expansionCol(x,z,rw,rd,layers,center,v26)) n++; return n; }
 function builderRods(ix,iz,pattern,mode){
   const inset=mode===1?0:1, rw=Math.max(0,ix-2*inset), rd=Math.max(0,iz-2*inset), rods=new Array(ix*iz).fill(false);
-  let layers=1, center=true;
+  let layers=1, center=true; const v26=cfg.v26>0;
   if(pattern===2&&Math.min(rw,rd)>=3){
-    const m=Math.min(rw,rd); layers=m<5?1:m<7?2:(expansionCount(rw,rd,3,true)>=expansionCount(rw,rd,2,true)?3:2);
-    center=expansionCount(rw,rd,layers,true)>=expansionCount(rw,rd,layers,false);
+    const m=Math.min(rw,rd); layers=v26?(((m-1)>>1)>>1)+1:m<5?1:m<7?2:(expansionCount(rw,rd,3,true)>=expansionCount(rw,rd,2,true)?3:2);
+    center=expansionCount(rw,rd,layers,true,v26)>=expansionCount(rw,rd,layers,false,v26);
   }
   for(let rx=0;rx<rw;rx++)for(let rz=0;rz<rd;rz++){
-    const on = pattern===0 ? rx%2===0&&rz%2===0 : pattern===1 ? (rx+rz)%2===0 : Math.min(rw,rd)>=3&&expansionCol(rx,rz,rw,rd,layers,center);
+    const on = pattern===0 ? rx%2===0&&rz%2===0 : pattern===1 ? (rx+rz)%2===0 : Math.min(rw,rd)>=3&&expansionCol(rx,rz,rw,rd,layers,center,v26);
     if(on) rods[(rx+inset)*iz+(rz+inset)]=true;
   }
   return {rods,inset};
@@ -499,7 +502,7 @@ function simulate(s,cfg){
 const DEFAULTS = {maxW:65,maxL:65,maxH:65, minRf:500, minFuel:0.05, rodMax:10000, rfLoss:0.2, fuelEff:1, prod:1, cons:1,
   consScale:1.72, decay:400, penalty:0.25, eMode:1, eExp:0.9, eK:600, fMode:1, fExp:1, fK:600,
   wAdj:1, wNon:0.5, hsDiv:1.35, hsRf:1.16, hsFuel:1.21,
-  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1, ftbArmory:0};
+  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1, ftbArmory:0, v26:1};
 const CFG_FIELDS=[
   ["maxW","reactor.size.000_maxReactorWidth",3,65,1],["maxL","reactor.size.001_maxReactorLength",3,65,1],["maxH","reactor.size.002_maxReactorHeight",3,65,1],
   ["minRf","reactor.base.101b_minRfPerTick",0,1e9],["minFuel","reactor.base.101c_minFuelUnitsPerTick",0,100],["rodMax","reactor.base.000_rodMaxFuelUnits",1,1e9,1],
@@ -514,6 +517,7 @@ const CFG_FIELDS=[
   ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],
   ["waterFactor","coolant.water.rf_to_coolant_factor",0,100,0,"Datapack recipes (1 = present, 0 = not)"],["steamPerWater","coolant.water.steam_per_coolant",0,100],
   ["turbineRf","turbine.water.rf_production",0,1e6],["redCake","fuel.red_cake",0,1,1],["industrialCoolant","heat_sink.industrial_coolant",0,1,1],["peridot","tag.peridot",0,1,1],["ftbArmory","heat_sink.ftb_armory",0,1,1],
+  ["v26","mod.2_6",0,1,1,"Mod version (1 = 2.6 or newer: the Reactor Builder's Frame layout)"],
 ];
 const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEFAULTS, CFG_FIELDS);
 let cfgPreset="default", cfg={...PRESETS.default};
