@@ -177,12 +177,12 @@ window.MD_PACKS = [
     },
   },
   {
-    // FTB Evolution 2 1.4.1 (FTB App pack 135, version 100567) ships Colossal Reactors 2.4.1.0.0. Values from its
+    // FTB Evolution 2 1.5.1 (FTB App pack 135, version 100577) ships Colossal Reactors 2.4.1.0.0, as 1.4.1 did (same files). Values from its
     // config/colossal_reactors-common.toml and datapacks/ftb/data/colossal_reactors/recipe/{reactor,turbine}/*.json, which
     // replace the jar's recipe files. The pack's own guide page still shows the 1.3.0 values (exponent 0.55, 0.8 steam per mB, 48 mB a blade).
     // Keys without a numbered prefix are datapack values (see the Colossal Reactors calculator's CFG_FIELDS); 1/0 = present or not.
     id: "ftb-evolution-2", name: "FTB Evolution 2", mc: "26.1.2",
-    source: { repo: "https://www.feed-the-beast.com/modpacks/135-ftb-evolution-2", version: "1.4.1", checked: "2026-10-20" },
+    source: { repo: "https://www.feed-the-beast.com/modpacks/135-ftb-evolution-2", version: "1.5.1", checked: "2026-10-25" },
     mods: {
       colossal_reactors: { config: {
         "reactor.size.000_maxReactorWidth": 32, "reactor.size.001_maxReactorLength": 32, "reactor.size.002_maxReactorHeight": 32,
@@ -192,7 +192,9 @@ window.MD_PACKS = [
         "turbine.size.000_maxTurbineWidth": 32, "turbine.size.001_maxTurbineLength": 32, "turbine.size.002_maxTurbineHeight": 32,
         "coil.ftb": 1,
         // the pack ships Colossal Reactors 2.4.1, which skips air when averaging the coil zone (fixed in 2.4.2)
-        "turbine.coil.001_legacyIgnoreAirInCoilAverage": 1 } },
+        "turbine.coil.001_legacyIgnoreAirInCoilAverage": 1,
+        // and the 2.4 rotor: one rod controller in the middle of the deck, and a rod counts every blade touching its run (2.5 changed both)
+        "rotor.2_5": 0 } },
     },
   },
 ];
