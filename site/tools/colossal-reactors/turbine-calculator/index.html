@@ -604,6 +604,16 @@ function simulate(s,cfg){
 }
 /* MODEL END */
 
+// Colossal Reactors' website coil table (Config 000_coil_selector_map, the same in 2.5 and 2.6): the coil ids its Turbine
+// Builder can read from an mdct1 code. Any other coil needs mdct2, which names it by its recipe selector instead.
+const MDCT1_COILS=new Set(["air","graphite","iron","tin","nickel","aluminum","copper","bronze","constantan","silver","gold","electrum","netherite"]);
+// a coil's recipe selector (its valid_blocks string in elec_coils.json, or FTB Evolution 2's armory_elec_coils.json), with
+// "~" for a tag's "#", which would end a share link
+const coilSel=id=>id==="air"?"minecraft:air":COIL[id].src.split(" · ")[0].replace(/^#/,"~");
+const COIL_OF_SEL=Object.fromEntries(["air",...COILS.map(c=>c.id)].map(id=>[coilSel(id),id]));
+// a coil in an mdct2 code: a selector, or one of this page's ids (the 2.6 dev build's Turbine Builder writes those)
+const coilTok=t=>COIL_OF_SEL[t]??(t==="air"||COIL[t]?t:null);
+
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
 // FTB Evolution 2 (1.5.1) values live in /data/packs.js.
 const DEFAULTS={maxW:65,maxL:65,maxH:65,minRf:0,prod:1,cons:1,maxRing:31,bonus:0.03,malus:0.03,balanced:1,bladeSteam:1000,emptyCoil:0.3,legacyAir:0,
@@ -1022,11 +1032,12 @@ function renderResults(R){
 }
 // TurbineBuilderBlockEntity Website pattern (Colossal Reactors 2.5+): reads this page's mdct1 code
 // (builder/web/ModDecodedTurbineDesign), builds the casing, deck, a rod controller per rod, rods, blades and coils.
-// A design with a Rod-column coil (2.6) needs mdct2, which a version of the mod has to read.
+// A design with a Rod-column coil (2.6) or a coil outside MDCT1_COILS needs mdct2, which 2.5 doesn't read.
 function renderBuilder(R){
   if(!(cfg.v25>0)){ $("dBuilder").innerHTML=`From Colossal Reactors 2.5 the Turbine Builder can build a design from this code (its Website pattern). FTB Evolution 2 1.5.1 ships 2.4.1, which doesn't have it.`; return; }
   let t=`Colossal Reactors 2.5 or newer: put a Turbine Builder on its <b>Website</b> pattern and paste the code or link (Ctrl+V). It builds the casing, deck, rod controllers, rods, blades and coils; the Turbine Controller and ports are yours to add.`;
-  if(cfg.v26>0&&state.rodCoil&&state.coilFill==="full") t+=` This design has a Rod-column coil, so its code starts with <b>mdct2</b>: Colossal Reactors 2.5 only reads mdct1. Set the Rod-column coil to "=" for an mdct1 code.`;
+  if(!MDCT1_COILS.has(state.coil)) t+=` ${COIL[state.coil].name} coils need a code that starts with <b>mdct2</b>, which Colossal Reactors 2.5's Turbine Builder doesn't read.`;
+  else if(codeRodCoil()) t+=` This design has a Rod-column coil, so its code starts with <b>mdct2</b>: Colossal Reactors 2.5 only reads mdct1. Set the Rod-column coil to "=" for an mdct1 code.`;
   if(R.ok&&R.formed&&state.rods.length){
     const B=simulate({...modelState(),coilFill:"full",builder:true},cfg), why=[];
     if(B.validBlades!==R.validBlades) why.push(cfg.v26>0?`it keeps clicking each rod until a blade would hit another rod's: ${fmt(B.validBlades)} blades, not ${fmt(R.validBlades)}`
@@ -1150,21 +1161,24 @@ $("gDown").onclick=()=>{ guide.layer--; renderGuide(); }; $("gUp").onclick=()=>{
 $("tFit").onclick=fit;
 
 /* design code: the whole turbine as one string, used by share links. The Turbine Builder's Website pattern (Colossal
-   Reactors 2.5+) reads mdct1, so mdct1 never changes; a design with a Rod-column coil (2.6) is written as mdct2.
+   Reactors 2.5+) reads mdct1, so mdct1 never changes. mdct2 is written only when mdct1 can't carry the design: a Rod-column
+   coil (2.6), or a coil outside the mod's MDCT1_COILS table.
    mdct1.X.Z.Y.profile.ring.coil.coilLayers.fill.steam.rods
    mdct2.X.Z.Y.profile.ring.coil.rodCoil.coilLayers.fill.steam.rods
-   profile f|c (same every layer | climbing); coil: a coil id or "air" (the Zone coil); rodCoil: a coil id or "air", the
-   block in the coil cells right above each rod controller (mdct2 only; mdct1 means the same block as coil); fill a|o
-   (fill the zone | one block); steam: mB/t piped in, or "-" for all it takes; rods: one bit per inside cell (cell
-   x*(Z-2)+z), least significant bit first, base64url without padding. */
+   profile f|c (same every layer | climbing); coil: the Zone coil, in mdct1 a coil id or "air", in mdct2 its recipe selector
+   (coilSel: "~c:storage_blocks/gold", "minecraft:crying_obsidian", "minecraft:air"); rodCoil (mdct2 only): the block in
+   the coil cells right above each rod controller, a selector too, the same as coil when there's no Rod-column coil; fill
+   a|o (fill the zone | one block); steam: mB/t piped in, or "-" for all it takes; rods: one bit per inside cell (cell
+   x*(Z-2)+z), least significant bit first, base64url without padding. Selectors never hold a "." (the field separator). */
+const codeRodCoil=()=>cfg.v26>0&&state.rodCoil&&state.rodCoil!==state.coil&&state.coilFill==="full"?state.rodCoil:null;
 function encodeDesign(){
   const iw=iwOf(), id=idOf(), bits=new Array(iw*id).fill(0); for(const r of state.rods) bits[r]=1;
-  const two=cfg.v26>0&&!!state.rodCoil&&state.rodCoil!==state.coil&&state.coilFill==="full";
-  return [two?"mdct2":"mdct1",state.X,state.Z,state.Y,state.profile==="climb"?"c":"f",state.ring,state.coil,...(two?[state.rodCoil]:[]),state.coilLayers,state.coilFill==="one"?"o":"a",
-    state.steam==null?"-":state.steam,mdShare.b64u.enc(mdShare.packBits(bits,1))].join("."); }
+  const rodCoil=codeRodCoil(), two=!!rodCoil||!MDCT1_COILS.has(state.coil);
+  return [two?"mdct2":"mdct1",state.X,state.Z,state.Y,state.profile==="climb"?"c":"f",state.ring,...(two?[coilSel(state.coil),coilSel(rodCoil||state.coil)]:[state.coil]),
+    state.coilLayers,state.coilFill==="one"?"o":"a",state.steam==null?"-":state.steam,mdShare.b64u.enc(mdShare.packBits(bits,1))].join("."); }
 function decodeDesign(code){
   let p=String(code||"").trim().split("."), rodCoil=null;
-  if(p[0]==="mdct2"&&p.length===12){ rodCoil=p[7]; if(rodCoil!=="air"&&!COIL[rodCoil]) return null; p=["mdct1",...p.slice(1,7),...p.slice(8)]; }
+  if(p[0]==="mdct2"&&p.length===12){ const coil=coilTok(p[6]); rodCoil=coilTok(p[7]); if(!coil||!rodCoil) return null; p=["mdct1",...p.slice(1,6),coil,...p.slice(8)]; }
   if(p.length!==11||p[0]!=="mdct1"||!/^[fc]$/.test(p[4])||!/^[ao]$/.test(p[8])||(p[6]!=="air"&&!COIL[p[6]])) return null;
   const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
   const d={X:int(1,3,65),Z:int(2,3,65),Y:int(3,5,65),ring:int(5,0,64),coilLayers:int(7,1,63),steam:p[9]==="-"?null:int(9,0,1e12)};

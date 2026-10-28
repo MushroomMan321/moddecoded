@@ -497,6 +497,18 @@ function simulate(s,cfg){
 }
 /* MODEL END */
 
+// Colossal Reactors' website heat sink table (Config 001_heatsink_selector_map, the same in 2.5 and 2.6): the heat sink
+// ids its Reactor Builder can read from an mdcr1 code. Any other heat sink needs mdcr2, which names it by its recipe
+// selector instead.
+const MDCR1_SINKS=new Set(["air","water","gold","ruby","sapphire","diamond","emerald","peridot","netherite","graphite","ice",
+  "ender_goo","industrial_coolant","gelid_breezium","adamantite","aeternium","aurichalcum"]);
+// a heat sink's recipe selector (its valid_blocks/valid_liquids string in reactor_heat_sinks.json, FTB Armory's
+// armory_heat_sinks.json or FTB Evolution 2's datapack), with "~" for a tag's "#", which would end a share link
+const sinkSel=id=>id==="air"?"minecraft:air":SINK[id].src.split(" · ")[0].replace(/^#/,"~");
+const SINK_OF_SEL=Object.fromEntries(SINKS.map(m=>[sinkSel(m.id),m.id]));
+// a palette entry in an mdcr2 code: "rod", a selector, or one of this page's ids
+const sinkTok=t=>t==="rod"?t:SINK_OF_SEL[t]??(SINK[t]?t:null);
+
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
 // FTB Evolution 2 (1.5.1) values live in /data/packs.js.
 const DEFAULTS = {maxW:65,maxL:65,maxH:65, minRf:500, minFuel:0.05, rodMax:10000, rfLoss:0.2, fuelEff:1, prod:1, cons:1,
@@ -940,30 +952,36 @@ $("tGuide").onclick=()=>setGuide(!guide.on);
 $("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
 $("tFit").onclick=fit;
 
-/* design code (mdcr1): the whole reactor as one string, used by share links.
+/* design code: the whole reactor as one string, used by share links. The Reactor Builder's Website pattern (Colossal
+   Reactors 2.5+) reads mdcr1, so mdcr1 never changes. mdcr2 is the same with each heat sink named by its recipe selector,
+   written only when a design uses a heat sink outside the mod's MDCR1_SINKS table (none on this page yet).
    mdcr1.coolant.fuel.X.Z.Y.palette.cells
+   mdcr2.coolant.fuel.X.Z.Y.palette.cells
    coolant n|w (none|water), fuel u|a|r (uranium|azurite|red cake); X, Z, Y exterior.
-   palette: the ids used inside, comma-separated, in order of first appearance (column 0 first): "rod" or a heat sink id.
-   cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits each, least significant bit first,
-   base64url without padding. Column i = x*(Z-2)+z. */
+   palette: the cell contents used inside, comma-separated, in order of first appearance (column 0 first): "rod", or a heat
+   sink, in mdcr1 its id, in mdcr2 its selector (sinkSel: "~c:storage_blocks/gold", "~c:water", "minecraft:air").
+   Selectors never hold a "." or a ",". cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits
+   each, least significant bit first, base64url without padding. Column i = x*(Z-2)+z. */
 const FUEL_CODE={uranium:"u",azurite:"a",red_cake:"r"}, FUEL_OF={u:"uranium",a:"azurite",r:"red_cake"};
 const palBits=n=>Math.max(1,Math.ceil(Math.log2(n)));
 function encodeDesign(){ const pal=[], idx={}, vals=state.cells.map(c=>idx[c]??(idx[c]=pal.push(c)-1));
-  return ["mdcr1",state.coolant==="water"?"w":"n",FUEL_CODE[state.fuel],state.X,state.Z,state.Y,
-    pal.join(","),mdShare.b64u.enc(mdShare.packBits(vals,palBits(pal.length)))].join("."); }
+  const two=pal.some(c=>c!=="rod"&&!MDCR1_SINKS.has(c));
+  return [two?"mdcr2":"mdcr1",state.coolant==="water"?"w":"n",FUEL_CODE[state.fuel],state.X,state.Z,state.Y,
+    (two?pal.map(c=>c==="rod"?c:sinkSel(c)):pal).join(","),mdShare.b64u.enc(mdShare.packBits(vals,palBits(pal.length)))].join("."); }
 function decodeDesign(code){
   const p=String(code||"").trim().split(".");
-  if(p.length!==8||p[0]!=="mdcr1"||!/^[nw]$/.test(p[1])||!FUEL_OF[p[2]]) return null;
+  if(p.length!==8||(p[0]!=="mdcr1"&&p[0]!=="mdcr2")||!/^[nw]$/.test(p[1])||!FUEL_OF[p[2]]) return null;
   const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
   const d={coolant:p[1]==="w"?"water":"none",fuel:FUEL_OF[p[2]],X:int(3,3,65),Z:int(4,3,65),Y:int(5,3,65)};
   if(Object.values(d).some(v=>Number.isNaN(v))) return null;
-  const pal=p[6].split(","); if(pal.some(id=>id!=="rod"&&!SINK[id])||new Set(pal).size!==pal.length) return null;
+  const pal=p[6].split(",").map(t=>p[0]==="mdcr2"?sinkTok(t):t);
+  if(pal.some(id=>id!=="rod"&&!SINK[id])||new Set(pal).size!==pal.length) return null;
   let bytes; try{ bytes=mdShare.b64u.dec(p[7]); }catch(e){ return null; }
   const vals=mdShare.unpackBits(bytes,(d.X-2)*(d.Z-2),palBits(pal.length)); if(!vals||vals.some(v=>v>=pal.length)) return null;
   d.cells=vals.map(v=>pal[v]); return d; }
 const cutNote=d=>state.X!==d.X||state.Z!==d.Z||state.Y!==d.Y?`Loaded, but cut down to ${state.X}×${state.Z}×${state.Y}: the design is ${d.X}×${d.Z}×${d.Y} and this config allows less.`:null;
 const applyDesign=d=>{ Object.assign(state,d,{cix:d.X-2,ciz:d.Z-2}); update(); };
-const share=mdShare({prefix:"mdcr1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+const share=mdShare({prefix:"mdcr1", prefixes:["mdcr1","mdcr2"], isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
   apply:applyDesign, loaded:cutNote, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
 if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
 
