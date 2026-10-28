@@ -21,7 +21,7 @@
 window.MD_PACKS = [
   {
     id: "atm10", name: "ATM10", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/ATM-10", commit: "d12e72c", checked: "2026-10-19" },
+    source: { repo: "https://github.com/AllTheMods/ATM-10", commit: "51627af", checked: "2026-10-28" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 4.0, "general.fuelUsageMultiplier": 0.8,
@@ -40,7 +40,7 @@ window.MD_PACKS = [
   {
     // Validated in-game 2026-09-25: turbine RPM and power matched the calculator exactly.
     id: "atm10-aeronautics", name: "ATM10: Aeronautics", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/ATM-10-a", commit: "913c86d", checked: "2026-10-19" },
+    source: { repo: "https://github.com/AllTheMods/ATM-10-a", commit: "a62e096", checked: "2026-10-28" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 0.5, "general.fuelUsageMultiplier": 1.2,
@@ -59,7 +59,7 @@ window.MD_PACKS = [
   },
   {
     id: "atm10-sky", name: "ATM10 To The Sky", mc: "1.21.1",
-    source: { repo: "https://github.com/AllTheMods/All-the-mods-10-Sky", commit: "c186b04", checked: "2026-10-19" },
+    source: { repo: "https://github.com/AllTheMods/All-the-mods-10-Sky", commit: "3e7916b", checked: "2026-10-28" },
     mods: {
       extremereactors: { config: {
         "general.powerProductionMultiplier": 4.0, "general.fuelUsageMultiplier": 0.8,
@@ -158,7 +158,7 @@ window.MD_PACKS = [
   {
     // Craftoria 1.37.0 ships Mekanism 10.7.19 and no Extreme Reactors. Its advanced_ae-common.toml keeps the QC defaults.
     id: "craftoria", name: "Craftoria", mc: "1.21.1",
-    source: { repo: "https://github.com/TeamAOF/Craftoria", commit: "5689ac1", checked: "2026-09-28" },
+    source: { repo: "https://github.com/TeamAOF/Craftoria", commit: "b1b25e5", checked: "2026-10-28" },
     mods: {
       mekanism: { config: { "fission_reactor.energyPerFissionFuel": 500000,
         "fusion_reactor.thermocoupleEfficiency": 0.04, "fusion_reactor.casingThermalConductivity": 0.25, "fusion_reactor.fuelCapacity": 500 } },
