@@ -18,7 +18,7 @@ your server.
 | [Mekanism ore processing](https://moddecoded.com/tools/mekanism/ore-processing-calculator/) | 10.7.19 (MC 1.21.1) |
 | [Create Aeronautics airship](https://moddecoded.com/tools/create-aeronautics/airship-calculator/) | 1.3.2 |
 | [Ryzer Gen fission station](https://moddecoded.com/tools/ryzer-gen/fission-station-calculator/) | 0.1.2-alpha (MC 1.21.1) |
-| [AE2 crafting CPU](https://moddecoded.com/tools/applied-energistics-2/crafting-cpu-calculator/) | AE2 19.2.17 + MEGA Cells 4.11.0 (MC 1.21.1) |
+| [AE2 crafting CPU](https://moddecoded.com/tools/applied-energistics-2/crafting-cpu-calculator/) | AE2 19.2.18 + MEGA Cells 4.11.0 (MC 1.21.1) |
 | [Advanced AE Quantum Computer](https://moddecoded.com/tools/applied-energistics-2/quantum-computer-calculator/) | 1.6.12 (MC 1.21.1) |
 | [NTM RBMK reactor](https://moddecoded.com/tools/ntm/rbmk-reactor-calculator/) | HBM's NTM 1.0.27 (MC 1.7.10) |
 | [NTM ZIRNOX reactor](https://moddecoded.com/tools/ntm/zirnox-reactor-calculator/) | HBM's NTM 1.0.27 (MC 1.7.10) |

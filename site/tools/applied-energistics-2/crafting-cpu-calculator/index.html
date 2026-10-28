@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>AE2 Crafting CPU Calculator</title>
-<meta name="description" content="AE2 crafting CPU calculator: storage bytes, co-processors, crafting speed, power and the materials for any CPU, with MEGA Cells blocks. Plan the smallest CPU for a job and download it as a .nbt schematic. From the AE2 19.2.17 source code.">
+<meta name="description" content="AE2 crafting CPU calculator: storage bytes, co-processors, crafting speed, power and the materials for any CPU, with MEGA Cells blocks. Plan the smallest CPU for a job and download it as a .nbt schematic. From the AE2 19.2.18 source code.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
@@ -137,7 +137,7 @@ details.mats .guide-cols{margin-top:10px}
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Applied Energistics 2 / Crafting CPU Calculator</nav>
   <header class="top">
     <h1>AE2 <span class="y">Crafting CPU Calculator</span></h1>
-    <span class="src">From the AE2 19.2.17 and MEGA Cells 4.11.0 source</span>
+    <span class="src">From the AE2 19.2.18 and MEGA Cells 4.11.0 source</span>
   </header>
   <p class="lede">Say how much storage and how many co-processors you need and get the smallest CPU that has them. Or pick the blocks yourself and see the storage, crafting speed, power and materials. Add your Molecular Assemblers to see which one sets the speed, the CPU or the assemblers. Every number comes from AE2's <b>CraftingCPUCluster</b>, its multiblock check and the Molecular Assembler, and MEGA Cells' crafting blocks.</p>
 
@@ -194,7 +194,7 @@ details.mats .guide-cols{margin-top:10px}
           <button type="button" id="mAe2" aria-pressed="false">AE2 only</button>
           <button type="button" id="mMega" aria-pressed="true">AE2 + MEGA Cells</button>
         </div>
-        <p class="hint">MEGA Cells adds 1M to 256M crafting storage and a 4-thread accelerator. They mix with AE2's blocks in one CPU. Every ATM10 pack ships MEGA Cells 4.11.0 with AE2 19.2.17.</p>
+        <p class="hint">MEGA Cells adds 1M to 256M crafting storage and a 4-thread accelerator. They mix with AE2's blocks in one CPU. Every ATM10 pack ships MEGA Cells 4.11.0, with AE2 19.2.17 or 19.2.18 (the crafting CPU is the same in both).</p>
       </div>
 
       <div class="sect">
@@ -335,7 +335,7 @@ const K=1024, M=K*K, G=M*K;
 // bytes the way AE2 names its tiers: 1k = 1,024, 1M = 1,048,576
 const short=b=>b>=G?+(b/G).toFixed(2)+"G":b>=M?+(b/M).toFixed(2)+"M":b>=K?+(b/K).toFixed(2)+"k":String(b);
 
-/* ================= blocks (AE2 19.2.17 CraftingUnitType, MEGA Cells 4.11.0 MEGACraftingUnitType) ================= */
+/* ================= blocks (AE2 19.2.18 CraftingUnitType, MEGA Cells 4.11.0 MEGACraftingUnitType) ================= */
 // bytes = getStorageBytes(), th = getAcceleratorThreads(); comp = the part added to a (MEGA) crafting unit to make it
 const TYPES={
   unit: {name:"Crafting Unit", id:"ae2:crafting_unit"},
