@@ -135,24 +135,25 @@ window.MD_PACKS = [
   // out of each fork's code (see research/ntm-1.0.27-reactors.md). The original NTM is the "Mod defaults" row.
   {
     id: "ntmspace", name: "NTM:Space", mc: "1.7.10",
-    source: { repo: "https://github.com/JameH2/Hbm-s-Nuclear-Tech-GIT", commit: "xspace57b", checked: "2026-10-09" },
-    mods: { hbm: { config: { "zirnox.steamFactor": 187.5, "rbmk.rodHullLimit": 1500 }, note: "X5778_H261" } },
+    source: { repo: "https://github.com/JameH2/Hbm-s-Nuclear-Tech-GIT", commit: "0f9ad7b", checked: "2026-10-28" },
+    mods: { hbm: { config: { "zirnox.steamFactor": 187.5, "rbmk.rodHullLimit": 1500 }, note: "X5852_H261" } },
   },
   {
     id: "ntm-ce", name: "NTM: Community Edition", mc: "1.12.2",
     source: { repo: "https://github.com/Warfactory-Official/Hbm-s-Nuclear-Tech-CE", checked: "2026-10-09" },
-    mods: { hbm: { config: { "zirnox.steamFactor": 187.5, "rbmk.rodHullLimit": 1500, "rbmk.dial.reasimCount": 6, "rbmk.dial.reasimMod": 1.0 }, note: "2.6.1.0" } },
+    mods: { hbm: { config: { "zirnox.steamFactor": 187.5, "rbmk.rodHullLimit": 1500, "rbmk.dial.reasimCount": 6, "rbmk.dial.reasimMod": 1.0,
+      "fusion.recipe.stellar.input": 10 }, note: "2.6.1.0" } },
   },
   {
     id: "ntm-reforged", name: "NTM Reforged", mc: "1.12.2",
-    source: { repo: "https://github.com/alexsander55455455-cmyk/HBM-NTM-Reforged", commit: "e48bb19", checked: "2026-10-09" },
-    mods: { hbm: { config: { "rbmk.rodHullLimit": 1500, "rbmk.fuel.drx.yield": 1e8, "rbmk.fuel.hea242.meltingPoint": 3386,
+    source: { repo: "https://github.com/alexsander55455455-cmyk/HBM-NTM-Reforged", commit: "9fe27aa", checked: "2026-10-28" },
+    mods: { hbm: { config: { "zirnox.steamFactor": 187.5, "rbmk.rodHullLimit": 1500, "rbmk.fuel.drx.yield": 1e8, "rbmk.fuel.hea242.meltingPoint": 3386,
       "rbmk.fuel.heaus.function": "SQUARE_ROOT", "rbmk.fuel.heaus.heat": 2.0 }, note: "1.0.7 · PWR plates" } },
   },
   {
     id: "ntm-fe", name: "NTM: Final Edition", mc: "1.12.2",
-    source: { repo: "https://github.com/SeraphinaAstra/Hbm-Nuclear-Tech-FE", commit: "3ee5d85", checked: "2026-10-09" },
-    mods: { hbm: { config: { "rbmk.rodHullLimit": 1500, "rbmk.fuel.drx.yield": 1e8, "rbmk.fuel.hea242.meltingPoint": 3386,
+    source: { repo: "https://github.com/SeraphinaAstra/Hbm-Nuclear-Tech-FE", commit: "3ee5d85", checked: "2026-10-28" },
+    mods: { hbm: { config: { "zirnox.steamFactor": 125, "fusion.recipe.stellar.input": 10, "rbmk.rodHullLimit": 1500, "rbmk.fuel.drx.yield": 1e8, "rbmk.fuel.hea242.meltingPoint": 3386,
       "rbmk.fuel.heaus.function": "SQUARE_ROOT", "rbmk.fuel.heaus.heat": 2.0 }, note: "2.5.0.5-X001" } },
   },
   {

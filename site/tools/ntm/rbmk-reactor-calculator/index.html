@@ -295,8 +295,8 @@ depMod: RAISING e + sin(eπ)/2 · GENTLE e + sin(eπ)/3 · LINEAR e</pre>
       </div>
       <div class="fact">
         <h3>The dials are game rules, and hot rods are a trap</h3>
-        <p>Every RBMK tunable — passive cooling 2.5, heat flow 0.2, flux range 5, xenon on — is a world game rule (dialPassiveCooling, dialColumnHeatFlow…), clamped in RBMKDials.refresh; there is no toml. Forks ship their own defaults, which is why presets here carry rbmk.dial.* values. One constant lives in code: pulling a rod whose hull sits at ≥150 HE melts the column (forks raise it to 1,500). Melting fuel drops a corium stack plus FUEL debris.</p>
-<pre>pull rod with hull ≥ 150 HE → meltdown · meltdowns dial: dialDisableMeltdowns
+        <p>Every RBMK tunable — passive cooling 2.5, heat flow 0.2, flux range 5, xenon on — is a world game rule (dialPassiveCooling, dialColumnHeatFlow…), clamped in RBMKDials.refresh; there is no toml. Forks ship their own defaults, which is why presets here carry rbmk.dial.* values. One constant lives in code: breaking a rod column whose hull sits at ≥1,500 HE melts it (150 up to build X5687; the forks already used 1,500). Melting fuel drops a corium stack plus FUEL debris.</p>
+<pre>remove rod column with hull ≥ 1500 HE → meltdown · meltdowns dial: dialDisableMeltdowns
 column heat &gt; 1500 → whole connected net melts</pre>
         <span class="ref">RBMKDials · TileEntityRBMKRod.onBlockBreak / onMelt · TileEntityRBMKBase.meltdown</span>
       </div>
@@ -373,7 +373,7 @@ const DEFAULTS={
   passiveCooling:2.5, innerCooling:.1, columnHeatFlow:.2, diffusionMod:1, heatProvision:.2, columnHeight:4,
   boilerHeatConsumption:.1, controlSpeed:1, reactivityMod:1, surgeMod:1, fluxRange:5, meltdowns:1,
   moderatorEfficiency:1, absorberEfficiency:1, absorberHeatConversion:.05, reflectorEfficiency:1, depletion:1, xenon:1,
-  rodHullLimit:150, columnMaxHeat:1e4, columnBaseMax:1500, boilerPerMb:.1, coolerPerGel:200, coolerGelMb:50,
+  rodHullLimit:1500, columnMaxHeat:1e4, columnBaseMax:1500, boilerPerMb:.1, coolerPerGel:200, coolerGelMb:50,
 };
 // [internal, config key, min, max, kind] — int kinds get Math.round; bool kinds render 0/1; text kinds (func/dep) are strings
 const CFG_SPEC=[
@@ -859,7 +859,7 @@ function renderResults(){
     ["Total flux",`${big(S.flux)} <small>Σ rod flux, console-style (Console 97)</small>`],
     ...(S.nBoil>0?[["Water in",molten?"—":`${big(S.water)} <small>mB/t the ${S.nBoil} boiler${S.nBoil===1?"":"s"} drink at steady state${+state.feed*S.nBoil<S.water*1.02?" — the feed is short":""}</small>`]]:[]),
     ["Column heat",`${fmt(S.heatAvg)} <small>HE avg · ${fmt(S.heatMax)} HE max · melts at ${fmt(+cfg.columnBaseMax)}</small>`],
-    ["Hottest rod",`${fmt(S.coreMax)} <small>HE core · ${fmt(S.hullMax)} HE hull${S.hullHazard?` · over the ${fmt(S.hullLimit)} rod-pull limit!`:""}</small>`],
+    ["Hottest rod",`${fmt(S.coreMax)} <small>HE core · ${fmt(S.hullMax)} HE hull${S.hullHazard?` · over the ${fmt(S.hullLimit)} rod-hull limit!`:""}</small>`],
     ["Xenon poison",`${fmt(S.xenonMax,1)} <small>% max · ${S.xenonMax>90?"pinned — the core is choking":S.xenonMax>50?"heavy":"light"}</small>`],
     ["Burn-up",`${fmt(S.burn*100,2)} <small>% of fresh yield burned</small>`],
     ["Neutron escape",`${big(S.rad)} <small>rad/t at lidless gaps + field edges (flux×0.05)</small>`],
@@ -876,7 +876,7 @@ function renderResults(){
   if(S.rad>0&&S.flux>0) n.push(["",`${big(S.rad)} rad/t escapes: every neutron stream crossing a gap or leaving the field irradiates at flux×0.05. Ring the core with absorbers (eff 1 stops streams dead) to reclaim it.`]);
   if(S.xenonMax>90&&+cfg.xenon>0) n.push(["warn",`Xenon pinned at ${fmt(S.xenonMax,0)} % — incoming flux is cut to a trickle (×(1−x/100)). Raise flux: the poison burns by in²/50 and a strong core burns its own shadow away.`]);
   if(state.level<100&&S.nf>0) n.push(["good",`Control rods at ${fmt(S.ctrlLevel*100)} % pass streams at ×${fmt(S.ctrlLevel,3)} per control column crossed (getMult = level).`]);
-  if(S.hullHazard) n.push(["bad",`Rod hulls sit at ${fmt(S.hullMax)} HE — over the ${fmt(S.hullLimit)} HE rod-pull limit: an autoloader or player pulling a rod melts that column (TileEntityRBMKRod 98-107). Fork presets raise the limit to 1,500.`]);
+  if(S.hullHazard) n.push(["bad",`Rod hulls sit at ${fmt(S.hullMax)} HE — over the ${fmt(S.hullLimit)} HE limit: breaking that rod column melts it (TileEntityRBMKRod 104). Autoloaders only pull rods at ≤1,000 HE hull, players at ≤200.`]);
   if(!molten&&S.steam>0&&S.nf>0) n.push(["good",`Steady ${big(S.steam)} mB/t of ${STEAM_NAMES[state.steam]}: ${fmt(S.flux)} flux, ${fmt(S.heatAvg)} HE average column. The graph is the mod's own tick loop.`]);
   $("notes").innerHTML=n.filter(x=>x.length).map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
   drawChart(); drawChart2();
@@ -942,7 +942,7 @@ $("atmList").onkeydown=e=>{ if(e.key==="Escape"){ setAtmOpen(false); $("pAtm").f
 $("pDefault").onclick=()=>{ setAtmOpen(false); usePreset("default"); }; $("pCustom").onclick=()=>{ setAtmOpen(false); usePreset("custom"); };
 
 function renderCfg(){
-  $("cfgHint").innerHTML=`dials are <b>game rules</b> (no toml): flux range <b>${cfg.fluxRange}</b> · column <b>${cfg.columnHeight}</b> · mod/abs/refl eff <b>${cfg.moderatorEfficiency}/${cfg.absorberEfficiency}/${cfg.reflectorEfficiency}</b> · meltdowns <b>${+cfg.meltdowns?"on":"off"}</b> · xenon <b>${+cfg.xenon?"on":"off"}</b> · rod-pull limit <b>${fmt(+cfg.rodHullLimit)}</b> HE`;
+  $("cfgHint").innerHTML=`dials are <b>game rules</b> (no toml): flux range <b>${cfg.fluxRange}</b> · column <b>${cfg.columnHeight}</b> · mod/abs/refl eff <b>${cfg.moderatorEfficiency}/${cfg.absorberEfficiency}/${cfg.reflectorEfficiency}</b> · meltdowns <b>${+cfg.meltdowns?"on":"off"}</b> · xenon <b>${+cfg.xenon?"on":"off"}</b> · rod-hull limit <b>${fmt(+cfg.rodHullLimit)}</b> HE`;
   const g=$("cfgGrid");
   if(!g.childElementCount) for(const [k,label,min,max,kind] of CFG_SPEC){
     const l=document.createElement("label"); l.htmlFor="cfg-"+k; l.textContent=label;

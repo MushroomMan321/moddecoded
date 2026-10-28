@@ -224,7 +224,7 @@ life += steps   // life over maxLife swaps in a depleted rod</pre>
       </div>
       <div class="fact">
         <h3>Steam needs 100 °C, CO2 and a thirsty tank</h3>
-        <p>Steaming starts at 10,256 heat units — exactly 100 °C on the GUI scale — and needs CO2 in its 16,000 mB tank and room in the 8,000 mB steam tank. Full CO2 gives the full 125 mB/t per 100k heat above the threshold; NTM:Space and NTM CE made that 1.5× richer.</p>
+        <p>Steaming starts at 10,256 heat units — exactly 100 °C on the GUI scale — and needs CO2 in its 16,000 mB tank and room in the 8,000 mB steam tank. Full CO2 gives the full 187.5 mB/t per 100k heat above the threshold (25 × 7.5; it was 125 up to build X5687, and NTM: Final Edition still uses 125).</p>
 <pre>cycle = (int)((heat − 10256) / 100000
         × min(CO2/14000, 1) × 25 × 5)</pre>
         <span class="ref">TileEntityReactorZirnox.generateSteam</span>
@@ -303,7 +303,7 @@ const NB=[[1,7],[0,2,8],[1,9],[4,10],[3,5,11],[4,6,12],[5,13],[0,8,14],[1,7,9,15
 const ROWS=[[0,1,2],[3,4,5,6],[7,8,9],[10,11,12,13],[14,15,16],[17,18,19],[20,21,22,23]];
 const RING=new Set([0,2,3,6,7,9,10,13,14,16,17,19,20,23]);   // slots with ≤2 neighbours
 
-const DEFAULTS={maxHeat:100000,meltdownPressure:100000,steamThreshold:10256,steamFactor:125,co2Fill:14000,co2Max:16000,
+const DEFAULTS={maxHeat:100000,meltdownPressure:100000,steamThreshold:10256,steamFactor:187.5,co2Fill:14000,co2Max:16000,
   co2TankMax:16000,steamTankMax:8000,heatLossDiv:1000000,co2PerTick:24,breedSteps:20000};
 const CFG_FIELDS=[["maxHeat","zirnox.maxHeat"],["meltdownPressure","zirnox.meltdownPressure"],["steamThreshold","zirnox.steamThreshold"],["steamFactor","zirnox.steamFactor"],
   ["co2Fill","zirnox.co2Fill"],["co2Max","zirnox.co2Max"],["co2TankMax","zirnox.co2TankMax"],["steamTankMax","zirnox.steamMax"],["heatLossDiv","zirnox.heatLossDiv"],

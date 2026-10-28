@@ -318,19 +318,21 @@ const RECIPES=[
   ["cl","Cl-36 · chlorine",[["Chlorine",20]],3750000,10000000,1000,"Chlorophyte dust · 1/cycle"],
   ["dhc","DHC · heavy water fusion fuel",[["DHC",20]],10000000,25000000,2000,"Chlorophyte dust · 1/cycle"],
   ["bf","Balefire + amat",[["Balefire",15],["Amat",5]],1000000,12500000,2000,"Balefire powder · 1/cycle"],
-  ["stellar","Stellar flux",[["Stellar flux",10]],10000000,50000000,10000,"Gold powder · 1/cycle"],
+  ["stellar","Stellar flux",[["Stellar flux",5]],10000000,50000000,10000,"Gold powder · 1/cycle"],
 ];
 const RECIPE=Object.fromEntries(RECIPES.map(r=>[r[0],{id:r[0],name:r[1],inputs:r[2],ign:r[3],out:r[4],flux:r[5],product:r[6]}]));
 
 // every value is the mod's own constant; see research/ntm-1.0.27-reactors.md · "Fusion torus"
 const DEFAULTS={torusMaxPower:10000000,klystronMax:1000000,klystronAir:2500,klystronAirTank:150000,intensity2:0.625,intensity3:0.5,intensity4:0.4375,
   mhdtEff:1.35,mhdtMinPlasma:5000000,boilerTuPerMb:200,breederFlux:10000,solenoidHE:25000,torusTank:4000,passiveHeat:2.5,coolPerMb:0.5,coolGate:123,
+  in_stellar:5,   // stellar flux mB/t: 10 up to X5687 and in CE / Final Edition, 5 since X5842 (FusionRecipes)
   ...Object.fromEntries(RECIPES.flatMap(r=>[[`ign_${r[0]}`,r[3]],[`out_${r[0]}`,r[4]],[`flux_${r[0]}`,r[5]],[`dur_${r[0]}`,100]]))};
 const CFG_FIELDS=[["torusMaxPower","fusion.torusMaxPower"],["klystronMax","fusion.klystronMax"],["klystronAir","fusion.klystronAir"],["klystronAirTank","fusion.klystronAirTank"],
   ["intensity2","fusion.intensity2"],["intensity3","fusion.intensity3"],["intensity4","fusion.intensity4"],["mhdtEff","fusion.mhdtEff"],["mhdtMinPlasma","fusion.mhdtMinPlasma"],
   ["boilerTuPerMb","fusion.boilerTuPerMb"],["breederFlux","fusion.breederFlux"],["solenoidHE","fusion.solenoidHE"],["torusTank","fusion.torusTank"],
-  ["passiveHeat","fusion.passiveHeat"],["coolPerMb","fusion.coolPerMb"],["coolGate","fusion.coolGate"],
+  ["passiveHeat","fusion.passiveHeat"],["coolPerMb","fusion.coolPerMb"],["coolGate","fusion.coolGate"],["in_stellar","fusion.recipe.stellar.input"],
   ...RECIPES.flatMap(r=>[[`ign_${r[0]}`,`fusion.recipe.${r[0]}.ignitionTemp`],[`out_${r[0]}`,`fusion.recipe.${r[0]}.outputTemp`],[`flux_${r[0]}`,`fusion.recipe.${r[0]}.neutronFlux`],[`dur_${r[0]}`,`fusion.recipe.${r[0]}.duration`]])];
+const inputsOf=rc=>rc.id==="stellar"?[[rc.inputs[0][0],+cfg.in_stellar]]:rc.inputs;
 const ignOf=id=>+cfg[`ign_${id}`], outOf=id=>+cfg[`out_${id}`], fluxOf=id=>+cfg[`flux_${id}`], durOf=id=>+cfg[`dur_${id}`];
 
 const {presets:PRESETS,list:NTM_PACKS}=mdPackPresets("hbm",DEFAULTS,CFG_FIELDS);
@@ -394,7 +396,7 @@ function analyze(){
   const quirk=state.kly>0&&state.target>0&&k.eu>0&&k.out===0;
   const selfSustain=lit&&kyNet<ign;
   const klyNeeded=k.out>0&&ign/k.out>state.kly?Math.ceil(ign/k.out):null;
-  const fuel=rc.inputs.map(i=>`${i[0]} ${fmt(i[1]*factor,1)}`).join(" + ");
+  const fuel=inputsOf(rc).map(i=>`${i[0]} ${fmt(i[1]*factor,1)}`).join(" + ");
   let verdict;
   if(factor<=0) verdict={s:"STARVED",c:"bad",t:"fuel flow or HE feed at zero — the torus cannot run the cycle"};
   else if(!cool) verdict={s:"OVERHEATED",c:"bad",t:`coolant under ${fmt(needCool)} mB/t — the ring drifts to 293 °F and the burn gate stays shut`};
@@ -744,7 +746,7 @@ if(share.atLoad.design) Object.assign(state,share.atLoad.design);
 function update(){
   S=analyze();
   renderCfg(); renderRig(); renderResults(); rebuild3D();
-  $("recipe").value=state.recipe; $("recInfo").innerHTML=`inputs <b>${S.rc.inputs.map(i=>`${i[0]} ${i[1]} mB/t`).join(" + ")}</b> · ignition <b>${big(ignOf(S.rc.id))} KyU</b> · plasma <b>${big(outOf(S.rc.id))} TU/t</b> · flux <b>${fmt(fluxOf(S.rc.id))} n/t</b> · ${durOf(S.rc.id)} t cycle · product ${S.rc.product}`;
+  $("recipe").value=state.recipe; $("recInfo").innerHTML=`inputs <b>${inputsOf(S.rc).map(i=>`${i[0]} ${i[1]} mB/t`).join(" + ")}</b> · ignition <b>${big(ignOf(S.rc.id))} KyU</b> · plasma <b>${big(outOf(S.rc.id))} TU/t</b> · flux <b>${fmt(fluxOf(S.rc.id))} n/t</b> · ${durOf(S.rc.id)} t cycle · product ${S.rc.product}`;
   for(const [id,key] of [["kly","kly"],["target","target"],["air","air"],["he","he"],["coolant","coolant"],["fuelPct","fuelPct"],["couplers","couplers"],["collectors","collectors"]]){ $(id).value=state[key]; $(id+"N").value=state[key]; }
   for(const [id,key,lb] of [["ckB","b","lbB"],["ckM","m","lbM"],["ckR","r","lbR"]]){ $(id).checked=state[key]; $(lb).classList.toggle("on",state[key]); }
   share.render();
