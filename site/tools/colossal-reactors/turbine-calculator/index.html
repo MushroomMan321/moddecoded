@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Colossal Reactors Turbine Calculator (FTB Evolution 2)</title>
-<meta name="description" content="Colossal Reactors turbine calculator: casing size, rod layout, blade rings and coil blocks give RF/t, steam use, coil and blade efficiency and a parts list from the mod's real formulas (26.1.2-2.5.0.0.0), with the FTB Evolution 2 config built in, checked in game.">
+<meta name="description" content="Colossal Reactors turbine calculator: casing size, rod layout, blade rings and coil blocks give RF/t, steam use, coil and blade efficiency and a parts list from the mod's real formulas (26.1.2-2.6.0.0.0), with the FTB Evolution 2 config built in, checked in game.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
@@ -181,7 +181,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Colossal Reactors / Turbine Calculator</nav>
   <header class="top">
     <h1>Colossal Reactors <span class="y">Turbine Calculator</span></h1>
-    <span class="src">Uses the Colossal Reactors 26.1.2-2.5.0.0.0 turbine formulas</span>
+    <span class="src">Uses the Colossal Reactors 26.1.2-2.6.0.0.0 turbine formulas</span>
   </header>
   <p class="lede">Set the casing, place rods, pick blade rings and coil blocks, and see the RF/t and steam the turbine controller will show. Pick <b>FTB Evolution 2</b> under Modpack for that pack's values. Got steam from a reactor? The <a href="/tools/colossal-reactors/reactor-calculator/">reactor calculator</a> links here with it filled in.</p>
 
@@ -217,7 +217,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
             <li>Everything above the deck is the <b>coil zone</b>: air or coil blocks (metal storage blocks from the list). Any other block stops it forming.</li>
             <li>A <b>Turbine Resource Port</b> set to Insert takes steam; one set to Extract gives the water back. A <b>Turbine Power Port</b> sends the RF out. The <b>Turbine Controller</b> goes outside the box against a side wall (not top or bottom). Exactly one. At most one <b>Turbine Redstone Port</b>.</li>
           </ol>
-          <p class="hint" style="margin-top:8px">From <code>TurbineValidation</code> and <code>TurbineBladePlacement</code> in the Colossal Reactors 26.1.2-2.5.0.0.0 jar.</p>
+          <p class="hint" style="margin-top:8px">From <code>TurbineValidation</code> and <code>TurbineBladePlacement</code> in the Colossal Reactors 26.1.2-2.6.0.0.0 jar.</p>
         </details>
       </div>
       <div class="box">
@@ -307,7 +307,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Output</h2>
         <div class="results" id="results"></div>
         <ul class="notes" id="notes"></ul>
-        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. Checked in game on Colossal Reactors 2.5 too (2026-10-25, same config values): a shaft, five rods with a rod controller on every rod (135,000 RF/t) and with one taken away (128,250), the Turbine Builder's Hyperflow layout, a Website import of a rod grid, and a deck with a gap, all as the page shows. And on the Colossal Reactors 2.6 dev build (2026-10-26, mod coil list): rod grids with gold, iron and an empty zone, crying obsidian and redstone above the rod controllers, two and three coil layers on 20- and 26-tall casings, a shaft under 64 blades and a 5×5 casing matched the controller's steam and RF to the unit, and the Turbine Builder placed the page's 140 blades from its code.</p>
+        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. Checked in game on Colossal Reactors 2.5 too (2026-10-25, same config values): a shaft, five rods with a rod controller on every rod (135,000 RF/t) and with one taken away (128,250), the Turbine Builder's Hyperflow layout, a Website import of a rod grid, and a deck with a gap, all as the page shows. And on the Colossal Reactors 2.6 dev build (2026-10-26, mod coil list): rod grids with gold, iron and an empty zone, crying obsidian and redstone above the rod controllers, two and three coil layers on 20- and 26-tall casings, a shaft under 64 blades and a 5×5 casing matched the controller's steam and RF to the unit, and the Turbine Builder placed the page's 140 blades from its code. The 2.6.0.0.0 release's turbine and coil code is the same as that dev build's.</p>
       </div>
       <div class="box" id="share">
         <h2>Share this design</h2>
@@ -324,7 +324,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
     <div class="facts">
       <div class="fact">
         <h3>2.6: coils over the rod controllers set the steam flow</h3>
-        <p>From Colossal Reactors 2.6 every coil block has a flow value as well as its efficiency. The coil cells right above a rod controller are averaged for flow (air counts 1.0), and flow multiplies the steam the blades take, so the RF too: crying obsidian there takes ×2.8 the steam from the same blades. Gold and netherite have none (×1.0); iron ×1.25, lapis ×1.1, redstone and steel ×1.5, stainless steel ×2. Coil layers past the first add up to +20% more, up to a number of layers set by the casing's height and footprint, and less below 64 blades. In the Turbine Builder that's the Rod-column coil. Checked in game on the 2.6 dev build.</p>
+        <p>From Colossal Reactors 2.6 every coil block has a flow value as well as its efficiency. The coil cells right above a rod controller are averaged for flow (air counts 1.0), and flow multiplies the steam the blades take, so the RF too: crying obsidian there takes ×2.8 the steam from the same blades. Gold and netherite have none (×1.0); iron ×1.25, lapis ×1.1, redstone and steel ×1.5, stainless steel ×2. Coil layers past the first add up to +20% more, up to a number of layers set by the casing's height and footprint, and less below 64 blades. In the Turbine Builder that's the Rod-column coil. Checked in game on the 2.6 dev build; the 2.6.0.0.0 release computes it the same way.</p>
 <pre>flow  = min(avg flow_coe, avg flow_max)
         over the cells above the rod controllers
       × (1 + 0.2 × (1 − 1/layers) × min(1, blades/64))
@@ -611,7 +611,7 @@ const MDCT1_COILS=new Set(["air","graphite","iron","tin","nickel","aluminum","co
 // "~" for a tag's "#", which would end a share link
 const coilSel=id=>id==="air"?"minecraft:air":COIL[id].src.split(" · ")[0].replace(/^#/,"~");
 const COIL_OF_SEL=Object.fromEntries(["air",...COILS.map(c=>c.id)].map(id=>[coilSel(id),id]));
-// a coil in an mdct2 code: a selector, or one of this page's ids (the 2.6 dev build's Turbine Builder writes those)
+// a coil in an mdct2 code: a selector, or one of this page's ids (the 2.6 dev build's Turbine Builder wrote those)
 const coilTok=t=>COIL_OF_SEL[t]??(t==="air"||COIL[t]?t:null);
 
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
