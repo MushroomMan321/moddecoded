@@ -9,7 +9,7 @@
 <link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <title>Colossal Reactors Reactor Calculator (FTB Evolution 2)</title>
-<meta name="description" content="Colossal Reactors reactor calculator: paint rods and heat sinks or use the Reactor Builder patterns, and get RF/t, steam, fuel burn and turbine needs from the mod's real formulas (26.1.2-2.5.0.0.0), with the FTB Evolution 2 config built in.">
+<meta name="description" content="Colossal Reactors reactor calculator: paint rods and heat sinks or use the Reactor Builder patterns, and get RF/t, steam, fuel burn and turbine needs from the mod's real formulas (26.1.2-2.6.0.0.0), with the FTB Evolution 2 config built in.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
@@ -174,7 +174,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
   <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / Colossal Reactors / Reactor Calculator</nav>
   <header class="top">
     <h1>Colossal Reactors <span class="y">Reactor Calculator</span></h1>
-    <span class="src">Uses the Colossal Reactors 26.1.2-2.5.0.0.0 reactor formulas</span>
+    <span class="src">Uses the Colossal Reactors 26.1.2-2.6.0.0.0 reactor formulas</span>
   </header>
   <p class="lede">Paint rods and heat sinks, or lay out the same patterns the Reactor Builder uses, and see the RF/t or steam, fuel burn and turbine needs the controller will show. Pick <b>FTB Evolution 2</b> under Modpack for that pack's config: it changes the numbers a lot.</p>
 
@@ -210,7 +210,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
             <li>A <b>Reactor Resource Port</b> set to Insert takes fuel (and water); one set to Extract gives waste (and steam). The default filter handles both. Press Reboot on the controller after changing a port's mode or filter.</li>
             <li>With no coolant inside, the reactor sends RF out of a <b>Reactor Power Port</b>. Pipe water in and it turns its RF into steam instead.</li>
           </ol>
-          <p class="hint" style="margin-top:8px">From <code>ReactorValidation.validate</code> in the Colossal Reactors 26.1.2-2.5.0.0.0 jar.</p>
+          <p class="hint" style="margin-top:8px">From <code>ReactorValidation.validate</code> in the Colossal Reactors 26.1.2-2.6.0.0.0 jar.</p>
         </details>
       </div>
       <div class="box">
@@ -272,7 +272,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
               </select>
               <button class="btn" type="button" data-pattern="0">Dots</button>
               <button class="btn" type="button" data-pattern="1">Checkerboard</button>
-              <button class="btn" type="button" data-pattern="2">Expansion</button>
+              <button class="btn" type="button" data-pattern="2">Frame</button>
             </div>
             <p class="hint" id="builderHint">The same rods the Reactor Builder places. Its heat sink is the block selected above (pick air for none).</p>
           </div>
@@ -412,25 +412,28 @@ const SINK = Object.fromEntries(SINKS.map(m=>[m.id,m]));
 const NEUTRAL = {fuel:1,energy:1,heat:1};   // HeatSinkLoader's fallback when a fluid has no heat sink entry
 const ROD = {id:"rod",name:"Reactor Rod",src:"Colossal Reactors",color:"#5BC236",kind:"rod"};
 
-// RodPatternLogic: 0 dots, 1 checkerboard, 2 expansion. Modes: 0 optimized, 1 production, 2 economy, 3 super economy.
-// Production puts rods right up to the walls (inset 1); the rest keep a ring of non-rod cells along the walls (inset 2).
-function expansionCol(rx,rz,rw,rd,layers,center){
-  if(rx===0||rx===rw-1||rz===0||rz===rd-1) return true;
-  for(let L=1;L<layers;L++) if(rx===L||rx===rw-1-L||rz===L||rz===rd-1-L) return true;
+// RodPatternLogic: 0 dots, 1 checkerboard, 2 expansion (the game's "Frame"). Modes: 0 optimized, 1 production, 2 economy,
+// 3 super economy. Production puts rods right up to the walls (inset 1); the rest keep a ring of non-rod cells along the
+// walls (inset 2). Frame up to 2.5: nested rectangles with no gap (layers 1-3); 2.6 (v26): rings two cells apart, a rod
+// where the distance to the edge is even and under 2 × layers, as many layers as fit.
+function expansionCol(rx,rz,rw,rd,layers,center,v26){
+  if(v26){ const dist=Math.min(rx,rw-1-rx,rz,rd-1-rz); if(dist%2===0&&dist/2<layers) return true; }
+  else { if(rx===0||rx===rw-1||rz===0||rz===rd-1) return true;
+    for(let L=1;L<layers;L++) if(rx===L||rx===rw-1-L||rz===L||rz===rd-1-L) return true; }
   if(!center) return false;
   const cx=rw>>1, cz=rd>>1, inX=rw&1?rx===cx:rx>=cx-1&&rx<=cx, inZ=rd&1?rz===cz:rz>=cz-1&&rz<=cz;
   return inX&&inZ;
 }
-function expansionCount(rw,rd,layers,center){ let n=0; for(let x=0;x<rw;x++)for(let z=0;z<rd;z++) if(expansionCol(x,z,rw,rd,layers,center)) n++; return n; }
+function expansionCount(rw,rd,layers,center,v26){ let n=0; for(let x=0;x<rw;x++)for(let z=0;z<rd;z++) if(expansionCol(x,z,rw,rd,layers,center,v26)) n++; return n; }
 function builderRods(ix,iz,pattern,mode){
   const inset=mode===1?0:1, rw=Math.max(0,ix-2*inset), rd=Math.max(0,iz-2*inset), rods=new Array(ix*iz).fill(false);
-  let layers=1, center=true;
+  let layers=1, center=true; const v26=cfg.v26>0;
   if(pattern===2&&Math.min(rw,rd)>=3){
-    const m=Math.min(rw,rd); layers=m<5?1:m<7?2:(expansionCount(rw,rd,3,true)>=expansionCount(rw,rd,2,true)?3:2);
-    center=expansionCount(rw,rd,layers,true)>=expansionCount(rw,rd,layers,false);
+    const m=Math.min(rw,rd); layers=v26?(((m-1)>>1)>>1)+1:m<5?1:m<7?2:(expansionCount(rw,rd,3,true)>=expansionCount(rw,rd,2,true)?3:2);
+    center=expansionCount(rw,rd,layers,true,v26)>=expansionCount(rw,rd,layers,false,v26);
   }
   for(let rx=0;rx<rw;rx++)for(let rz=0;rz<rd;rz++){
-    const on = pattern===0 ? rx%2===0&&rz%2===0 : pattern===1 ? (rx+rz)%2===0 : Math.min(rw,rd)>=3&&expansionCol(rx,rz,rw,rd,layers,center);
+    const on = pattern===0 ? rx%2===0&&rz%2===0 : pattern===1 ? (rx+rz)%2===0 : Math.min(rw,rd)>=3&&expansionCol(rx,rz,rw,rd,layers,center,v26);
     if(on) rods[(rx+inset)*iz+(rz+inset)]=true;
   }
   return {rods,inset};
@@ -494,12 +497,24 @@ function simulate(s,cfg){
 }
 /* MODEL END */
 
+// Colossal Reactors' website heat sink table (Config 001_heatsink_selector_map, the same in 2.5 and 2.6): the heat sink
+// ids its Reactor Builder can read from an mdcr1 code. Any other heat sink needs mdcr2, which names it by its recipe
+// selector instead.
+const MDCR1_SINKS=new Set(["air","water","gold","ruby","sapphire","diamond","emerald","peridot","netherite","graphite","ice",
+  "ender_goo","industrial_coolant","gelid_breezium","adamantite","aeternium","aurichalcum"]);
+// a heat sink's recipe selector (its valid_blocks/valid_liquids string in reactor_heat_sinks.json, FTB Armory's
+// armory_heat_sinks.json or FTB Evolution 2's datapack), with "~" for a tag's "#", which would end a share link
+const sinkSel=id=>id==="air"?"minecraft:air":SINK[id].src.split(" · ")[0].replace(/^#/,"~");
+const SINK_OF_SEL=Object.fromEntries(SINKS.map(m=>[sinkSel(m.id),m.id]));
+// a palette entry in an mdcr2 code: "rod", a selector, or one of this page's ids
+const sinkTok=t=>t==="rod"?t:SINK_OF_SEL[t]??(SINK[t]?t:null);
+
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
 // FTB Evolution 2 (1.5.1) values live in /data/packs.js.
 const DEFAULTS = {maxW:65,maxL:65,maxH:65, minRf:500, minFuel:0.05, rodMax:10000, rfLoss:0.2, fuelEff:1, prod:1, cons:1,
   consScale:1.72, decay:400, penalty:0.25, eMode:1, eExp:0.9, eK:600, fMode:1, fExp:1, fK:600,
   wAdj:1, wNon:0.5, hsDiv:1.35, hsRf:1.16, hsFuel:1.21,
-  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1, ftbArmory:0};
+  waterFactor:0.45, steamPerWater:1, turbineRf:4, bladeSteam:1000, redCake:1, industrialCoolant:0, peridot:1, ftbArmory:0, v26:1};
 const CFG_FIELDS=[
   ["maxW","reactor.size.000_maxReactorWidth",3,65,1],["maxL","reactor.size.001_maxReactorLength",3,65,1],["maxH","reactor.size.002_maxReactorHeight",3,65,1],
   ["minRf","reactor.base.101b_minRfPerTick",0,1e9],["minFuel","reactor.base.101c_minFuelUnitsPerTick",0,100],["rodMax","reactor.base.000_rodMaxFuelUnits",1,1e9,1],
@@ -514,6 +529,7 @@ const CFG_FIELDS=[
   ["bladeSteam","turbine.blade.004_steamMbPerBladePerTick",1,1e9],
   ["waterFactor","coolant.water.rf_to_coolant_factor",0,100,0,"Datapack recipes (1 = present, 0 = not)"],["steamPerWater","coolant.water.steam_per_coolant",0,100],
   ["turbineRf","turbine.water.rf_production",0,1e6],["redCake","fuel.red_cake",0,1,1],["industrialCoolant","heat_sink.industrial_coolant",0,1,1],["peridot","tag.peridot",0,1,1],["ftbArmory","heat_sink.ftb_armory",0,1,1],
+  ["v26","mod.2_6",0,1,1,"Mod version (1 = 2.6 or newer: the Reactor Builder's Frame layout)"],
 ];
 const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEFAULTS, CFG_FIELDS);
 let cfgPreset="default", cfg={...PRESETS.default};
@@ -936,30 +952,36 @@ $("tGuide").onclick=()=>setGuide(!guide.on);
 $("gDown").onclick=()=>stepLayer(-1); $("gUp").onclick=()=>stepLayer(1);
 $("tFit").onclick=fit;
 
-/* design code (mdcr1): the whole reactor as one string, used by share links.
+/* design code: the whole reactor as one string, used by share links. The Reactor Builder's Website pattern (Colossal
+   Reactors 2.5+) reads mdcr1, so mdcr1 never changes. mdcr2 is the same with each heat sink named by its recipe selector,
+   written only when a design uses a heat sink outside the mod's MDCR1_SINKS table (none on this page yet).
    mdcr1.coolant.fuel.X.Z.Y.palette.cells
+   mdcr2.coolant.fuel.X.Z.Y.palette.cells
    coolant n|w (none|water), fuel u|a|r (uranium|azurite|red cake); X, Z, Y exterior.
-   palette: the ids used inside, comma-separated, in order of first appearance (column 0 first): "rod" or a heat sink id.
-   cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits each, least significant bit first,
-   base64url without padding. Column i = x*(Z-2)+z. */
+   palette: the cell contents used inside, comma-separated, in order of first appearance (column 0 first): "rod", or a heat
+   sink, in mdcr1 its id, in mdcr2 its selector (sinkSel: "~c:storage_blocks/gold", "~c:water", "minecraft:air").
+   Selectors never hold a "." or a ",". cells: each interior column's palette index, max(1, ceil(log2(palette size))) bits
+   each, least significant bit first, base64url without padding. Column i = x*(Z-2)+z. */
 const FUEL_CODE={uranium:"u",azurite:"a",red_cake:"r"}, FUEL_OF={u:"uranium",a:"azurite",r:"red_cake"};
 const palBits=n=>Math.max(1,Math.ceil(Math.log2(n)));
 function encodeDesign(){ const pal=[], idx={}, vals=state.cells.map(c=>idx[c]??(idx[c]=pal.push(c)-1));
-  return ["mdcr1",state.coolant==="water"?"w":"n",FUEL_CODE[state.fuel],state.X,state.Z,state.Y,
-    pal.join(","),mdShare.b64u.enc(mdShare.packBits(vals,palBits(pal.length)))].join("."); }
+  const two=pal.some(c=>c!=="rod"&&!MDCR1_SINKS.has(c));
+  return [two?"mdcr2":"mdcr1",state.coolant==="water"?"w":"n",FUEL_CODE[state.fuel],state.X,state.Z,state.Y,
+    (two?pal.map(c=>c==="rod"?c:sinkSel(c)):pal).join(","),mdShare.b64u.enc(mdShare.packBits(vals,palBits(pal.length)))].join("."); }
 function decodeDesign(code){
   const p=String(code||"").trim().split(".");
-  if(p.length!==8||p[0]!=="mdcr1"||!/^[nw]$/.test(p[1])||!FUEL_OF[p[2]]) return null;
+  if(p.length!==8||(p[0]!=="mdcr1"&&p[0]!=="mdcr2")||!/^[nw]$/.test(p[1])||!FUEL_OF[p[2]]) return null;
   const int=(i,a,b)=>{ const v=/^\d+$/.test(p[i])?+p[i]:NaN; return v>=a&&v<=b?v:NaN; };
   const d={coolant:p[1]==="w"?"water":"none",fuel:FUEL_OF[p[2]],X:int(3,3,65),Z:int(4,3,65),Y:int(5,3,65)};
   if(Object.values(d).some(v=>Number.isNaN(v))) return null;
-  const pal=p[6].split(","); if(pal.some(id=>id!=="rod"&&!SINK[id])||new Set(pal).size!==pal.length) return null;
+  const pal=p[6].split(",").map(t=>p[0]==="mdcr2"?sinkTok(t):t);
+  if(pal.some(id=>id!=="rod"&&!SINK[id])||new Set(pal).size!==pal.length) return null;
   let bytes; try{ bytes=mdShare.b64u.dec(p[7]); }catch(e){ return null; }
   const vals=mdShare.unpackBits(bytes,(d.X-2)*(d.Z-2),palBits(pal.length)); if(!vals||vals.some(v=>v>=pal.length)) return null;
   d.cells=vals.map(v=>pal[v]); return d; }
 const cutNote=d=>state.X!==d.X||state.Z!==d.Z||state.Y!==d.Y?`Loaded, but cut down to ${state.X}×${state.Z}×${state.Y}: the design is ${d.X}×${d.Z}×${d.Y} and this config allows less.`:null;
 const applyDesign=d=>{ Object.assign(state,d,{cix:d.X-2,ciz:d.Z-2}); update(); };
-const share=mdShare({prefix:"mdcr1", isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
+const share=mdShare({prefix:"mdcr1", prefixes:["mdcr1","mdcr2"], isPreset:k=>!!PRESETS[k], encode:encodeDesign, decode:decodeDesign, preset:()=>cfgPreset,
   apply:applyDesign, loaded:cutNote, onPreset:k=>{ if(k!==cfgPreset) usePreset(k); }});
 if(share.atLoad.preset){ cfgPreset=share.atLoad.preset; cfg={...PRESETS[cfgPreset]}; }
 
