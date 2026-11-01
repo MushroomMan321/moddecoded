@@ -268,7 +268,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
           <div class="ed-bar"><button type="button" id="eDown" aria-label="Lower rod layer">◀</button><span id="eLabel" aria-live="polite"></span><button type="button" id="eUp" aria-label="Higher rod layer">▶</button></div>
           <div class="core-wrap"><canvas id="core" aria-label="Top-down view of one rod layer. Click or drag to add or remove rods."></canvas></div>
           <div class="legend" id="legend"></div>
-          <p class="hint">Top-down view of one rod layer. Click a cell to add or remove a rod column (it runs from the floor to the deck). Outlined cells get a rod controller in the deck: one on top of every rod from Colossal Reactors 2.5, one in the middle on 2.4 (FTB Evolution 2). One shaft is what the Turbine Builder's Flow pattern makes (Efficient and Productive up to 2.5); the rod grid fits about twice the blades of one shaft on a 7-wide inside, and more as it grows. From 2.6 the Builder's HyperFlow pattern picks the same rod grid as this page.</p>
+          <p class="hint">Top-down view of one rod layer. Click a cell to add or remove a rod column (it runs from the floor to the deck). Outlined cells get a rod controller in the deck: one on top of every rod from Colossal Reactors 2.5, one in the middle on 2.4. One shaft is what the Turbine Builder's Flow pattern makes (Efficient and Productive up to 2.5); the rod grid fits about twice the blades of one shaft on a 7-wide inside, and more as it grows. From 2.6 the Builder's HyperFlow pattern picks the same rod grid as this page.</p>
           <p class="seg-label">Blade rings on each rod</p>
           <div class="btns">
             <div class="seg" role="group" aria-label="Blade ring profile">
@@ -333,7 +333,7 @@ steam = blades × 150 mB × flow</pre>
       </div>
       <div class="fact">
         <h3>Fill the whole coil layer</h3>
-        <p>Since Colossal Reactors 2.4.2, coil efficiency is the average over every cell of the coil zone, and an empty cell counts as 30%. One gold block in a 25-cell layer gives 32.8%, not 100%. In game on 2.4.2: one gold block 17,711 RF/t, a full layer of gold 54,000. Any metal block beats an empty cell, so a mixed layer beats gaps, and a full layer of your best metal beats both. Up to 2.4.1 air was skipped and one block did the job of a full layer; the author called that a bug. FTB Evolution 2 1.5.1 still ships 2.4.1, so its preset keeps the old rule (config <code>001_legacyIgnoreAirInCoilAverage</code>).</p>
+        <p>Since Colossal Reactors 2.4.2, coil efficiency is the average over every cell of the coil zone, and an empty cell counts as 30%. One gold block in a 25-cell layer gives 32.8%, not 100%. In game on 2.4.2: one gold block 17,711 RF/t, a full layer of gold 54,000. Any metal block beats an empty cell, so a mixed layer beats gaps, and a full layer of your best metal beats both. Up to 2.4.1 air was skipped and one block did the job of a full layer; the author called that a bug. Packs still on 2.4.1 can keep the old rule with config <code>001_legacyIgnoreAirInCoilAverage</code>.</p>
 <pre>coilEff = Σ eff_coe / coil-zone cells   (air = 0.3)
 2.4.1, or legacyIgnoreAirInCoilAverage:
 coilEff = Σ eff_coe / coil blocks       (air skipped)</pre>
@@ -341,7 +341,7 @@ coilEff = Σ eff_coe / coil blocks       (air skipped)</pre>
       </div>
       <div class="fact">
         <h3>A rod controller on every rod</h3>
-        <p>From Colossal Reactors 2.5 a turbine can have several rod controllers: all in the deck, all facing the same way, each right on top of a rod. If any rod has none, blade efficiency is multiplied by 0.95. The Turbine Builder puts one on every rod it places. Up to 2.4 a turbine had exactly one, in the middle of the deck, and FTB Evolution 2 1.5.1 still ships 2.4.1.</p>
+        <p>From Colossal Reactors 2.5 a turbine can have several rod controllers: all in the deck, all facing the same way, each right on top of a rod. If any rod has none, blade efficiency is multiplied by 0.95. The Turbine Builder puts one on every rod it places. Up to 2.4 a turbine had exactly one, in the middle of the deck.</p>
 <pre>bladeEff × 0.95   if a rod has no
                   rod controller above it</pre>
         <span class="ref">TurbineBladeEfficiency.computeFromRotorLayout · TurbineValidation</span>
@@ -377,7 +377,7 @@ count % 4 == 0  for every rod</pre>
       </div>
       <div class="fact">
         <h3>The guides are out of date</h3>
-        <p>The mod's own guide still says 7 RF per mB, and FTB Evolution 2's guide gives 48 mB per blade. Its line that empty coil space counts 30% is right since 2.4.2, but not in FTB Evolution 2, which ships 2.4.1. The calculator uses what the code and the pack's config do.</p>
+        <p>The mod's own guide still says 7 RF per mB, and FTB Evolution 2's guide gives 48 mB per blade. Its line that empty coil space counts 30% is right since 2.4.2. The calculator uses what the code and the pack's config do.</p>
         <table>
           <tr><th></th><th>Guide</th><th>Code</th></tr>
           <tr><td>RF per mB steam</td><td>7</td><td>4 (Evo 2: 9)</td></tr>
@@ -549,8 +549,8 @@ function simulate(s,cfg){
   // one on every rod; bladeEffShort is what one rod without a controller costs. 2.4: exactly one, at rodCenter.
   const bladeEffShort=cfg.v25>0&&rods.length>1?bladeEff*0.95:bladeEff;
   // coil zone (TurbineValidation, 2.4.2+): every cell of the zone is averaged, air at emptyCoilEfficiency (0.3, the
-  // datapack's minecraft:air entry or the config fallback). With 001_legacyIgnoreAirInCoilAverage (2.4.1 and older, and
-  // FTB Evolution 2 until it ships 2.4.2) air is skipped and 0.3 only applies to a zone with no coil block at all.
+  // datapack's minecraft:air entry or the config fallback). With 001_legacyIgnoreAirInCoilAverage (2.4.1 and older)
+  // air is skipped and 0.3 only applies to a zone with no coil block at all.
   // The game adds one cell at a time while scanning x, y, z, so the sum is built the same way: an empty 25-cell layer
   // sums to 7.499999999999999, not 7.5, and reads 16,199 RF/t, not 16,200 (checked in game).
   const zone=iw*id, cells=c*zone;
@@ -615,7 +615,7 @@ const COIL_OF_SEL=Object.fromEntries(["air",...COILS.map(c=>c.id)].map(id=>[coil
 const coilTok=t=>COIL_OF_SEL[t]??(t==="air"||COIL[t]?t:null);
 
 // Server config: config/colossal_reactors-common.toml ("# Default:" comments) plus the jar's datapack values.
-// FTB Evolution 2 (1.5.1) values live in /data/packs.js.
+// FTB Evolution 2 (1.6.3) values live in /data/packs.js.
 const DEFAULTS={maxW:65,maxL:65,maxH:65,minRf:0,prod:1,cons:1,maxRing:31,bonus:0.03,malus:0.03,balanced:1,bladeSteam:1000,emptyCoil:0.3,legacyAir:0,
   flowMax:0.2,flowDiv:10,flowTargetMax:8,flowFoot:49,flowGate:64,rfPerMb:4,ftbCoils:0,v25:1,v26:1};
 const CFG_FIELDS=[
@@ -1026,7 +1026,7 @@ function renderResults(R){
   if((iw%2===0||id%2===0)&&R.formed&&cfg.v25>0&&state.rods.length===1&&state.rods[0]===R.ctr.x*id+R.ctr.z) n.push(["warn",`An even inside width has no middle cell: the Turbine Builder puts its shaft on the ${iw%2===0?"west":"north"} one of the two middle cells, and it gets one ring less than an odd width would allow. Odd casing sizes waste less.`]);
   if((iw%2===0||id%2===0)&&R.formed&&!(cfg.v25>0)) n.push(["warn",`An even inside width puts the rod controller on the ${iw%2===0?"west":"north"} one of the two middle cells, and a centre shaft gets one ring less than an odd width would allow. Odd casing sizes waste less.`]);
   if(R.formed&&cfg.v25>0&&R.rods.length>1) n.push(["warn",`${R.rods.length} rods, so ${R.rods.length} Turbine Rod Controllers: one on top of each rod, in the deck. Leave any rod without one and blade efficiency is ×0.95: ${fmt(R.rfShort)} RF/t instead of ${fmt(R.rf)} (Colossal Reactors 2.5).`]);
-  if(cfgPreset==="ftb-evolution-2") n.push(["good","FTB Evolution 2: 150 mB/t per blade, 9 RF per mB, turbines up to 32 blocks, and three extra coils from FTB Armory (Adamantite 145%, Aeternium 160%, Aurichalcum 180%). The pack's guide still says 48 mB per blade. It ships Colossal Reactors 2.4.1, so none of 2.6's steam flow."]);
+  if(cfgPreset==="ftb-evolution-2") n.push(["good","FTB Evolution 2: 150 mB/t per blade, 9 RF per mB, turbines up to 32 blocks, and three extra coils from FTB Armory (Adamantite 145%, Aeternium 160%, Aurichalcum 180%). The pack's guide still says 48 mB per blade. It ships Colossal Reactors 2.5, so none of 2.6's steam flow."]);
   $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
   renderBuilder(R);
 }
@@ -1034,7 +1034,7 @@ function renderResults(R){
 // (builder/web/ModDecodedTurbineDesign), builds the casing, deck, a rod controller per rod, rods, blades and coils.
 // A design with a Rod-column coil (2.6) or a coil outside MDCT1_COILS needs mdct2, which 2.5 doesn't read.
 function renderBuilder(R){
-  if(!(cfg.v25>0)){ $("dBuilder").innerHTML=`From Colossal Reactors 2.5 the Turbine Builder can build a design from this code (its Website pattern). FTB Evolution 2 1.5.1 ships 2.4.1, which doesn't have it.`; return; }
+  if(!(cfg.v25>0)){ $("dBuilder").innerHTML=`From Colossal Reactors 2.5 the Turbine Builder can build a design from this code (its Website pattern). Packs on 2.4 don't have it.`; return; }
   let t=`Colossal Reactors 2.5 or newer: put a Turbine Builder on its <b>Website</b> pattern and paste the code or link (Ctrl+V). It builds the casing, deck, rod controllers, rods, blades and coils; the Turbine Controller and ports are yours to add.`;
   if(!MDCT1_COILS.has(state.coil)) t+=` ${COIL[state.coil].name} coils need a code that starts with <b>mdct2</b>, which Colossal Reactors 2.5's Turbine Builder doesn't read.`;
   else if(codeRodCoil()) t+=` This design has a Rod-column coil, so its code starts with <b>mdct2</b>: Colossal Reactors 2.5 only reads mdct1. Set the Rod-column coil to "=" for an mdct1 code.`;
