@@ -180,8 +180,8 @@ window.MD_PACKS = [
     // FTB Evolution 2 1.7.0 (FTB App pack 135, version 100594) ships Colossal Reactors 2.6.0.0.0 (1.5.1 shipped 2.4.1, 1.6.x 2.5).
     // Values from its config/colossal_reactors-common.toml and datapacks/ftb/data/colossal_reactors/recipe/{reactor,turbine}/*.json,
     // which replace the jar's recipe files; none of them changed from 1.5.1 (the toml only gained 2.6's new keys at their defaults,
-    // so legacyIgnoreAirInCoilAverage is off and the coil-layer flow bonus is on). FTB Armory's armory_elec_coils.json still replaces
-    // the coil list with the 2.4 twelve plus FTB's three and no flow entries, so every coil's steam flow is 1.0 there.
+    // so legacyIgnoreAirInCoilAverage is off and the coil-layer flow bonus is on). FTB Armory's armory_elec_coils.json adds its three
+    // coils (no flow entries) to the mod's own list, so 2.6's steam flow works there (crying obsidian x2.8, in game 2026-11-05).
     // The pack's own guide page still shows the 1.3.0 values (exponent 0.55, 0.8 steam per mB, 48 mB a blade).
     // Keys without a numbered prefix are datapack values (see the Colossal Reactors calculator's CFG_FIELDS); 1/0 = present or not.
     id: "ftb-evolution-2", name: "FTB Evolution 2", mc: "26.1.2",
