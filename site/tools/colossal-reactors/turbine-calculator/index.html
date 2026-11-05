@@ -307,7 +307,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Output</h2>
         <div class="results" id="results"></div>
         <ul class="notes" id="notes"></ul>
-        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. Checked in game on Colossal Reactors 2.5 too (2026-10-25, same config values): a shaft, five rods with a rod controller on every rod (135,000 RF/t) and with one taken away (128,250), the Turbine Builder's Hyperflow layout, a Website import of a rod grid, and a deck with a gap, all as the page shows. And on the Colossal Reactors 2.6 dev build (2026-10-26, mod coil list): rod grids with gold, iron and an empty zone, crying obsidian and redstone above the rod controllers, two and three coil layers on 20- and 26-tall casings, a shaft under 64 blades and a 5×5 casing matched the controller's steam and RF to the unit, and the Turbine Builder placed the page's 140 blades from its code. The 2.6.0.0.0 release's turbine and coil code is the same as that dev build's.</p>
+        <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. Checked in game on Colossal Reactors 2.5 too (2026-10-25, same config values): a shaft, five rods with a rod controller on every rod (135,000 RF/t) and with one taken away (128,250), the Turbine Builder's Hyperflow layout, a Website import of a rod grid, and a deck with a gap, all as the page shows. And on the Colossal Reactors 2.6 dev build (2026-10-26, mod coil list): rod grids with gold, iron and an empty zone, crying obsidian and redstone above the rod controllers, two and three coil layers on 20- and 26-tall casings, a shaft under 64 blades and a 5×5 casing matched the controller's steam and RF to the unit, and the Turbine Builder placed the page's 140 blades from its code. The 2.6.0.0.0 release's turbine and coil code is the same as that dev build's. And on FTB Evolution 2 1.7.0 itself (2026-11-05): a one-shaft 7×7×9 of aurichalcum with crying obsidian, stainless steel, redstone, steel, iron, lapis or netherite above the shaft, and gold with crying obsidian, matched the controller's steam and RF to the unit.</p>
       </div>
       <div class="box" id="share">
         <h2>Share this design</h2>
@@ -410,8 +410,9 @@ const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractio
    in research/colossal-reactors-2.5.0.0.0.md; the test harness evals this block) */
 // data/colossal_reactors/recipe/turbine/elec_coils.json: [id, name, selector, color, eff_coe, eff_max, pack key,
 // flow_coe, flow_max]. Only eff_coe reaches the controller: TurbineValidation takes min(avg eff_coe, avg eff_max), and no
-// shipped block has eff_max below eff_coe; the same goes for flow. FTB Evolution 2 replaces the list ("overwrite": true)
-// with the 2.4 twelve plus FTB's coils. 2.6 adds flow_coe/flow_max (1.0 when left out) and five coils (key "mod.2_6").
+// shipped block has eff_max below eff_coe; the same goes for flow. FTB Evolution 2 adds FTB Armory's three coils
+// (armory_elec_coils.json, no flow entries) to the mod's list, which it keeps. 2.6 adds flow_coe/flow_max (1.0 when left
+// out) and five coils (key "mod.2_6"); in FTB Evolution 2 1.7.0 every one of them works (in game 2026-11-05).
 const COILS = [
  ["graphite","Block of Graphite","#c:storage_blocks/graphite","#34373A",0.5,0.66],
  ["iron","Block of Iron","#c:storage_blocks/iron","#D8D8D8",0.66,0.75,null,1.25,1.35],
@@ -434,9 +435,8 @@ const COILS = [
  ["aeternium","Aeternium Turbine Coil","ftb:aeternium_turbine_coil","#3FB8A8",1.6,1.9,"coil.ftb"],
  ["aurichalcum","Aurichalcum Turbine Coil","ftb:aurichalcum_turbine_coil","#E39A3A",1.8,2.2,"coil.ftb"],
 ].map(([id,name,src,color,coe,max,key,fcoe=1,fmax=fcoe],i)=>({id,name,src,color,coe,max,key,fcoe,fmax,order:i}));
-// a coil's flow on this config: 2.6 or newer, and the mod's own coil list (a pack that replaces it, like FTB Evolution 2,
-// has no flow entries, so every block counts 1.0)
-const flowOf=(k,cfg)=>k&&cfg.v26>0&&!(cfg.ftbCoils>0)?[COIL[k].fcoe,COIL[k].fmax]:[1,1];
+// a coil's flow on this config: 2.6 or newer (FTB's three coils have no flow entry, so 1.0)
+const flowOf=(k,cfg)=>k&&cfg.v26>0?[COIL[k].fcoe,COIL[k].fmax]:[1,1];
 const COIL = Object.fromEntries(COILS.map(c=>[c.id,c]));
 
 // TurbineRodControllerLayout.bestPrimaryCenter: the rod controller's cell in the closure deck. On an even side the
@@ -634,8 +634,8 @@ const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("colossal_reactors", DEF
 let cfgPreset="default", cfg={...PRESETS.default};
 try{ const s=JSON.parse(localStorage.getItem("cr-turbine-cfg")||localStorage.getItem("cr-reactor-cfg")||"null");
   if(s&&PRESETS[s.preset]){ cfgPreset=s.preset; cfg={...PRESETS[s.preset]}; } else if(s&&s.preset==="custom"&&s.cfg&&localStorage.getItem("cr-turbine-cfg")){ cfgPreset="custom"; cfg={...PRESETS.default,...s.cfg}; } }catch(e){}
-// FTB's coils need its coil list; the 2.6 coils need 2.6 and the mod's own list (a pack's replacement list lacks them)
-const coilOn=c=>c==="air"||!COIL[c].key||(COIL[c].key==="coil.ftb"?cfg.ftbCoils>0:cfg.v26>0&&!(cfg.ftbCoils>0));
+// FTB's coils need FTB Armory's coil file; the 2.6 coils need 2.6
+const coilOn=c=>c==="air"||!COIL[c].key||(COIL[c].key==="coil.ftb"?cfg.ftbCoils>0:cfg.v26>0);
 
 /* ================= state ================= */
 const state={X:9, Z:9, Y:9, rods:[], profile:"full", ring:1, coil:"gold", rodCoil:null, coilLayers:1, coilFill:"full", steam:null, edLayer:0};
@@ -1014,7 +1014,7 @@ function renderResults(R){
     if(R.c>R.flowTarget) n.push(["warn",`${R.c} coil layers, but this casing only counts ${R.flowTarget} for steam flow (round((inside height + 2) / ${cfg.flowDiv}), less on a footprint under ${cfg.flowFoot} cells). The rest only take rod layers away.`]);
     else if(R.c<R.flowTarget) n.push(["good",`This casing counts up to ${R.flowTarget} coil layers for steam flow (Colossal Reactors 2.6): each one past the first adds flow, up to +${pct(cfg.flowMax*(1-1/R.flowTarget))} with ${R.flowTarget}${R.flowGate<1?`, scaled by ${fmt(R.validBlades)} of ${fmt(cfg.flowGate)} blades`:""}. It costs a rod layer each.`]);
     else if(R.c>1) n.push(["good",`${R.c} coil layers, the most this casing counts for steam flow: +${pct(R.flowBonus)}${R.flowGate<1?` (scaled by ${fmt(R.validBlades)} of ${fmt(cfg.flowGate)} blades)`:""}.`]);
-    const best=cfg.ftbCoils>0?null:COILS.filter(c=>coilOn(c.id)).sort((a,b)=>Math.min(b.fcoe,b.fmax)-Math.min(a.fcoe,a.fmax))[0];
+    const best=COILS.filter(c=>coilOn(c.id)).sort((a,b)=>Math.min(b.fcoe,b.fmax)-Math.min(a.fcoe,a.fmax))[0];
     if(best&&R.matFlow<Math.min(best.fcoe,best.fmax)&&state.coilFill==="full") n.push(["good",`Colossal Reactors 2.6: the coil cells right above the rod controllers set the steam flow. ${best.name} there takes ×${fmt(Math.min(best.fcoe,best.fmax),2)} the steam and makes ×${fmt(Math.min(best.fcoe,best.fmax),2)} the RF from the same blades, if you can feed it (Rod-column coil above).`]); }
   if(R.formed&&state.rods.length===1&&state.rods[0]===R.ctr.x*id+R.ctr.z&&iw>=5&&id>=5){
     const b=bestLayout(iw,id), ms=modelState(), g=simulate({...ms,rods:b.rods,rings:ms.rings.map(()=>b.ring)},cfg);
@@ -1026,7 +1026,7 @@ function renderResults(R){
   if((iw%2===0||id%2===0)&&R.formed&&cfg.v25>0&&state.rods.length===1&&state.rods[0]===R.ctr.x*id+R.ctr.z) n.push(["warn",`An even inside width has no middle cell: the Turbine Builder puts its shaft on the ${iw%2===0?"west":"north"} one of the two middle cells, and it gets one ring less than an odd width would allow. Odd casing sizes waste less.`]);
   if((iw%2===0||id%2===0)&&R.formed&&!(cfg.v25>0)) n.push(["warn",`An even inside width puts the rod controller on the ${iw%2===0?"west":"north"} one of the two middle cells, and a centre shaft gets one ring less than an odd width would allow. Odd casing sizes waste less.`]);
   if(R.formed&&cfg.v25>0&&R.rods.length>1) n.push(["warn",`${R.rods.length} rods, so ${R.rods.length} Turbine Rod Controllers: one on top of each rod, in the deck. Leave any rod without one and blade efficiency is ×0.95: ${fmt(R.rfShort)} RF/t instead of ${fmt(R.rf)} (Colossal Reactors 2.5).`]);
-  if(cfgPreset==="ftb-evolution-2") n.push(["good","FTB Evolution 2: 150 mB/t per blade, 9 RF per mB, turbines up to 32 blocks, and three extra coils from FTB Armory (Adamantite 145%, Aeternium 160%, Aurichalcum 180%). The pack's guide still says 48 mB per blade. Its coil list has no steam-flow values, so every coil counts 1.0× flow; only the coil-layer bonus changes steam."]);
+  if(cfgPreset==="ftb-evolution-2") n.push(["good","FTB Evolution 2: 150 mB/t per blade, 9 RF per mB, turbines up to 32 blocks, and three extra coils from FTB Armory (Adamantite 145%, Aeternium 160%, Aurichalcum 180%). The pack's guide still says 48 mB per blade. It ships Colossal Reactors 2.6, and its steam flow works as in the mod: crying obsidian over the rod controllers takes ×2.8 the steam (checked in game on pack 1.7.0). FTB's three coils have no flow (×1.0)."]);
   $("notes").innerHTML=n.map(([c,t])=>`<li class="${c}">${t}</li>`).join("");
   renderBuilder(R);
 }
