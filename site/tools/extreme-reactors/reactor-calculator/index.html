@@ -195,6 +195,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Build guide</h2>
         <p class="hint">Build from the bottom up. Step through the layers with ◀ ▶ on the 3D view; it hides everything above the layer you're on.</p>
         <div class="guide-cols"><div id="gLayer"></div><div id="gParts"></div></div>
+        <ul class="notes" id="gNotes" style="margin-top:12px"></ul>
         <details open><summary>How it goes together</summary>
           <ol>
             <li>The 12 edges (and so the corners) must be <b>Reactor Casing</b>. Glass, the controller, ports, power taps and control rods go on the faces, never on an edge. Every outside block has to be a reactor part.</li>
@@ -202,7 +203,8 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
             <li>Everything else inside must be air or a moderator block or fluid, which is anything you can paint in the layout editor. No other reactor part may go inside.</li>
             <li>At least one <b>Reactor Controller</b>. Power taps, fluid ports and access ports aren't needed for it to form, and both Active and Passive versions work.</li>
             <li>The reactor runs in active (steam) mode if any <b>Reactor Fluid Port</b> is attached, and passive (power) mode if none is. Basic reactors have no fluid port, so they're always passive.</li>
-            <li>Fluid ports and the <b>Reactor Solid Access Port</b> start in inlet mode; switch them in the port's screen. Water and fuel go in through inlet ports; steam comes out of an outlet fluid port and waste out of an outlet access port, so add a second access port set to outlet if you want waste taken out.</li>
+            <li>Fluid ports and the <b>Reactor Solid Access Port</b> start in inlet mode; switch them in the port's screen. Water and fuel go in through inlet ports; steam comes out of an outlet fluid port and waste out of an outlet access port. Build two access ports, one Input and one Output: with no Output port the waste stays inside, the rods get no fresh fuel and the power drops.</li>
+            <li>A <b>Passive</b> power tap doesn't push power, so it needs a block that pulls power out of it; in game it gave nothing to a Mekanism energy cube. The <b>Active</b> tap pushes power into the battery or machine next to it, so use that one.</li>
             <li>Basic and Reinforced parts don't mix. Basic reactors are at most 5 × 5 × 5; Reinforced ones are limited by <code>maxReactorSize</code> (32) and <code>maxReactorHeight</code> (48).</li>
           </ol>
           <p class="hint" style="margin-top:8px">From <code>MultiblockReactor.isMachineWhole</code> and <code>validateFuelAssembly</code> in the Extreme Reactors 1.21.1-2.4.28 jar, with the shared frame checks in ZeroCore 2.4.21.</p>
@@ -721,7 +723,7 @@ function frame(t){
 }
 
 /* Every block of the structure, keyed by position. Diffing two of these tells us exactly which blocks changed. */
-const SHELL_KINDS=new Set(["casing","glass","controller","power","portIn","portOut","access"]);
+const SHELL_KINDS=new Set(["casing","glass","controller","power","portIn","portOut","access","accessOut"]);
 const groupOf=k=>SHELL_KINDS.has(k)?"shell":k.startsWith("m:")?"mods":"core";
 function blockMap(){
   const {X,Y,Z}=state, ix=X-2, iz=Z-2, H=Y-2, map=new Map();
@@ -740,13 +742,17 @@ function blockMap(){
   for(let y=1;y<Y-1;y++){ const sx=spread(X,Math.floor(X/2)-1,Math.floor(X/2)+1), sz=spread(Z,Math.floor(Z/2)+1,Math.floor(Z/2)-1);
     for(const x of sx){ walls[0].push(x+","+y+","+(Z-1)); walls[3].push(x+","+y+",0"); } for(const z of sz){ walls[1].push((X-1)+","+y+","+z); walls[2].push("0,"+y+","+z); } }
   const used=new Set(), put=(k,first)=>{ for(const w of [first,0,1,2,3]) for(const key of walls[w]) if(!used.has(key)){ used.add(key); map.set(key,k); return; } };
+  // two access ports: one set to Input (fuel in) and one set to Output (waste out). With only an Input port the reactor
+  // never ejects waste, so the rod gets no fresh ingot and output slides (checked in game, ATM10, ER 2.4.28, 2026-11-09).
+  // This order puts a 3x3x3 starter as controller S, input E, tap W, output N: the in-game schematic turned 180 degrees.
   put("controller",0); put("access",0);
   if(active){ put("portIn",1); put("portOut",1); } else put("power",1);
+  put("accessOut",0);   // a 3x3x3 active reactor has only 4 wall slots, so this one doesn't fit there
   for(let x=0;x<ix;x++)for(let z=0;z<iz;z++){ const id=state.cells[x*iz+z]; if(id==="air") continue;
     const k=id==="rod"?"rod:"+state.fuel:"m:"+id; for(let y=1;y<=H;y++) map.set((x+1)+","+y+","+(z+1),k); }
   return map;
 }
-const PORT_COLORS={controller:"#E2D03A",power:"#D23A3A",portIn:"#3A7BD5",portOut:"#E9EEF2",access:"#7A5A2A"};
+const PORT_COLORS={controller:"#E2D03A",power:"#D23A3A",portIn:"#3A7BD5",portOut:"#E9EEF2",access:"#7A5A2A",accessOut:"#C9A15A"};
 function texFor(k){
   if(k==="casing") return casingTex(); if(k==="glass") return glassTex(); if(k==="ctrl") return ctrlTex();
   if(PORT_COLORS[k]) return portTex(k,PORT_COLORS[k]); if(k.startsWith("rod")) return rodTex();
@@ -901,9 +907,10 @@ function drawChart(R){
 /* build guide: per-layer block counts and a full parts list, read off the same block map the 3D view draws */
 // in-game names: assets/bigreactors/lang/en_us.json, block.bigreactors.{basic,reinforced}_reactor*
 const PART_NAMES={casing:"Reactor Casing",glass:"Reactor Glass",controller:"Reactor Controller",power:"Reactor Active Forge Energy Power Tap",
-  portIn:"Reactor Active Forge Fluid Port",portOut:"Reactor Active Forge Fluid Port",access:"Reactor Solid Access Port",ctrl:"Reactor Control Rod",rod:"Reactor Fuel Rod"};
-const PART_NOTES={power:"or Passive",portIn:"inlet mode: water in",portOut:"outlet mode: steam out",access:"inlet mode: fuel in"};
-const PART_ORDER=["casing","glass","controller","power","portIn","portOut","access","ctrl","rod"];
+  portIn:"Reactor Active Forge Fluid Port",portOut:"Reactor Active Forge Fluid Port",access:"Reactor Solid Access Port",accessOut:"Reactor Solid Access Port",
+  ctrl:"Reactor Control Rod",rod:"Reactor Fuel Rod"};
+const PART_NOTES={power:"pushes power out",portIn:"inlet mode: water in",portOut:"outlet mode: steam out",access:"Input: fuel in",accessOut:"Output: waste out"};
+const PART_ORDER=["casing","glass","controller","power","portIn","portOut","access","accessOut","ctrl","rod"];
 const partName=k=>{ if(k.startsWith("m:")){ const m=MOD[k.slice(2)]; return m.kind==="fluid"?`${m.name} <small>· fluid</small>`:m.name; }
   return `${PART_NAMES[k]} (${VARIANTS[state.variant].name})`+(PART_NOTES[k]?` <small>· ${PART_NOTES[k]}</small>`:""); };
 const swatches={}, swatch=k=>{ const id=k==="rod"?"rod:"+state.fuel:k; return swatches[id]||(swatches[id]=texFor(k).toDataURL()); };
@@ -919,6 +926,12 @@ function renderGuide(){
   const map=blockMap(), n=guide.layer, where=n===1?"floor":n===top?"roof":`layer ${n} of ${top}`;
   $("gLayer").innerHTML=`<h3>This layer <small>· ${where}</small></h3>${partsList(tally(map,n))}`;
   $("gParts").innerHTML=`<h3>Whole reactor <small>· ${state.X}×${state.Z}×${state.Y}</small></h3>${partsList(tally(map))}`;
+  const active=state.mode==="active"&&state.variant==="reinforced", parts=new Set(map.values()), gn=[];
+  gn.push(parts.has("accessOut")
+    ? ["good","Two access ports: set one to <b>Input</b> and put fuel in it, set the other to <b>Output</b> and take waste out of it. With only an Input port the reactor never ejects waste, the rods stop getting fresh fuel and output slides from there."]
+    : ["warn","Only one access port fits on this casing, so waste never leaves: the rods stop getting fresh fuel and output slides. Make the casing a block wider, or swap the port between Input and Output by hand."]);
+  if(!active) gn.push(["good",`Use the <b>Active</b> power tap: it pushes power into the battery or machine touching it${state.variant==="basic"?" (crafted from 4 casing, 4 redstone blocks and 1 redstone)":""}. A <b>Passive</b> tap doesn't push, so it needs a block that pulls power out of it; in game it gave nothing to a Mekanism energy cube.`]);
+  $("gNotes").innerHTML=gn.map(([c,t])=>`<li class="${c}"><span>${t}</span></li>`).join("");   // one span: .notes li is a flex row
 }
 function setGuide(on){ guide.on=on; $("tGuide").setAttribute("aria-pressed",on); $("guide").hidden=!on; $("layerbar").hidden=!on; document.querySelector(".stage").classList.toggle("guiding",on);
   if(on){ guide.layer=1; renderGuide(); orbit.goal={...(orbit.goal||{}),phi:0.8}; } else if(orbit.goal) delete orbit.goal.phi; }

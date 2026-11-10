@@ -10,6 +10,9 @@
 
 # Short links typed from TikTok comments (links there aren't clickable). 302 so the design can change later.
 # /starter = a Basic 3x3x3 passive reactor, 1 rod (ATM10): the cheapest first reactor, power straight out.
+# Its build guide lists 2 access ports (Input + Output) and the Active power tap: with one Input port the reactor never
+# ejects waste and output slides; the Passive tap pushed nothing into a Mekanism cube (both checked in game 2026-11-09).
+# The mdr1 code has no field for ports or taps: the page adds them to every design, so the links stay as they were shared.
 # /starter/turbine = Short 13's turbine (5x5x4, 4 blades, 8 gold, 9,501 FE/t), fed by a Reinforced 3x3x3 at 121 mB/t.
 /starter                  /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
 /starter/                 /tools/extreme-reactors/reactor-calculator/#atm10&d=mdr1.b.p.y.0.3.3.3.rod.AA    302
