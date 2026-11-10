@@ -355,11 +355,13 @@ const mins=t=>{ const s=t/20; return s<90?fmt(s)+" s":fmt(s/60,s<600?1:0)+" min"
 
 /* ================= config (generators.toml / general.toml) ================= */
 const DEFAULTS = {fuelEnergy:10000000, thermocoupleEfficiency:0.05, casingThermalConductivity:0.1, waterHeatingRatio:0.3, fuelCapacity:1000, waterPerInjection:1000000,
-  bladesPerCoil:4, ventChemicalFlow:32000, disperserChemicalFlow:1280, condenserRate:64000, chemicalPerTank:64000, maxEnergyPerSteam:10, feConversionRate:2.5};
+  bladesPerCoil:4, ventChemicalFlow:32000, disperserChemicalFlow:1280, condenserRate:64000, chemicalPerTank:64000, maxEnergyPerSteam:10, feConversionRate:2.5,
+  maxUpgradeMultiplier:10, maxUpgrades:8};
 const CFG_FIELDS=[["fuelEnergy","fusion_reactor.fuelEnergy"],["thermocoupleEfficiency","fusion_reactor.thermocoupleEfficiency"],["casingThermalConductivity","fusion_reactor.casingThermalConductivity"],["waterHeatingRatio","fusion_reactor.waterHeatingRatio"],
   ["fuelCapacity","fusion_reactor.fuelCapacity"],["waterPerInjection","fusion_reactor.waterPerInjection"],
   ["bladesPerCoil","turbine.bladesPerCoil"],["ventChemicalFlow","turbine.ventChemicalFlow"],["disperserChemicalFlow","turbine.disperserChemicalFlow"],["condenserRate","turbine.condenserRate"],["chemicalPerTank","turbine.chemicalPerTank"],
-  ["maxEnergyPerSteam","general.maxEnergyPerSteam"],["feConversionRate","general.feConversionRate"]];
+  ["maxEnergyPerSteam","general.maxEnergyPerSteam"],["feConversionRate","general.feConversionRate"],
+  ["maxUpgradeMultiplier","general.maxUpgradeMultiplier"],["maxUpgrades","mekanism_unleashed.maxUpgrades"]];   // the last two: the pre-mixed fuel's Chemical Infusers
 const ZERO_OK=new Set(["thermocoupleEfficiency","waterHeatingRatio"]);   // the mod allows 0 for these two
 // Pack presets live in /data/packs.js (keys match CFG_FIELDS' config names).
 const {presets:PRESETS, list:ATM_PACKS} = mdPackPresets("mekanism", DEFAULTS, CFG_FIELDS);
@@ -646,8 +648,22 @@ const turbinesNeeded=()=>water()&&Tb.valid&&Tb.intake>0?Math.ceil(R.steam/Tb.int
 // power at injection rate r for either cooling, with enough of this turbine; used by the results and the chart
 const powerJ=(r,isWater,fuel=state.fuel)=>{ const s=steady(r,isWater,fuel); return s.passiveJ+(isWater?Tb.mult*s.steam:0); };
 // a Chemical Infuser runs 2^speed operations a tick (1 D + 1 T -> 2 D-T each): 8 speed upgrades = 512 mB/t, but only
-// with 8 energy upgrades as well; checked in-game 2026-10-15 (513 measured; 2 mB/t with speed upgrades alone)
+// with 8 energy upgrades as well; checked in-game 2026-10-15 (513 measured; 2 mB/t with speed upgrades alone).
+// That's CachedRecipe running no more operations than its stored energy covers: 80,000 J × M^(energy/8) stored, 200 J ×
+// M^((2·speed − energy)/8) per operation, rounded up; and no more than its 10,000 mB output tank holds.
+// Mekanism Unleashed (maxUpgrades > 8) takes up to that many speed and energy upgrades, counts energy upgrades only up to
+// max(8, speed) and rounds down (dev.wp.mekanism_unleashed.Utils.electricity); the infusers then get the fewest upgrades
+// that feed the reactor with the fewest machines.
 const INFUSER_MAX=512;
+function infuserRate(s,e){ const M=cfg.maxUpgradeMultiplier, unl=cfg.maxUpgrades>8;
+  const ept=unl?Math.trunc(200*Math.pow(M,(2*s-Math.min(e,Math.max(8,s)))/8)):Math.ceil(200*Math.pow(M,(2*s-e)/8));
+  return 2*Math.min(Math.trunc(Math.pow(2,s)),Math.floor(Math.trunc(80000*Math.pow(M,e/8))/ept),5000); }
+function infusers(need){
+  if(!(cfg.maxUpgrades>8)) return {s:8,e:8,rate:INFUSER_MAX,n:Math.ceil(need/INFUSER_MAX)};
+  const cap=Math.round(cfg.maxUpgrades); let best=null;
+  for(let s=0;s<=cap;s++) for(let e=0;e<=cap;e++){ const rate=infuserRate(s,e); if(!rate) continue; const n=Math.ceil(need/rate);
+    if(!best||n<best.n||n===best.n&&s+e<best.s+best.e) best={s,e,rate,n}; }
+  return best; }
 function renderResults(){
   const need=turbinesNeeded(), wt=water();
   const turbJ=wt?Tb.mult*R.steam:0, totalJ=R.passiveJ+turbJ, FE=totalJ/cfg.feConversionRate;
@@ -663,7 +679,8 @@ function renderResults(){
   else cells.push(["From thermocouples",`${big(R.passiveJ/cfg.feConversionRate)} <small>FE/t</small>`]);
   cells.push(["Plasma",MKv(R.plasmaT)],["Case",MKv(R.caseT)],
     ["Fuel burned",`${fmt(R.b)} <small>mB/t D-T · ${fmt(R.b/2)} D + ${fmt(R.b/2)} T${premix()?" · the whole fuel tank":""}</small>`]);
-  if(premix()) cells.push(["Chemical Infusers",`${Math.ceil(R.b/INFUSER_MAX)} <small>with 8 speed + 8 energy upgrades · ${INFUSER_MAX} mB/t each</small>`],
+  const IF=infusers(R.b);
+  if(premix()) cells.push(["Chemical Infusers",`${IF.n} <small>with ${IF.s} speed + ${IF.e} energy upgrades · ${fmt(IF.rate)} mB/t each</small>`],
     ["Same reactor on D + T",`${big(steady(MAX_INJ,wt,"dt").lit?powerJ(MAX_INJ,wt,"dt")/cfg.feConversionRate:0)} <small>FE/t at ${MAX_INJ} mB/t</small>`]);
   if(!(premix()&&!wt)) cells.push(
     [premix()||wt?"Lowest rate for water":"Lowest stable rate",Number.isFinite(R.min)&&R.min<=MAX_INJ?`${R.min} <small>mB/t</small>`:`none <small>above ${MAX_INJ}</small>`]);
@@ -683,9 +700,9 @@ function renderResults(){
   if(cfgPreset==="atm10-aeronautics") n.push(["warn",premix()
     ?"ATM10: Aeronautics cuts fusion fuel to 1/100 of the default energy. On D + T no injection rate keeps it burning; the pre-mixed numbers here are the model's, not checked in game, and lighting it from a hohlraum may not work at that fuel energy."
     :"ATM10: Aeronautics cuts fusion fuel to 1/100 of the default energy, so no injection rate keeps a fusion reactor burning there."]);
-  if(premix()&&R.lit){ const dt=powerJ(MAX_INJ,wt,"dt"), x=R.b/MAX_INJ, inf=Math.ceil(R.b/INFUSER_MAX);
+  if(premix()&&R.lit){ const dt=powerJ(MAX_INJ,wt,"dt"), x=R.b/MAX_INJ, inf=IF.n;
     n.push(["good",`Pre-mixed fuel skips the injection cap: it burns the whole ${fmt(cfg.fuelCapacity)} mB fuel tank every tick, ${fmt(x,1)}× the ${MAX_INJ} mB/t of D + T, for ${fmt(x,1)}× the power (${big(dt/cfg.feConversionRate)} → ${big(totalJ/cfg.feConversionRate)} FE/t).`]);
-    n.push(["warn",`It also burns ${fmt(x,1)}× the fuel: ${fmt(R.b/2)} mB/t of tritium and ${fmt(R.b/2)} of deuterium. The FE per mB is the same as D + T. Feeding it takes ${inf} Chemical Infuser${inf===1?"":"s"} with 8 speed and 8 energy upgrades (without the energy upgrades one makes 2 mB/t).`]); }
+    n.push(["warn",`It also burns ${fmt(x,1)}× the fuel: ${fmt(R.b/2)} mB/t of tritium and ${fmt(R.b/2)} of deuterium. The FE per mB is the same as D + T. Feeding it takes ${inf} Chemical Infuser${inf===1?"":"s"} with ${IF.s} speed and ${IF.e} energy upgrades (${cfg.maxUpgrades>8?`Mekanism Unleashed: more speed needs more energy upgrades too, or the infuser's energy store can't cover the operations`:"without the energy upgrades one makes 2 mB/t"}).`]); }
   if(R.capped) n.push(["warn",`The water tank holds only ${big(R.wCap)} mB at injection rate ${state.inj}, so it can boil at most that much a tick; the rest of the heat goes to the air. Raise the rate to ${R.min} for full water cooling.`]);
   if(R.lit&&wt&&!R.blocked){
     const airFE=powerJ(state.inj,false)/cfg.feConversionRate;
