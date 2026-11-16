@@ -1,0 +1,108 @@
+"""Builds the SQ-Nuclear reactor calculator's 3D model from the SQ-Nuclear jar (extracted):
+the fuel rod drive's GeckoLib model (geo/control_rod_drive.geo.json) with its texture and light
+overlay, the four tiers of fuel rod cladding and head (OBJ models) with their atlases, the rod
+glow quads, and the radiation concrete tile used for the containment shell.
+
+    python scripts/sqnuclear-drive-model.py <path to the extracted jar>
+
+The path is the folder holding assets/nuclearsq (unzip nuclearsq-<version>-all.jar into it).
+Writes site/tools/sq-nuclear/reactor-calculator/drive-model.js. SQ-Nuclear is MIT licensed
+(SideQuestChris). Needs only the standard library.
+
+Coordinates in the output are blocks, with the drive's 5x5 footprint centred on x = z = 0 and
+y = 0 at the bottom of the 10-block tower. The drive controller's level (the GeckoLib origin) is
+y = 4: RodShaft heights count from there. Each quad is 20 numbers: four corners of x, y, z, u, v
+(top-left, top-right, bottom-right, bottom-left as seen from outside; v counts up from the bottom).
+"""
+import base64, json, math, sys
+from pathlib import Path
+
+root = Path(sys.argv[1]) / "assets/nuclearsq"
+out = Path(__file__).resolve().parent.parent / "site/tools/sq-nuclear/reactor-calculator/drive-model.js"
+r4 = lambda v: round(v, 4)
+
+
+def data_uri(path):
+    return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
+
+
+# ---- the drive: GeckoLib cubes, per-face UVs on a 512x512 texture ----
+geo = json.loads((root / "geo/control_rod_drive.geo.json").read_text())["minecraft:geometry"][0]
+TW, TH = geo["description"]["texture_width"], geo["description"]["texture_height"]
+CENTRE_Z = 32   # the model's 5x5 footprint runs z -8..72 px, x -40..40 px
+
+
+def cube_quads(c):
+    (ox, oy, oz), (sx, sy, sz) = c["origin"], c["size"]
+    x0, x1, y0, y1, z0, z1 = ox, ox + sx, oy, oy + sy, oz, oz + sz
+    corners = {   # TL, TR, BR, BL seen from outside
+        "north": [(x1, y1, z0), (x0, y1, z0), (x0, y0, z0), (x1, y0, z0)],
+        "south": [(x0, y1, z1), (x1, y1, z1), (x1, y0, z1), (x0, y0, z1)],
+        "east":  [(x1, y1, z1), (x1, y1, z0), (x1, y0, z0), (x1, y0, z1)],
+        "west":  [(x0, y1, z0), (x0, y1, z1), (x0, y0, z1), (x0, y0, z0)],
+        "up":    [(x0, y1, z0), (x1, y1, z0), (x1, y1, z1), (x0, y1, z1)],
+        "down":  [(x0, y0, z1), (x1, y0, z1), (x1, y0, z0), (x0, y0, z0)],
+    }
+    ry = math.radians((c.get("rotation") or [0, 0, 0])[1])
+    px, _, pz = c.get("pivot") or [0, 0, 0]
+    quads = []
+    for face, f in c["uv"].items():
+        (u, v), (w, h) = f["uv"], f["uv_size"]
+        uvs = [(u, v), (u + w, v), (u + w, v + h), (u, v + h)]
+        q = []
+        for (x, y, z), (tu, tv) in zip(corners[face], uvs):
+            if ry:
+                dx, dz = x - px, z - pz
+                x, z = px + dx * math.cos(ry) + dz * math.sin(ry), pz - dx * math.sin(ry) + dz * math.cos(ry)
+            q += [r4(x / 16), r4((y + 64) / 16), r4((z - CENTRE_Z) / 16), r4(tu / TW), r4(1 - tv / TH)]
+        quads += q
+    return quads
+
+
+bones = {b["name"]: [q for c in b.get("cubes", []) for q in cube_quads(c)] for b in geo["bones"]}
+
+
+# ---- fuel rods: NeoForge OBJ models, one block each, 64x64 atlases ----
+def obj_quads(name):
+    v, vt, quads = [], [], []
+    for line in (root / f"models/block/{name}.obj").read_text().splitlines():
+        p = line.split()
+        if not p:
+            continue
+        if p[0] == "v":
+            v.append([float(a) for a in p[1:4]])
+        elif p[0] == "vt":
+            vt.append([float(a) for a in p[1:3]])
+        elif p[0] == "f":
+            idx = [[int(i) for i in w.split("/")[:2]] for w in p[1:]]
+            if len(idx) == 3:
+                idx.append(idx[2])
+            # OBJ faces go counter-clockwise; store TL, TR, BR, BL so the page's (TL, BL, BR)(TL, BR, TR) winding holds
+            for vi, ti in [idx[0], idx[3], idx[2], idx[1]]:
+                x, y, z = v[vi - 1]
+                tu, tv = vt[ti - 1]
+                quads += [r4(x - 0.5), r4(y), r4(z - 0.5), r4(tu), r4(tv)]
+    return quads
+
+
+TIERS = ["", "_reinforced", "_hardened", "_experimental"]
+model = {
+    "source": "SQ-Nuclear 0.99.3-beta.1 by SideQuestChris (MIT)",
+    "tex": {
+        "drive": data_uri(root / "textures/block/control_rod_drive.png"),
+        "driveGlow": data_uri(root / "textures/block/control_rod_drive_glow_0.png"),
+        "rod": [data_uri(root / f"textures/block/fuel_rod{t}_atlas_sqc.png") for t in TIERS],
+        "rodGlow": data_uri(root / "textures/block/fuel_rod_glow_sqc.png"),
+        "concrete": data_uri(root / "textures/block/radiation_concrete_sqc.png"),
+    },
+    "tower": bones["tower"],
+    "cage": bones["cage"],
+    "rodBlock": [obj_quads(f"fuel_rod_block{t}_sqc") for t in TIERS],
+    "rodHead": [obj_quads(f"fuel_rod_head{t}_sqc") for t in TIERS],
+    "rodGlow": obj_quads("fuel_rod_glow_sqc"),
+}
+out.parent.mkdir(parents=True, exist_ok=True)
+out.write_text("/* Generated by scripts/sqnuclear-drive-model.py from the SQ-Nuclear 0.99.3-beta.1 jar (MIT, SideQuestChris). Don't edit by hand. */\n"
+               "window.SQN_MODEL=" + json.dumps(model, separators=(",", ":")) + ";\n", encoding="utf-8")
+print(f"{out}: {out.stat().st_size // 1024} KB, tower {len(bones['tower']) // 20} quads, cage {len(bones['cage']) // 20}, "
+      f"rods {[len(q) // 20 for q in model['rodBlock']]}, heads {[len(q) // 20 for q in model['rodHead']]}")
