@@ -1,0 +1,710 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#101412">
+<link rel="canonical" href="https://moddecoded.com/tools/sq-nuclear/reactor-calculator/">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<title>SQ-Nuclear Reactor Calculator</title>
+<meta name="description" content="SQ-Nuclear fuel rod drive planner: load nine shafts with tier 1-4 or MOX fuel rods, set the rod step, moderator, cooler, pumps, steam line and turbines, and see the water flow, heat vs cooling, time to meltdown, steam, FE/t fresh and over the rods' life, recombiners and xenon filters, from the SQ-Nuclear 0.99.3-beta.1 code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=VT323&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#101412; --surface:#171C19; --ink:#E5E9E3; --muted:#97A29A; --line:#2A332D;
+  --accent:#E2D03A; --accent-ink:#E8D84F; --accent-soft:#3A3614;
+  --good:#5CC48A; --warn:#E3A060; --bad:#EE7B7B; --steam:#7FAEF0;
+  --viewport:#1B2226; --viewport-2:#0F1417;
+  --t1:#56636A; --t2:#3C68A0; --t3:#8E5F45; --t4:#2A8C84; --mox:#9BE07A; --empty:#1E2528;
+  --font-display:"VT323","Courier New",monospace;
+  --font-readout:"VT323",var(--font-mono);
+  --font-body:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 48px}
+[hidden]{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+footer{font-family:var(--font-mono);font-size:12px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+footer p{margin:0 0 6px}
+footer a{color:var(--muted)}
+footer a:hover{color:var(--accent-ink)}
+.crumbs{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.crumbs a{color:var(--accent-ink);text-decoration:none}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px}
+h1{font-family:var(--font-display);font-weight:400;font-size:clamp(34px,5vw,48px);line-height:1;margin:0;text-wrap:balance}
+h1 .y{color:var(--accent-ink)}
+.src{font-family:var(--font-mono);font-size:12px;color:var(--muted)}
+.src a{color:var(--muted)}
+.lede{max-width:72ch;margin:0;color:var(--muted)}
+.lede b{color:var(--ink)}
+.unverified{display:flex;gap:10px;align-items:flex-start;max-width:80ch;margin:0;padding:8px 12px;border:1px solid #5A4A1E;background:#221D0E;border-radius:5px;font-size:13.5px;color:#E9DDB0}
+.unverified b{color:#F2E36A;font-weight:700}
+.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px);display:flex;flex-direction:column;gap:10px}
+@media (max-width:900px){.stage{position:relative;top:0}}
+.view{position:relative;border-radius:6px;overflow:hidden;background:radial-gradient(120% 90% at 50% 30%,var(--viewport),var(--viewport-2));aspect-ratio:4/3;max-height:64vh;width:100%;touch-action:none;cursor:grab}
+.view:active{cursor:grabbing}
+.view.over{cursor:pointer}
+.view canvas{display:block;width:100%;height:100%}
+.hud{position:absolute;left:10px;top:10px;right:10px;display:flex;flex-direction:column;gap:2px;font-family:var(--font-mono);font-size:12px;color:#DDE6E2;pointer-events:none;text-shadow:0 1px 0 #000}
+.hud .big{font:400 38px/.95 var(--font-readout);font-variant-numeric:tabular-nums;color:#F2E36A}
+.hud .big small{font:400 14px var(--font-mono);color:#C9D2CE}
+.hud .status{font:400 24px/1 var(--font-readout);letter-spacing:.04em}
+.hover-line{position:absolute;left:10px;bottom:10px;right:220px;font:12px/1.4 var(--font-mono);color:#DDE6E2;text-shadow:0 1px 0 #000,0 0 4px #000;pointer-events:none;white-space:pre-line}
+@media (max-width:560px){.hover-line{right:10px;bottom:44px}.view{aspect-ratio:1/1;max-height:none}.hud .big{font-size:32px}}
+.st-good{color:var(--good)}.st-warn{color:var(--warn)}.st-bad{color:var(--bad)}.st-idle{color:var(--muted)}
+.viewbar{position:absolute;right:8px;bottom:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.viewbar button{font:600 12px var(--font-mono);background:rgba(10,14,16,.72);color:#DDE6E2;border:1px solid rgba(255,255,255,.18);border-radius:4px;padding:5px 8px;cursor:pointer}
+.viewbar button[aria-pressed="true"]{border-color:#E2D03A;color:#F2E36A}
+.viewbar button:focus-visible{outline:2px solid #E2D03A;outline-offset:1px}
+.nogl{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:24px;text-align:center;color:var(--muted);font-size:14px}
+.box{display:flex;flex-direction:column;gap:10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);padding:12px}
+.panel{display:flex;flex-direction:column;gap:18px}
+.sect{display:flex;flex-direction:column;gap:10px}
+h2{font-family:var(--font-display);font-weight:400;font-size:24px;line-height:1;margin:0;letter-spacing:.02em}
+h3.sub{font:600 12px var(--font-mono);color:var(--muted);margin:4px 0 0;letter-spacing:.04em;text-transform:uppercase}
+.num{width:100%;font:600 14px var(--font-mono);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:4px;padding:5px 6px;text-align:right;font-variant-numeric:tabular-nums}
+.num:focus-visible,.seg button:focus-visible,.btn:focus-visible,.tog:focus-visible,input[type=range]:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.seg{display:inline-flex;flex-wrap:wrap;max-width:100%;border:1px solid var(--line);border-radius:5px;overflow:hidden;width:max-content}
+.seg button{font:600 13px var(--font-body);padding:6px 11px;background:var(--surface);color:var(--muted);border:0;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink)}
+.seg button small{display:block;font:500 10.5px var(--font-mono);color:var(--muted)}
+.seg.g{display:grid;width:100%;gap:1px;background:var(--line)}
+.seg.g button+button{border-left:0}
+.seg.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.seg.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:560px){.seg.g4{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tog{font:600 13px var(--font-body);padding:6px 11px;background:var(--surface);color:var(--muted);border:1px solid var(--line);border-radius:5px;cursor:pointer}
+.tog[aria-pressed="true"]{background:var(--accent-soft);color:var(--ink);border-color:var(--accent)}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.hint{font-size:13px;color:var(--muted);margin:0}
+.hint a{color:var(--accent-ink)}
+.hint b{color:var(--ink)}
+.btn{font:600 13px var(--font-body);background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:4px;padding:6px 10px;cursor:pointer;text-align:left}
+.btn:hover{border-color:var(--accent)}
+.btn small{display:block;font:500 11px var(--font-mono);color:var(--muted)}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+.num.code{text-align:left;font:500 12.5px var(--font-mono)}
+.fields{display:grid;grid-template-columns:minmax(0,1fr) 92px;gap:6px 10px;align-items:center}
+.fields label{font-size:13.5px;color:var(--ink)}
+.fields label small{display:block;font:500 11px var(--font-mono);color:var(--muted)}
+.slider{display:flex;align-items:center;gap:12px}
+.slider input[type=range]{flex:1;accent-color:var(--accent);min-width:0}
+.slider output{font:400 30px/1 var(--font-readout);font-variant-numeric:tabular-nums;min-width:4.2ch;text-align:right;color:var(--accent-ink)}
+/* shafts: the drive from above, front (controller side) at the bottom; each shaft is its rod, top cladding first */
+.shafts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;width:100%;max-width:360px;padding:6px;background:#0B0F11;border:2px solid #3A4449;border-radius:4px;user-select:none;-webkit-user-select:none;touch-action:pan-y}
+.shaft{display:flex;flex-direction:column;gap:3px;padding:4px;background:#121719;border-radius:3px}
+.shaft.lit{box-shadow:inset 0 0 0 2px #F2E36A}
+.sh-state{font:600 11px var(--font-mono);padding:3px 2px;border:1px solid var(--line);border-radius:3px;background:var(--surface);color:var(--ink);cursor:pointer}
+.sh-state.unlocked{color:var(--warn)}
+.sh-state.empty{color:var(--muted)}
+.sh-state:focus-visible,.cas:focus-visible{outline:2px solid #F2E36A;outline-offset:1px}
+.cas{position:relative;height:30px;border:0;border-radius:2px;padding:0;cursor:pointer;color:#F2F5F0;box-shadow:inset 2px 2px 0 rgba(255,255,255,.08),inset -2px -2px 0 rgba(0,0,0,.35);background:var(--empty)}
+.cas.t1{background:var(--t1)}.cas.t2{background:var(--t2)}.cas.t3{background:var(--t3)}.cas.t4{background:var(--t4)}
+.cas .lbl{position:absolute;left:5px;top:4px;font:400 17px/1 var(--font-readout);text-shadow:0 1px 0 #000;pointer-events:none}
+.cas .mx{position:absolute;right:5px;top:5px;font:600 10px/1 var(--font-mono);color:var(--mox);pointer-events:none}
+.cas .bar{position:absolute;left:4px;right:4px;bottom:3px;height:3px;background:rgba(0,0,0,.5);pointer-events:none}
+.cas .bar i{display:block;height:100%;background:#F2E36A}
+.cas:hover{filter:brightness(1.2)}
+.cas.lit{outline:2px solid #F2E36A;outline-offset:-2px}
+.shaft.empty .cas,.shaft.empty .cas.t1,.shaft.empty .cas.t2,.shaft.empty .cas.t3,.shaft.empty .cas.t4{background:var(--empty);opacity:.45}
+.shafts-cap{font:11.5px var(--font-mono);color:var(--muted);width:100%;max-width:360px;text-align:center}
+.brush{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.brush .seg button{padding:5px 9px}
+.brush .seg button .sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.charge{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.charge .num{width:70px}
+.results{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.cell{background:var(--surface);padding:10px 12px;display:flex;flex-direction:column;gap:2px;min-width:0}
+.cell .k{font-size:12px;color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+.cell .v{font:400 28px/1.05 var(--font-readout);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.cell .v small{font:400 12px var(--font-mono);color:var(--muted)}
+.cell .s{font:12px/1.4 var(--font-mono);color:var(--muted)}
+.cell.hero{grid-column:1/-1;background:var(--accent-soft)}
+.cell.hero .v{font:400 48px/1 var(--font-readout)}
+.notes{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.notes li{font-size:13.5px;padding:7px 10px;border-radius:5px;border:1px solid var(--line);background:var(--surface);display:flex;gap:8px}
+.notes li::before{content:"";flex:0 0 6px;border-radius:2px;background:var(--muted)}
+.notes li.good::before{background:var(--good)}.notes li.warn::before{background:var(--warn)}.notes li.bad::before{background:var(--bad)}
+.parts{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:3px}
+.parts li{display:flex;align-items:baseline;gap:8px;font-size:13.5px}
+.parts li .n{margin-left:auto;font:600 13px var(--font-mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+.parts li small{font:500 11px var(--font-mono);color:var(--muted)}
+.parts li.tot{border-top:1px solid var(--line);padding-top:4px;font-weight:700}
+details.more summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-content;max-width:100%}
+.code-says{border-top:1px solid var(--line);padding-top:18px;display:flex;flex-direction:column;gap:12px}
+.code-says h2{font-size:24px;font-weight:700}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.fact{display:flex;flex-direction:column;gap:6px}
+.fact h3{font-size:15px;margin:0}
+.fact p{margin:0;font-size:14px;color:var(--muted);max-width:62ch}
+.fact pre{margin:0;overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:5px;padding:8px 10px;font:12.5px/1.5 var(--font-mono);color:var(--ink)}
+.fact .ref{font-family:var(--font-mono);font-size:11.5px;color:var(--accent-ink)}
+.credit{font-size:12.5px;color:var(--muted);margin:0}
+.credit a{color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav class="crumbs" aria-label="Breadcrumb"><a href="/">Mod Decoded</a> / SQ-Nuclear / Reactor Calculator</nav>
+  <header class="top">
+    <h1>SQ-Nuclear <span class="y">Reactor Calculator</span></h1>
+    <span class="src">Formulas from the <a href="https://www.curseforge.com/minecraft/mc-mods/sq-nuclear">SQ-Nuclear 0.99.3-beta.1</a> jar · NeoForge 1.21.1</span>
+  </header>
+  <p class="lede">Load the fuel rod drive's nine shafts, set the rod step, the moderator and cooler, and the primary loop and steam line around it. See how much water the core wants and gets, whether its heat stays at 0 or runs to a <b>meltdown</b>, the steam and <b>FE/t</b> fresh and over the rods' life, and the <b>recombiners</b> and <b>xenon filters</b> it needs.</p>
+  <p class="unverified" role="note"><span aria-hidden="true">⚠</span><span><b>From the mod's code, not yet verified in game.</b> Every number here is read from the decompiled 0.99.3-beta.1 jar and its data files. We haven't built these reactors in a world yet. If yours doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml" style="color:#F2E36A">say so</a>.</span></p>
+
+  <div class="grid">
+    <section class="stage" aria-label="Fuel rod drive">
+      <div class="view" id="view">
+        <canvas id="gl" aria-label="3D model of the fuel rod drive with its nine fuel rods at the chosen rod step. Click a cladding block to paint it."></canvas>
+        <div class="hud">
+          <span class="big" id="hudMain">—</span>
+          <span class="status" id="hudStatus" aria-live="polite"></span>
+          <span id="hudSub"></span>
+        </div>
+        <div class="hover-line" id="hudHover"></div>
+        <div class="viewbar">
+          <button id="tXray" aria-pressed="true" type="button">X-ray</button>
+          <button id="tShell" aria-pressed="false" type="button">Containment</button>
+          <button id="tFront" type="button">Front</button>
+        </div>
+      </div>
+      <p class="hint">Drag to rotate. Right-drag, Shift-drag or two-finger drag to pan. Scroll or pinch to zoom. Click a cladding block to paint it with the brush on the right. X-ray shows the rods inside the vessel; Containment draws the 31×32×31 building around the drive for scale.</p>
+      <div class="box">
+        <h2>Result</h2>
+        <div class="results" id="results"></div>
+        <ul class="notes" id="notes"></ul>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="Inputs">
+      <div class="sect">
+        <h2>Fuel rods</h2>
+        <div class="brush" role="group" aria-label="Brush">
+          <div class="seg" id="bTier" role="group" aria-label="Cladding tier"></div>
+          <button type="button" class="tog" id="bMox" aria-pressed="false">MOX</button>
+          <label class="charge">Charge <input class="num" id="bCharge" type="number" min="0" max="100" step="5" value="100"> %</label>
+        </div>
+        <span class="shafts-cap">back</span>
+        <div class="shafts" id="shafts" aria-label="The nine shafts from above, front at the bottom"></div>
+        <span class="shafts-cap">front · controller</span>
+        <div class="btns">
+          <button class="btn" type="button" id="fillAll">Fill every shaft with the brush</button>
+          <button class="btn" type="button" id="lockAll">Lock all</button>
+          <button class="btn" type="button" id="emptyAll">Remove all rods</button>
+        </div>
+        <p class="hint">A fuel rod is four cladding blocks and a docker, top cladding first. Click or drag across claddings to paint them with the brush; mixed tiers are fine, each block counts with its own factor. The button on each shaft cycles <b>Locked</b> (the clamp holds it, it moves with the rod step) / <b>Unlocked</b> (stays up, makes nothing) / <b>No rod</b>.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Rod step</h2>
+        <div class="slider"><input type="range" id="rod" min="0" max="15" step="1" value="15" aria-label="Rod step, 0 to 15"><output id="rodOut" for="rod">15</output></div>
+        <p class="hint" id="rodHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Drive parts</h2>
+        <h3 class="sub">Moderator</h3>
+        <div class="seg g g3" id="sMod" role="group" aria-label="Moderator"></div>
+        <h3 class="sub">Cooler</h3>
+        <div class="seg g g4" id="sCool" role="group" aria-label="Cooler"></div>
+        <p class="hint">Both are items you install in the drive controller, one of each. A moderator multiplies the flow (and the burn-up) and, faster, the heat.</p>
+      </div>
+
+      <div class="sect">
+        <h2>Primary loop</h2>
+        <div class="fields">
+          <label for="nPump">Main coolant pumps <small>2,560 mB/t · 3,600 FE/t each</small></label><input class="num" id="nPump" type="number" min="0" max="8" step="1">
+          <label for="nHp">High-pressure pumps <small>5,120 mB/t · 9,600 FE/t each</small></label><input class="num" id="nHp" type="number" min="0" max="8" step="1">
+          <label for="nSg">Steam generators <small>2,560 mB/t primary → 1,280 wet steam each</small></label><input class="num" id="nSg" type="number" min="0" max="8" step="1">
+        </div>
+      </div>
+
+      <div class="sect">
+        <h2>Steam line</h2>
+        <div class="seg g g3" id="sLine" role="group" aria-label="Wet steam to steam"></div>
+        <div class="row">
+          <button type="button" class="tog" id="tReheat" aria-pressed="false">Reheater</button>
+          <button type="button" class="tog" id="tPreheat" aria-pressed="false">Feedwater heater</button>
+        </div>
+        <p class="hint" id="lineHint"></p>
+      </div>
+
+      <div class="sect">
+        <h2>Turbines</h2>
+        <div class="fields">
+          <label for="nTurb">Steam turbines <small>400 mB/t each before the translator</small></label><input class="num" id="nTurb" type="number" min="0" max="12" step="1">
+        </div>
+        <h3 class="sub">Translator in each turbine</h3>
+        <div class="seg g g4" id="sTr" role="group" aria-label="Translator"></div>
+      </div>
+
+      <div class="sect">
+        <h2>Core chemistry</h2>
+        <div class="fields">
+          <label for="nBoron">Boron <small>ppm · −5 % power per 100 · 100 per boric acid</small></label><input class="num" id="nBoron" type="number" min="0" max="1000" step="100">
+          <label for="nXe">Xenon <small>% · costs power above 30 %, stops the core at 100 %</small></label><input class="num" id="nXe" type="number" min="0" max="100" step="5">
+          <label for="nDep">Deposits <small>% · up to 15 % less cooling at 100 %</small></label><input class="num" id="nDep" type="number" min="0" max="100" step="5">
+        </div>
+        <div class="row"><button type="button" class="tog" id="tCont" aria-pressed="true">Containment built (150 FE/t)</button></div>
+      </div>
+
+      <div class="sect">
+        <h2>Examples</h2>
+        <div class="btns" id="examples"></div>
+      </div>
+
+      <div class="box" id="share">
+        <h2>Share this reactor</h2>
+        <input class="num code" id="dCode" type="text" spellcheck="false" autocomplete="off" aria-label="Design code" aria-describedby="dMsg">
+        <div class="btns"><button class="btn" type="button" id="dLink">Copy link</button><button class="btn" type="button" id="dCopy">Copy design code</button></div>
+        <p class="hint" id="dMsg" role="status">The link opens this exact reactor. Paste a design code above to load it.</p>
+      </div>
+    </section>
+  </div>
+
+  <section class="code-says">
+    <h2>What the code actually says</h2>
+    <div class="facts">
+      <div class="fact">
+        <h3>The rods set how much water the core wants</h3>
+        <p>Each locked shaft asks for its share of 640 mB/t, scaled by how deep the rod is and how much charge is left in it, times its cladding tier. A full tier 1 core wants exactly 640. The moderator multiplies it, xenon and boron cut it.</p>
+<pre>fuel  = Σ claddings remaining × tier ÷ 57,600
+        tier 1 / 3.75 / 7.5 / 12.5, MOX × 1.3
+want  = 640/9 × Σ (step/15 × fuel) × moderator × chem
+chem  = (1 − 0.4 × xenon over 30 %) × (1 − boron/2000)</pre>
+        <span class="ref">BigMachineBlockEntity.vessel · CoreChemistry.powerFactor</span>
+      </div>
+      <div class="fact">
+        <h3>There is no middle temperature</h3>
+        <p>Heat only builds while the gain beats the cooling; otherwise it stays at 0. So a design is either stable forever or on its way to a meltdown. At 100 % it stops making power, and after 250 ticks (12.5 s) there it explodes, unless it drops under 90 %.</p>
+<pre>norm      = min(1, 640 × mod ÷ want)
+insertion = min(1, want ÷ (640 × mod))
+gain = insertion × 0.7 × heat × (1 + 0.15 MOX)
+     + water it can't get × norm × 0.0025
+cool = 0.2 + (flow × norm × 0.001 + cooler)
+           × (1 − 0.15 × deposits)
+heat += (gain − cool) × 0.8 per tick, to 1,000</pre>
+        <span class="ref">DriveCore.tick · BigMachineBlockEntity.controlRods</span>
+      </div>
+      <div class="fact">
+        <h3>Better rods make more steam, not more heat</h3>
+        <p>Insertion is capped at 1 and the flow cooling is normalised the same way, so tier 4 rods heat the core like tier 1 rods, as long as the pumps and steam generators move all the water they want. Water they can't move is what kills an overdriven core.</p>
+<pre>9 × T1 full:  want   640, heat 0.70 vs 0.84
+9 × T4 full:  want 8,000, the drive moves 5,120
+              heat 1.28 vs 0.61: meltdown
+9 × T4 at 9:  want 4,800, heat 0.70 vs 0.84</pre>
+        <span class="ref">DriveCore.tick</span>
+      </div>
+      <div class="fact">
+        <h3>Output follows the charge left</h3>
+        <p>A shaft burns 1 charge a tick at full depth, times the moderator, and only while its water moves. Its output is worked out from the charge it still has, so a fresh core gives its full FE/t and a core halfway through gives half: over a rod's life, about half the fresh rate. A full rod lasts 48 minutes at full depth, 12 with heavy water.</p>
+<pre>burn = step/15 × moderator × chem × moved ÷ wanted
+       charges per tick per shaft, top cladding first
+rod  = 4 × 14,400 = 57,600 charge</pre>
+        <span class="ref">vessel() vesselBurn · burnRod · FuelRodBlockEntity</span>
+      </div>
+      <div class="fact">
+        <h3>Steam line and turbine</h3>
+        <p>Two mB of hot primary water make one of wet steam (15 % more with preheated feedwater). A dryer keeps 97.5 % of it, a separator 90 %, a reheater turns 80 % into superheated steam worth half as much again. A turbine takes 400 mB/t; translators raise both its flow and its FE per mB.</p>
+<pre>wet   = flow ÷ 2 (× 1.15), ≤ 1,280 per generator
+FE/mB = 256 steam, 384 superheated
+turbine = 400 mB/t × flow % × FE %
+  Brass 150/110 · Composite 200/125 · Glowstone 300/150</pre>
+        <span class="ref">steamGenerator · TurbineControllerBlockEntity</span>
+      </div>
+      <div class="fact">
+        <h3>Hydrogen and xenon, the hidden timers</h3>
+        <p>A running core makes hydrogen. With no recombiner within 24 blocks it reaches 100 % in about 4 minutes at full power and blows the hull; the second time it takes the reactor room. Xenon left alone stops a full-power core after about 15 minutes, until it falls back under 60 %. The guide barely mentions either.</p>
+<pre>hydrogen +0.02 %/t × insertion, −0.012 per recombiner
+xenon    +0.012 %/t × insertion (× 1.5 MOX)
+         −0.01 % of itself, −0.01 per working filter
+filter 600 FE/t, carbon filter lasts 20 min</pre>
+        <span class="ref">CoreChemistry.tick · ignite</span>
+      </div>
+      <div class="fact">
+        <h3>Where the guide and the code disagree</h3>
+        <p>The Compendium chains a separator into a dryer, but the dryer's input only takes wet steam and the separator puts out dry steam, so that chain may not connect; either one alone makes turbine-ready steam. It also says a drive takes at most 2,560 mB/t; in code that's one steam generator's limit, and the drive's own ports take 5,120.</p>
+<pre>dryer accepts(): wet steam only
+drive primary ports: 5,120 mB/t
+steam generator primary in: 2,560 mB/t</pre>
+        <span class="ref">BigMachineBlockEntity.accepts · cooling_values.json</span>
+      </div>
+      <div class="fact">
+        <h3>When the turbines can't keep up</h3>
+        <p>Nothing in the chain vents steam. If the turbines take less than the line makes, their tanks fill, then the line's, then the steam generators stop, the hot primary water has nowhere to go and the core is left short of water. This page works out that backed-up state too. It's our reading of the code, and the first thing we'll check in game.</p>
+<pre>turbine steam tank 640,000 mB
+backed-up flow = turbine intake ÷ steam per mB primary</pre>
+        <span class="ref">steamGenerator · vessel() · TurbineControllerBlockEntity</span>
+      </div>
+    </div>
+    <p class="credit">Drive and fuel rod models and textures from <a href="https://www.curseforge.com/minecraft/mc-mods/sq-nuclear">SQ-Nuclear</a> by SideQuestChris (MIT). The containment shell is drawn to size, not from the mod's model. Read from the 0.99.3-beta.1 jar on 16 November 2026; nothing on this page has been checked in game yet. If your reactor doesn't match, <a href="https://github.com/MushroomMan321/moddecoded/issues/new?template=wrong-result.yml">say so</a>.</p>
+  </section>
+  <footer>
+    <p>Free and ad-free. If this calculator saved you some time, <a href="https://ko-fi.com/moddecoded">chip in to the Coke Zero fund</a>.</p>
+    <p>Not affiliated with Mojang, Microsoft or any mod author. Mod names belong to their creators.</p>
+  </footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="reactor-model.js"></script>
+<script src="drive-model.js"></script>
+<script src="/data/share.js"></script>
+<script>
+(() => {
+"use strict";
+const $=id=>document.getElementById(id);
+const {C,steady,backedUp,life,plant,hydrogen}=window.SQN;
+const fmt=(v,d=0)=>Number.isFinite(v)?v.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d}):"—";
+const kfe=v=>!Number.isFinite(v)?"—":v>=1e6?fmt(v/1e6,2)+"M":v>=1e4?fmt(v/1e3,1)+"k":fmt(v);
+const big=v=>!Number.isFinite(v)?"—":v>=1e12?fmt(v/1e12,2)+" trillion":v>=1e9?fmt(v/1e9,2)+" billion":v>=1e6?fmt(v/1e6,1)+" million":fmt(v);
+const dur=ticks=>{ if(!Number.isFinite(ticks)) return "—"; const s=ticks/20;
+  if(s<60) return `${fmt(s,s<10?1:0)} s`; const r=Math.round(s); if(r<3600) return `${Math.floor(r/60)}m ${String(r%60).padStart(2,"0")}s`; return `${Math.floor(r/3600)}h ${String(Math.floor(r%3600/60)).padStart(2,"0")}m`; };
+const mins=ticks=>Number.isFinite(ticks)?`${fmt(ticks/1200,1)} min`:"—";
+
+/* ================= state ================= */
+const TIERS=[["T1","Normal"],["T2","Reinforced"],["T3","Hardened"],["T4","Experimental"]];
+const STATES=["locked","unlocked","empty"], STATE_NAME={locked:"Locked",unlocked:"Unlocked",empty:"No rod"};
+const LINE_NAMES={dryer:"Dryer",separator:"Separator",both:"Separator → dryer"};
+const TR_SHOWN=[0,2,3,4];   // Basic (1) behaves exactly like none
+const shaft=(tier=1,mox=false,charge=100,st="locked")=>({state:st,casings:[0,1,2,3].map(()=>({tier,mox,charge}))});
+const DEFAULT={shafts:Array.from({length:9},()=>shaft()),rod:15,moderator:0,cooler:0,pumps:1,hpPumps:0,sg:1,line:"dryer",reheat:false,preheat:false,
+  turbines:1,translator:0,boron:0,xenon:0,deposits:0,containment:true};
+const clone=d=>JSON.parse(JSON.stringify(d));
+let state=clone(DEFAULT);
+const brush={tier:1,mox:false,charge:100};
+
+// [label, sub, design changes]. All but the last are rows of the research model's table, which the page reproduces.
+const EXAMPLES=[
+  ["Starter","9 × T1, 1 pump, 1 generator, dryer, 1 turbine",{}],
+  ["Starter, tuned","+ reheater, feedwater heater, Glowstone translator",{reheat:true,preheat:true,translator:4}],
+  ["Obsidian + heat exchanger","9 × T1, 1 pump, 1 generator, 2 turbines",{moderator:3,cooler:1,turbines:2}],
+  ["Tier 4, full in","9 × T4 at step 15: wants 8,000 mB/t",{tier:4,sg:2,pumps:0,hpPumps:1,turbines:2,translator:4,reheat:true}],
+  ["Tier 4 at step 9","2 generators, reheater, 2 Glowstone turbines",{tier:4,rod:9,sg:2,pumps:0,hpPumps:1,reheat:true,turbines:2,translator:4}],
+];
+function loadExample(ch){ const d=clone(DEFAULT); const {tier,...rest}=ch; if(tier) d.shafts=Array.from({length:9},()=>shaft(tier)); Object.assign(d,rest); state=d; update(); }
+
+/* ================= shaft grid (top view, front at the bottom) ================= */
+// ROD_SHAFTS order: cells (x, z) = (1,1) (2,1) (3,1) (1,2) ... index = (z-1)*3 + (x-1). Seen from above with the front
+// (controller, -z) at the bottom, screen-right is -x, so column c holds x = 3 - c and row r holds z = 3 - r.
+const cellOf=i=>[1+i%3,1+((i/3)|0)];
+const gridEl=$("shafts"), casEls=[], stEls=[], shEls=[];
+for(let r=0;r<3;r++) for(let c=0;c<3;c++){
+  const i=(3-r-1)*3+(3-c-1), sh=document.createElement("div"); sh.className="shaft"; sh.dataset.i=i;
+  const st=document.createElement("button"); st.type="button"; st.className="sh-state"; st.dataset.i=i;
+  st.onclick=()=>{ const s=state.shafts[i]; s.state=STATES[(STATES.indexOf(s.state)+1)%3]; update(); };
+  sh.append(st); stEls[i]=st; shEls[i]=sh; casEls[i]=[];
+  for(let k=0;k<4;k++){ const b=document.createElement("button"); b.type="button"; b.className="cas"; b.dataset.i=i; b.dataset.k=k;
+    b.innerHTML='<span class="lbl"></span><span class="mx"></span><span class="bar"><i></i></span>'; sh.append(b); casEls[i][k]=b; }
+  gridEl.append(sh);
+}
+let painting=false;
+function paint(i,k){ const s=state.shafts[i], c=s.casings[k];
+  if(c.tier===brush.tier&&c.mox===brush.mox&&c.charge===brush.charge&&s.state!=="empty") return;
+  Object.assign(c,{tier:brush.tier,mox:brush.mox,charge:brush.charge}); if(s.state==="empty") s.state="locked"; update(); }
+// Mouse and pen paint on press and drag; touch paints on tap so the page still scrolls over the grid; keys go through click.
+let pressed=false;
+gridEl.addEventListener("pointerdown",e=>{ const b=e.target.closest(".cas"); if(!b||e.pointerType==="touch") return; e.preventDefault(); painting=pressed=true; paint(+b.dataset.i,+b.dataset.k); });
+gridEl.addEventListener("click",e=>{ const b=e.target.closest(".cas"); if(!b) return; if(pressed){ pressed=false; return; } paint(+b.dataset.i,+b.dataset.k); });
+gridEl.addEventListener("pointermove",e=>{ if(!painting) return; const el=document.elementFromPoint(e.clientX,e.clientY), b=el&&el.closest(".cas"); if(b) paint(+b.dataset.i,+b.dataset.k); });
+addEventListener("pointerup",()=>painting=false); addEventListener("pointercancel",()=>painting=false);
+gridEl.addEventListener("pointerover",e=>{ const b=e.target.closest(".cas"); setHover(b?+b.dataset.i:-1,b?+b.dataset.k:-1); });
+gridEl.addEventListener("pointerleave",()=>setHover(-1,-1));
+function casTip(i,k){ const s=state.shafts[i], c=s.casings[k], [x,z]=cellOf(i);
+  return `Shaft ${i+1} (cell ${x},${z}), cladding ${k+1} from the top\n${TIERS[c.tier-1][1]} (×${C.tierOutput[c.tier-1]})${c.mox?", MOX":""}, ${fmt(c.charge)} % charge · ${STATE_NAME[s.state].toLowerCase()}`; }
+function renderShafts(){
+  state.shafts.forEach((s,i)=>{ stEls[i].textContent=STATE_NAME[s.state]; stEls[i].className="sh-state "+s.state;
+    stEls[i].setAttribute("aria-label",`Shaft ${i+1}: ${STATE_NAME[s.state]}. Click to change.`);
+    shEls[i].classList.toggle("empty",s.state==="empty");
+    s.casings.forEach((c,k)=>{ const b=casEls[i][k]; b.className="cas t"+c.tier+(hover.i===i&&hover.k===k?" lit":"");
+      b.querySelector(".lbl").textContent=TIERS[c.tier-1][0]; b.querySelector(".mx").textContent=c.mox?"MOX":"";
+      b.querySelector(".bar i").style.width=c.charge+"%"; b.title=casTip(i,k); b.setAttribute("aria-label",casTip(i,k).replace("\n",": ")); }); });
+}
+
+/* ================= brush and inputs ================= */
+function segButtons(el,items,get,set){ el.innerHTML=""; for(const [v,label,sub] of items){ const b=document.createElement("button"); b.type="button"; b.dataset.v=v;
+  b.innerHTML=label+(sub?`<small>${sub}</small>`:""); b.onclick=()=>{ set(v); update(); }; el.append(b); } el._get=get; }
+const pressSeg=el=>{ for(const b of el.children) b.setAttribute("aria-pressed",String(b.dataset.v)===String(el._get())); };
+segButtons($("bTier"),TIERS.map(([t,n],i)=>[i+1,`<span class="sw" style="background:var(--t${i+1})"></span>${t}`,n]),()=>brush.tier,v=>brush.tier=+v);
+segButtons($("sMod"),C.moderators.map(([n,p,h],i)=>[i,n,i?`×${p} flow · ×${h} heat`:""]),()=>state.moderator,v=>state.moderator=+v);
+segButtons($("sCool"),C.coolers.map(([n,a],i)=>[i,n,i?`+${a} cooling`:""]),()=>state.cooler,v=>state.cooler=+v);
+segButtons($("sLine"),Object.entries(LINE_NAMES).map(([k,n])=>[k,n,{dryer:"97.5 % kept",separator:"90 % kept",both:"the guide's chain"}[k]]),()=>state.line,v=>state.line=v);
+segButtons($("sTr"),TR_SHOWN.map(i=>{ const [n,fe,fl]=C.translators[i]; return [i,i?n:"None",i?`${fl}% flow · ${fe}% FE`:"or Basic"]; }),()=>state.translator,v=>state.translator=+v);
+$("bMox").onclick=()=>{ brush.mox=!brush.mox; update(); };
+$("bCharge").onchange=e=>{ brush.charge=Math.max(0,Math.min(100,Math.round(+e.target.value||0))); update(); };
+$("fillAll").onclick=()=>{ state.shafts=Array.from({length:9},()=>shaft(brush.tier,brush.mox,brush.charge)); update(); };
+$("lockAll").onclick=()=>{ for(const s of state.shafts) if(s.state!=="empty") s.state="locked"; update(); };
+$("emptyAll").onclick=()=>{ for(const s of state.shafts) s.state="empty"; update(); };
+$("rod").oninput=e=>{ state.rod=+e.target.value; update(); };
+const NUMS=[["nPump","pumps",0,8],["nHp","hpPumps",0,8],["nSg","sg",0,8],["nTurb","turbines",0,12],["nBoron","boron",0,1000],["nXe","xenon",0,100],["nDep","deposits",0,100]];
+for(const [id,key,lo,hi] of NUMS) $(id).onchange=e=>{ const v=Math.round(+e.target.value); state[key]=Number.isFinite(v)?Math.max(lo,Math.min(hi,v)):state[key]; update(); };
+const TOGS=[["tReheat","reheat"],["tPreheat","preheat"],["tCont","containment"]];
+for(const [id,key] of TOGS) $(id).onclick=()=>{ state[key]=!state[key]; update(); };
+for(const [label,sub,ch] of EXAMPLES){ const b=document.createElement("button"); b.type="button"; b.className="btn"; b.innerHTML=`${label}<small>${sub}</small>`; b.onclick=()=>loadExample(ch); $("examples").append(b); }
+function renderInputs(){
+  for(const el of [$("bTier"),$("sMod"),$("sCool"),$("sLine"),$("sTr")]) pressSeg(el);
+  $("bMox").setAttribute("aria-pressed",brush.mox); if(document.activeElement!==$("bCharge")) $("bCharge").value=brush.charge;
+  $("rod").value=state.rod; $("rodOut").textContent=state.rod;
+  for(const [id,key] of NUMS) if(document.activeElement!==$(id)) $(id).value=state[key];
+  for(const [id,key] of TOGS) $(id).setAttribute("aria-pressed",state[key]);
+}
+
+/* ================= model run ================= */
+let S, B, L, P;
+function run(){ S=steady(state); B=backedUp(state,S); L=life(state); P=plant(state,S); }
+
+function status(){
+  const poisoned=state.xenon>=C.xenonStop;
+  if(poisoned) return {cls:"st-bad",text:"STOPPED: XENON",sub:"Poisoned at 100 % xenon: no power until it falls under 60 %."};
+  if(S.want<=0) return {cls:"st-idle",text:"IDLE",sub:S.active?"Rods are out (step 0).":"No locked rods with charge."};
+  if(!S.safe) return {cls:"st-bad",text:`MELTDOWN IN ${dur(S.toBoom)}`,sub:`Heat +${fmt(S.gain,3)} vs cooling ${fmt(S.cooling,3)} per tick`};
+  if(B&&!B.safe) return {cls:"st-warn",text:"UNSAFE ONCE STEAM BACKS UP",sub:`Turbines take ${fmt(S.cap)} of ${fmt(S.steam)} mB/t steam`};
+  return {cls:"st-good",text:"SAFE",sub:`Heat +${fmt(S.gain,3)} vs cooling ${fmt(S.cooling,3)} per tick: stays at 0 %`};
+}
+
+/* ================= results ================= */
+function renderResults(){
+  const st=status(), net=S.fe-P.baseLoad;
+  $("hudMain").innerHTML=`${kfe(S.fe)} <small>FE/t fresh</small>`;
+  $("hudStatus").textContent=st.text; $("hudStatus").className="status "+st.cls; $("hudSub").textContent=st.sub;
+  const LIM={pumps:"the pumps",port:"the drive's primary port (5,120 mB/t)",sg:"the steam generators"};
+  const lim=S.limits.map(k=>LIM[k]).join(" and ");
+  const cells=[];
+  const cell=(k,v,s,cls="")=>cells.push(`<div class="cell ${cls}"><span class="k">${k}</span><span class="v">${v}</span>${s?`<span class="s">${s}</span>`:""}</div>`);
+  cell("Power, fresh rods",`${fmt(S.fe)} <small>FE/t</small>`,`${fmt(net)} FE/t after the plant's own ${fmt(P.baseLoad)} FE/t · ${fmt(S.used)} mB/t of ${S.feMb===384?"superheated ":""}steam × ${S.feMb}${S.fePct!==100?` × ${S.fePct} %`:""}`,"hero");
+  cell("Over the rods' life",Number.isFinite(L.avg)&&Number.isFinite(L.ticks)?`${kfe(L.avg)} <small>FE/t</small>`:"—",Number.isFinite(L.ticks)?`average until the core is spent, ${mins(L.ticks)} · ${big(L.energy)} FE per load`:"no fuel burning");
+  cell("Status",`<span class="${st.cls}">${st.text.replace("UNSAFE ONCE STEAM BACKS UP","STEAM BACKS UP")}</span>`,
+    !S.safe?`100 % in ${dur(S.toFull)}, then 12.5 s to the explosion. Alarm at 80 %: ${dur(S.toRed)}.`:S.want>0?"heat stays at 0 %":"");
+  cell("Primary water",`${fmt(S.flow)} <small>/ ${fmt(S.want)} mB/t</small>`,S.want<=0?"nothing wanted":S.flow+1e-9>=S.want?`moved / wanted · pumps ${fmt(S.pumpFlow)}, generators ${fmt(S.sgCap)}`:`short by ${fmt(S.want-S.flow)} mB/t: limited by ${lim}`);
+  cell("Heat per tick",`<span class="${S.safe?"st-good":"st-bad"}">+${fmt(S.gain,3)}</span> <small>vs</small> ${fmt(S.cooling,3)}`,`gain vs cooling · insertion ${fmt(S.ins*100)} %`);
+  cell("Steam",`${fmt(S.wet)} <small>wet → ${fmt(S.steam)} mB/t</small>`,`${S.steam>S.cap+1e-9?`turbines take ${fmt(S.cap)}: `:""}${state.reheat?"superheated":"steam"} for ${fmt(state.turbines)} turbine${state.turbines===1?"":"s"} (${fmt(S.cap)} mB/t)`);
+  const lifeTxt=Number.isFinite(L.ticks)?(L.first<L.ticks-1?`${mins(L.first)} – ${mins(L.ticks)}`:mins(L.ticks)):"—";
+  cell("Rod life",lifeTxt,Number.isFinite(L.ticks)?`${S.done<1-1e-9?`burning at ${fmt(S.done*100)} % speed while the water is short · `:""}first to last shaft empty`:"rods don't burn");
+  cell("Recombiners",`${fmt(P.recombiners)}`,P.recombiners?`within 24 blocks · without: hull blows in ${dur(P.gas.toFull)}`:"no hydrogen while idle");
+  cell("Xenon filters",`${fmt(P.filters)}`,P.filters?`within 24 blocks · without: ${Number.isFinite(P.xenon.stopTicks)?`core stops in ${mins(P.xenon.stopTicks)}`:"xenon settles above 30 %"}`:"none needed");
+  cell("Turbines for all the steam",`${fmt(P.turbinesFor)}`,`${C.translators[state.translator][0]==="None"?"no translator":C.translators[state.translator][0]+" translator"}: ${fmt(C.turbineMb*S.flowPct/100)} mB/t each · you have ${fmt(state.turbines)}`);
+  cell("Plant base load",`${fmt(P.baseLoad)} <small>FE/t</small>`,"pumps, pressurizer, condensers, water treatment, feedwater, filters");
+  $("results").innerHTML=cells.join("");
+
+  const n=[];
+  const add=(cls,html)=>n.push(`<li class="${cls}">${html}</li>`);
+  if(state.xenon>=C.xenonStop) add("bad","At 100 % xenon the core is poisoned: no power until it decays under 60 %. A xenon filter speeds that up.");
+  if(S.want>0&&!S.safe){
+    const why=S.flow<S.want-1e-9?`it wants ${fmt(S.want)} mB/t but only ${fmt(S.flow)} can move (${lim}), and every missing mB adds heat`:`the moderator's heat (×${C.moderators[state.moderator][2]}) outruns the flow cooling`;
+    const fix=S.limits.includes("port")?"The drive's port can't take more, so lower the rod step until it wants 5,120 mB/t or less.":`Add ${S.limits.map(k=>k==="sg"?"steam generators":"pumps").join(" and ")}, or lower the rod step.`;
+    add("bad",`Meltdown: ${why}. Heat reaches 100 % in ${dur(S.toFull)}; 12.5 s later the drive explodes. ${S.flow<S.want-1e-9?fix:"Fit a stronger cooler or a weaker moderator."}`);
+  }
+  if(B&&S.safe){
+    const t=`${fmt(S.cap)} mB/t of the ${fmt(S.steam)} the line makes`;
+    if(!B.safe) add("warn",`Steam backs up: the turbines take ${t}. Once their tanks fill (about ${dur(B.fillTicks)} for the turbine tanks alone), the steam generators stop and the core gets only ${fmt(B.flow)} mB/t: heat +${fmt(B.gain,3)} vs ${fmt(B.cooling,3)}, meltdown ${dur(B.toBoom)} after that. ${P.turbinesFor} turbine${P.turbinesFor===1?"":"s"} with this translator would take it all. (Our reading of the code; not checked in game.)`);
+    else add("warn",`The turbines take ${t}; the rest backs up. The core stays safe even then (${fmt(B.gain,3)} vs ${fmt(B.cooling,3)}), but ${P.turbinesFor} turbine${P.turbinesFor===1?"":"s"} would turn all of it into power.`);
+  }
+  if(S.want>0&&S.safe&&S.limit!=="none") add("warn",`The core wants ${fmt(S.want)} mB/t and gets ${fmt(S.flow)} (${lim}). It's still safe, but rods burn slower than they could.`);
+  if(state.line==="both") add("warn","The Compendium chains a separator into a dryer, but in code the dryer only accepts wet steam and the separator puts out dry steam, so this chain may not connect. Use one or the other.");
+  const unl=state.shafts.filter(s=>s.state==="unlocked").length;
+  if(unl) add("",`${unl} rod${unl>1?"s are":" is"} unlocked: ${unl>1?"they stay":"it stays"} up and ${unl>1?"make":"makes"} nothing. Only rods the clamp has locked follow the rod step.`);
+  if(S.want>0&&S.moxShare>0) add("",`MOX: ×1.3 output, ×${fmt(1+(C.moxHeat-1)*S.moxShare,3)} heat and ×${fmt(1+(C.moxXenon-1)*S.moxShare,2)} xenon for this core.`);
+  if(S.want>0) add("good",`Thermal power on the drive's screen: ${fmt(200*S.ins)} of 200 (a display number, not FE).`);
+  $("notes").innerHTML=n.join("");
+
+  // plant list
+  const rows=[["Steam generators",state.sg,""],["Main coolant pumps",state.pumps,""],["High-pressure pumps",state.hpPumps,""],
+    ["Separators",P.separators,"1,280 mB/t wet steam each"],["Dryers",P.dryers,"1,280 mB/t each"],["Reheaters",P.reheaters,"1,280 mB/t each"],
+    ["Feedwater heaters",P.feedHeaters,"640 feedwater + 320 exhaust each"],["Steam turbines",state.turbines,P.turbinesFor>state.turbines?`${P.turbinesFor} to use all the steam`:""],
+    ["Condensers",P.condensers,`${fmt(P.exhaust)} mB/t exhaust`],["Water treatment",P.treatment,`${fmt(P.feed)} mB/t feedwater`],["Feedwater pumps",P.feedPumps,""],
+    ["Recombiners",P.recombiners,""],["Xenon filters",P.filters,""]].filter(r=>r[1]>0);
+  let pl=document.getElementById("plantBox");
+  if(!pl){ pl=document.createElement("details"); pl.className="more"; pl.id="plantBox"; pl.innerHTML=`<summary>The plant around it, and its power use</summary><ul class="parts" id="plantList" style="margin-top:8px"></ul><ul class="parts" id="loadList" style="margin-top:10px"></ul>`; $("notes").after(pl); }
+  $("plantList").innerHTML=rows.map(([k,v,s])=>`<li><span>${k}${s?` <small>${s}</small>`:""}</span><span class="n">${fmt(v)}</span></li>`).join("");
+  $("loadList").innerHTML=P.load.map(([k,c,p])=>`<li><span>${k}${c>1?` × ${c}`:""}</span><span class="n">${fmt(c*p)} FE/t</span></li>`).join("")+`<li class="tot"><span>Base load</span><span class="n">${fmt(P.baseLoad)} FE/t</span></li>`;
+
+  const d=state.rod/15, travel=5;
+  $("rodHint").textContent=state.rod?`Locked rods ${fmt(d*100)} % in: ${fmt(d*travel,1)} of ${travel} blocks down into the vessel. Set it in the drive terminal or with a redstone signal (0-15); the clamps move every locked rod to the same step.`
+    :"Rods fully out: the core is idle and nothing burns.";
+  $("lineHint").textContent=`${fmt(S.wet)} mB/t wet steam → ${fmt(S.steam)} mB/t ${state.reheat?"superheated steam (384 FE/mB)":"steam (256 FE/mB)"}.${state.preheat?" Preheated feedwater: +15 % steam per mB of primary water.":""}`;
+}
+
+/* ================= 3D: the mod's drive model and fuel rods ================= */
+const M=window.SQN_MODEL, view=$("view"), reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+let renderer, scene, camera, root, rodGroup, shell, glowMat, towerMat, cageMat, towerMesh, cageMesh, xray=true, showShell=false;
+const HEAD_OUT=10, TRAVEL=5, BASE_Y=4;   // rod head height above the controller level when placed; RodShaft travel = head − 5
+const casingMeshes=[], hits=[];
+const hover={i:-1,k:-1};
+function geometry(flat){
+  const n=flat.length/20, pos=new Float32Array(n*18), uv=new Float32Array(n*12);
+  for(let q=0;q<n;q++){ const o=q*20; [0,3,2,0,2,1].forEach((k,j)=>{ const c=o+k*5; pos.set([flat[c],flat[c+1],flat[c+2]],q*18+j*3); uv.set([flat[c+3],flat[c+4]],q*12+j*2); }); }
+  const g=new THREE.BufferGeometry(); g.setAttribute("position",new THREE.BufferAttribute(pos,3)); g.setAttribute("uv",new THREE.BufferAttribute(uv,2)); g.computeVertexNormals(); return g;
+}
+const TINT=[0xFFFFFF,0xC8DAFF,0xFFD3B8,0xBDF5EC];
+let GEO, TEX, glowMats;
+function tex(url,repeat){ const t=new THREE.TextureLoader().load(url); t.magFilter=t.minFilter=THREE.NearestFilter; t.generateMipmaps=false; if(repeat){ t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(...repeat); } return t; }
+function initGL(){
+  if(!M) return;
+  try{ renderer=new THREE.WebGLRenderer({canvas:$("gl"),antialias:true,alpha:true}); }catch(e){ view.insertAdjacentHTML("beforeend",'<div class="nogl">This browser can\'t show the 3D drive (no WebGL). The numbers still work.</div>'); return; }
+  renderer.setPixelRatio(Math.min(2,devicePixelRatio||1)); renderer.setClearColor(0,0);
+  scene=new THREE.Scene(); camera=new THREE.PerspectiveCamera(36,1,0.1,800);
+  scene.add(new THREE.HemisphereLight(0xE4EEFF,0x2E2A22,1.1)); const sun=new THREE.DirectionalLight(0xffffff,0.8); sun.position.set(-9,16,-7); scene.add(sun);
+  root=new THREE.Group(); scene.add(root);
+  TEX={drive:tex(M.tex.drive),glow:tex(M.tex.driveGlow),rod:M.tex.rod.map(u=>tex(u)),rodGlow:tex(M.tex.rodGlow)};
+  GEO={tower:geometry(M.tower),cage:geometry(M.cage),block:M.rodBlock.map(geometry),head:M.rodHead.map(geometry),glow:geometry(M.rodGlow)};
+  towerMat=new THREE.MeshLambertMaterial({map:TEX.drive,side:THREE.DoubleSide});
+  cageMat=new THREE.MeshLambertMaterial({map:TEX.drive,side:THREE.DoubleSide});
+  towerMesh=new THREE.Mesh(GEO.tower,towerMat); cageMesh=new THREE.Mesh(GEO.cage,cageMat); towerMesh.renderOrder=cageMesh.renderOrder=2;
+  root.add(towerMesh,cageMesh);
+  glowMat=new THREE.MeshBasicMaterial({map:TEX.glow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-1});
+  const gm=new THREE.Mesh(GEO.tower,glowMat); gm.renderOrder=3; root.add(gm); glowMat.userData.mesh=gm;
+  // rod glow: the mod draws it with four brightness steps, the cladding's CHARGE property (remaining × 4 ÷ 14,400, rounded up)
+  glowMats=[1,2,3,4].map(q=>new THREE.MeshBasicMaterial({map:TEX.rodGlow,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,opacity:q/4,side:THREE.DoubleSide}));
+  rodGroup=new THREE.Group(); root.add(rodGroup);
+  shell=buildShell(); shell.visible=false; root.add(shell);
+  setXray(true);
+  new ResizeObserver(resize).observe(view); resize();
+  const f=framing(); Object.assign(orbit.target,{x:f.x,y:f.y,z:f.z}); orbit.radius=f.r; orbit.phi=f.phi;
+  requestAnimationFrame(frame);
+}
+// The containment: a round concrete building 31 across and 32 high, the drive on a pedestal right under the roof,
+// with the roof hatch over the shafts. Drawn to the guide's size, not from the mod's model.
+function buildShell(){
+  const g=new THREE.Group(), conc=M.tex.concrete;
+  const wall=new THREE.MeshLambertMaterial({map:tex(conc,[97,32]),transparent:true,opacity:0.15,depthWrite:false,side:THREE.DoubleSide});
+  const roofM=new THREE.MeshLambertMaterial({map:tex(conc,[31,31]),transparent:true,opacity:0.22,depthWrite:false,side:THREE.DoubleSide});
+  const floorM=new THREE.MeshLambertMaterial({map:tex(conc,[31,31]),transparent:true,opacity:0.35,depthWrite:false});
+  const top=BASE_Y+6+1, bottom=top-32;   // the drive's top (y 10) one block under the roof slab
+  const cyl=new THREE.Mesh(new THREE.CylinderGeometry(15.5,15.5,32,64,1,true),wall); cyl.position.y=(top+bottom)/2; g.add(cyl);
+  const roofShape=new THREE.Shape(); roofShape.absarc(0,0,15.5,0,Math.PI*2,false); const hole=new THREE.Path(); hole.moveTo(-1.5,-1.5); hole.lineTo(1.5,-1.5); hole.lineTo(1.5,1.5); hole.lineTo(-1.5,1.5); hole.lineTo(-1.5,-1.5); roofShape.holes.push(hole);
+  const roofG=new THREE.ShapeGeometry(roofShape,48); const uvA=roofG.attributes.uv; for(let i=0;i<uvA.count;i++) uvA.setXY(i,(roofG.attributes.position.getX(i)+15.5)/31,(roofG.attributes.position.getY(i)+15.5)/31);
+  const roof=new THREE.Mesh(roofG,roofM); roof.rotation.x=-Math.PI/2; roof.position.y=top; g.add(roof);
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(15.5,48),floorM); floor.rotation.x=-Math.PI/2; floor.position.y=bottom+0.01; g.add(floor);
+  const ped=new THREE.Mesh(new THREE.BoxGeometry(5,-bottom,5),new THREE.MeshLambertMaterial({map:tex(conc,[5,-bottom]),transparent:true,opacity:0.45,depthWrite:false})); ped.position.y=bottom/2; g.add(ped);
+  return g;
+}
+function rebuildRods(){
+  if(!rodGroup) return;
+  // shared geometries and glow materials stay; per-rod materials and the hover outline go
+  for(const m of [...rodGroup.children]){ rodGroup.remove(m); if(!glowMats.includes(m.material)) m.material.dispose(); if(m.geometry.type==="BoxGeometry") m.geometry.dispose(); }
+  casingMeshes.length=0; hits.length=0;
+  const step=state.rod/15;
+  state.shafts.forEach((s,i)=>{
+    if(s.state==="empty") return;
+    const [cx,cz]=cellOf(i), x=cx-2, z=cz-2;
+    const headY=s.state==="locked"?HEAD_OUT-TRAVEL*step:HEAD_OUT;   // RodShaft target: (head − 5) × step / 15
+    const hy=BASE_Y+headY;
+    const top=s.casings[0];
+    const head=new THREE.Mesh(GEO.head[top.tier-1],new THREE.MeshLambertMaterial({map:TEX.rod[top.tier-1]})); head.position.set(x,hy,z); head.userData={i,k:-1}; rodGroup.add(head); hits.push(head);
+    s.casings.forEach((c,k)=>{
+      const tint=new THREE.Color(TINT[c.tier-1]); if(c.mox) tint.multiply(new THREE.Color(0xC4FFB4));
+      const m=new THREE.Mesh(GEO.block[c.tier-1],new THREE.MeshLambertMaterial({map:TEX.rod[c.tier-1],color:tint}));
+      m.position.set(x,hy-1-k,z); m.userData={i,k}; rodGroup.add(m); hits.push(m); casingMeshes.push(m);
+      const q=Math.min(4,Math.ceil(c.charge/100*4-1e-9));
+      if(q>0){ const g=new THREE.Mesh(GEO.glow,glowMats[q-1]); g.position.copy(m.position); g.renderOrder=4; rodGroup.add(g); }
+      if(hover.i===i&&hover.k===k){ const o=new THREE.Mesh(new THREE.BoxGeometry(0.78,1.02,0.78),new THREE.MeshBasicMaterial({color:0xF2E36A,wireframe:true})); o.position.set(x,hy-0.5-k,z); rodGroup.add(o); }
+    });
+  });
+  // the drive's lights: on while it makes steam, red when the core heads for a meltdown
+  if(glowMat){ glowMat.userData.mesh.visible=!!S&&S.want>0; glowMat.color.set(S&&S.want>0&&!S.safe?0xFF5040:0xFFFFFF); }
+}
+function setXray(on){ xray=on; $("tXray").setAttribute("aria-pressed",on);
+  for(const m of [towerMat,cageMat]){ m.transparent=on; m.opacity=on?(m===towerMat?0.14:0.24):1; m.depthWrite=!on; m.needsUpdate=true; } }
+function resize(){ if(!renderer) return; const r=view.getBoundingClientRect(); renderer.setSize(r.width,r.height,false); camera.aspect=r.width/Math.max(1,r.height); camera.updateProjectionMatrix(); }
+// Orbit camera, as on the other calculators: left-drag rotates; right/middle/Shift-drag or two fingers pan; wheel or pinch zooms.
+// theta π puts the camera on the north (-z) side, in front of the controller.
+const orbit={theta:Math.PI-0.6,phi:1.12,radius:23,target:{x:0,y:8,z:0},goal:null,idle:0,pan:false};
+const ptrs=new Map(); let downAt=null;
+const narrow=()=>camera&&camera.aspect<1.2?1.22:1;   // square phone view: back off so the raised rods fit
+const framing=()=>showShell?{x:0,y:-4,z:0,r:72*narrow(),phi:1.2}:{x:0,y:8,z:0,r:23*narrow(),phi:1.12};
+const zoomBy=f=>{ if(orbit.goal&&orbit.goal.r!=null) orbit.goal.r=Math.min(200,Math.max(4,orbit.goal.r*f)); else orbit.radius=Math.min(200,Math.max(4,orbit.radius*f)); };
+function panBy(dx,dy){ if(!camera) return;
+  const k=2*orbit.radius*Math.tan(camera.fov*Math.PI/360)/Math.max(1,view.clientHeight);
+  const right=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,0), up=new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld,1);
+  const t=orbit.target; t.x+=(-right.x*dx+up.x*dy)*k; t.y+=(-right.y*dx+up.y*dy)*k; t.z+=(-right.z*dx+up.z*dy)*k;
+  if(orbit.goal){ delete orbit.goal.x; delete orbit.goal.y; delete orbit.goal.z; } }
+function pick(e){ if(!renderer) return null; const r=view.getBoundingClientRect(), rc=new THREE.Raycaster();
+  rc.setFromCamera({x:(e.clientX-r.left)/r.width*2-1,y:-(e.clientY-r.top)/r.height*2+1},camera);
+  const h=rc.intersectObjects(hits)[0]; return h?h.object.userData:null; }
+function setHover(i,k){ if(hover.i===i&&hover.k===k) return; hover.i=i; hover.k=k;
+  shEls.forEach((el,j)=>el.classList.toggle("lit",j===i));
+  view.classList.toggle("over",i>=0);
+  $("hudHover").textContent=i<0?"":k<0?`Shaft ${i+1}: ${STATE_NAME[state.shafts[i].state].toLowerCase()} rod, docker (head)`:casTip(i,k);
+  renderShafts(); rebuildRods(); }
+view.addEventListener("contextmenu",e=>e.preventDefault());
+view.addEventListener("pointerdown",e=>{ if(e.target.closest("button")) return;
+  ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY}); downAt={x:e.clientX,y:e.clientY,button:e.button,moved:false};
+  orbit.pan=e.button===1||e.button===2||e.shiftKey; orbit.idle=0; view.setPointerCapture(e.pointerId); });
+view.addEventListener("pointermove",e=>{ const p=ptrs.get(e.pointerId);
+  if(!p){ if(e.pointerType==="mouse"){ const h=pick(e); setHover(h?h.i:-1,h?h.k:-1); } return; }
+  if(downAt&&Math.hypot(e.clientX-downAt.x,e.clientY-downAt.y)>5) downAt.moved=true;
+  if(ptrs.size>=2){ const [a,b]=[...ptrs.values()], mx=(a.x+b.x)/2, my=(a.y+b.y)/2, d=Math.hypot(a.x-b.x,a.y-b.y);
+    p.x=e.clientX; p.y=e.clientY; const [c,f]=[...ptrs.values()], d2=Math.hypot(c.x-f.x,c.y-f.y);
+    panBy((c.x+f.x)/2-mx,(c.y+f.y)/2-my); if(d>0&&d2>0) zoomBy(d/d2); orbit.idle=0; return; }
+  const dx=e.clientX-p.x, dy=e.clientY-p.y; p.x=e.clientX; p.y=e.clientY; orbit.idle=0;
+  if(!downAt||!downAt.moved) return;
+  if(orbit.pan) panBy(dx,dy); else { orbit.theta-=dx*0.008; orbit.phi=Math.min(1.55,Math.max(0.15,orbit.phi-dy*0.008)); if(orbit.goal) delete orbit.goal.phi; } });
+const endPtr=e=>{ const click=downAt&&!downAt.moved&&ptrs.size===1&&e.type==="pointerup"; ptrs.delete(e.pointerId); if(!ptrs.size) orbit.pan=false;
+  if(click&&downAt.button===0){ const h=pick(e); if(h){ if(h.k>=0) paint(h.i,h.k); else { const s=state.shafts[h.i]; s.state=STATES[(STATES.indexOf(s.state)+1)%3]; update(); } } }
+  if(!ptrs.size) downAt=null; };
+view.addEventListener("pointerup",endPtr); view.addEventListener("pointercancel",endPtr);
+view.addEventListener("pointerleave",()=>{ if(!ptrs.size) setHover(-1,-1); });
+view.addEventListener("wheel",e=>{ e.preventDefault(); zoomBy(1+Math.sign(e.deltaY)*0.08); orbit.idle=0; },{passive:false});
+let lastT=performance.now();
+function frame(t){
+  const dt=Math.min(0.05,(t-lastT)/1000); lastT=t;
+  if(!ptrs.size){ orbit.idle+=dt; if(orbit.idle>3&&!reduce&&hover.i<0) orbit.theta+=dt*0.08; }
+  if(orbit.goal){ const g=orbit.goal, a=reduce?1:1-Math.exp(-dt*7), o=orbit.target; let left=0;
+    for(const [k,obj,key] of [["x",o,"x"],["y",o,"y"],["z",o,"z"],["r",orbit,"radius"],["phi",orbit,"phi"],["theta",orbit,"theta"]]) if(g[k]!=null){ obj[key]+=(g[k]-obj[key])*a; left+=Math.abs(g[k]-obj[key]); }
+    if(left<0.01) orbit.goal=null; }
+  const o=orbit.target;
+  camera.position.set(o.x+Math.sin(orbit.theta)*Math.sin(orbit.phi)*orbit.radius, o.y+Math.cos(orbit.phi)*orbit.radius, o.z+Math.cos(orbit.theta)*Math.sin(orbit.phi)*orbit.radius); camera.lookAt(o.x,o.y,o.z);
+  // the drive's lights pulse while it makes steam
+  if(glowMat) glowMat.opacity=reduce?0.9:0.75+0.25*Math.sin(t/400);
+  renderer.render(scene,camera); requestAnimationFrame(frame);
+}
+$("tXray").onclick=()=>setXray(!xray);
+$("tShell").onclick=()=>{ showShell=!showShell; $("tShell").setAttribute("aria-pressed",showShell); if(shell) shell.visible=showShell; orbit.goal=framing(); };
+$("tFront").onclick=()=>{ const th=Math.round((orbit.theta-Math.PI)/(2*Math.PI))*2*Math.PI+Math.PI; orbit.goal={...framing(),theta:th}; orbit.idle=-6; };
+
+/* ================= design code ================= */
+/* mdsq1.<rod step>.<moderator><cooler>.<pumps>-<hp pumps>-<steam generators>.<line d|s|b><r reheater><p feedwater heater>.<turbines>-<translator>
+         .<boron ppm>-<xenon %>-<deposits %>.<c containment|o>.<shafts>
+   shafts: base64url bytes. Per shaft: state (0 no rod, 1 locked, 2 unlocked), then 4 claddings top first as (tier−1) | MOX<<2,
+   then their 4 charges in %. 9 bytes when every shaft is the same (written once), else 81. */
+function encodeDesign(){
+  const one=s=>[STATES.indexOf(s.state)===0?1:STATES.indexOf(s.state)===1?2:0,...s.casings.map(c=>(c.tier-1)|(c.mox?4:0)),...s.casings.map(c=>c.charge)];
+  const all=state.shafts.map(one), same=all.every(a=>a.join()===all[0].join());
+  const bytes=Uint8Array.from(same?all[0]:all.flat());
+  const line={dryer:"d",separator:"s",both:"b"}[state.line]+(state.reheat?"r":"")+(state.preheat?"p":"");
+  return `mdsq1.${state.rod}.${state.moderator}${state.cooler}.${state.pumps}-${state.hpPumps}-${state.sg}.${line}.${state.turbines}-${state.translator}.${state.boron}-${state.xenon}-${state.deposits}.${state.containment?"c":"o"}.${mdShare.b64u.enc(bytes)}`;
+}
+function decodeDesign(code){
+  const m=/^mdsq1\.(\d{1,2})\.([0-5])([0-3])\.(\d)-(\d)-(\d)\.([dsb])(r?)(p?)\.(\d{1,2})-([0-4])\.(\d{1,4})-(\d{1,3})-(\d{1,3})\.([co])\.([A-Za-z0-9_-]+)$/.exec(String(code||"").trim());
+  if(!m) return null;
+  let b; try{ b=mdShare.b64u.dec(m[16]); }catch(e){ return null; }
+  if(b.length!==9&&b.length!==81) return null;
+  const shafts=[];
+  for(let i=0;i<9;i++){ const o=b.length===9?0:i*9, st=b[o];
+    if(st>2) return null;
+    const casings=[0,1,2,3].map(k=>({tier:(b[o+1+k]&3)+1,mox:!!(b[o+1+k]&4),charge:Math.min(100,b[o+5+k])}));
+    shafts.push({state:st===1?"locked":st===2?"unlocked":"empty",casings}); }
+  const n=(v,hi)=>Math.min(hi,+v);
+  return {shafts,rod:n(m[1],15),moderator:+m[2],cooler:+m[3],pumps:+m[4],hpPumps:+m[5],sg:+m[6],line:{d:"dryer",s:"separator",b:"both"}[m[7]],reheat:!!m[8],preheat:!!m[9],
+    turbines:n(m[10],12),translator:+m[11],boron:n(m[12],1000),xenon:n(m[13],100),deposits:n(m[14],100),containment:m[15]==="c"};
+}
+const share=mdShare({prefix:"mdsq1",isPreset:()=>false,encode:encodeDesign,decode:decodeDesign,preset:()=>"default",apply:d=>{ state=d; update(); }});
+
+function update(){
+  run(); renderInputs(); renderShafts(); renderResults(); rebuildRods(); share.render();
+}
+if(share.atLoad.design) state=share.atLoad.design;
+initGL(); update(); share.live();
+})();
+</script>
+</body>
+</html>

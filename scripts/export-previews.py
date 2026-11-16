@@ -41,6 +41,8 @@ TOOLS = {
     "cpu": "/tools/applied-energistics-2/crafting-cpu-calculator/",
     "quantum": "/tools/applied-energistics-2/quantum-computer-calculator/",
     "station": "/tools/ryzer-gen/fission-station-calculator/",
+    # tier 4 rods at step 9 (the page's example): X-ray shows the teal rods inside the round vessel
+    "sqnuclear": "/tools/sq-nuclear/reactor-calculator/#d=mdsq1.9.00.0-1-2.dr.2-4.0-0-0.c.AQMDAwNkZGRk",
     "zirnox": "/tools/ntm/zirnox-reactor-calculator/",
     "rbmk": "/tools/ntm/rbmk-reactor-calculator/",
     "research": "/tools/ntm/research-reactor-calculator/",
