@@ -646,8 +646,9 @@ function shaftRods(){ const c=rodCenter(iwOf(),idOf()); return [c.x*idOf()+c.z];
 // Rod grid: the layout with the most blades out of a few tried ones. Rods on every cell with odd x and odd z (away from
 // the casing) put a blade on every cell with one odd coordinate, half the rotor; on 7- to 11-wide insides a staggered
 // grid (every 4th cell, rows 2 apart, 3 rings) fits a few more. From 2.5 a layout only counts if the Turbine Builder,
-// fed this design's code, builds the same blades (no unbalanced rod): a staggered grid at 3 rings on 13- to 25-wide
-// insides doesn't, and the turbine it builds won't form. If no layout qualifies, the best hand-built one is kept.
+// fed this design's code, builds the same blades (no unbalanced rod). A staggered grid at 3 rings on 13- to 25-wide
+// insides can't be built balanced at all: checked in game (Evo 2, 17x17x29), the Builder and every hand click order
+// leave rods at 9-11 blades and the turbine never forms. If no layout qualifies, the best hand-built one is kept.
 const layoutCache={};
 function bestLayout(iw,id){
   const key=iw+"x"+id+"|"+cfg.maxRing+"|"+cfg.balanced+"|"+cfg.v25+"|"+cfg.v26; if(layoutCache[key]) return layoutCache[key];
