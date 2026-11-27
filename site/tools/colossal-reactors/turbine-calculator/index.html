@@ -538,6 +538,15 @@ function simulate(s,cfg){
   for(let t=0;t<rodLayers;t++) layers.push(bladeLayer(iw,id,rods,Math.max(0,(s.rings&&s.rings[t])|0),maxRing,cfg.balanced,cfg.v25>0,s.builder?(cfg.v26>0?2:1):0));
   const validBlades=layers.reduce((a,l)=>a+l.blades,0);
   const unbalanced=layers.reduce((a,l,t)=>a.concat(l.bad.map(r=>({t,r}))),[]);
+  // From 2.5: the same rod layer as the game's own click order lays it (the Turbine Builder's order, TurbineBuildLogic).
+  // Where that leaves a rod unbalanced, the turbine doesn't form in game whichever way it's built: checked on Evo 2 with
+  // a 17x17x29 staggered grid at 3 rings (Builder 127 blades a layer, every hand click order 129, never formed), though
+  // the ring-by-ring model above gets 136 balanced. The rod layers only differ in their ring, so each ring is run once.
+  let clickBad=null;
+  if(cfg.v25>0&&!s.builder&&!unbalanced.length){ const seen=new Set();
+    for(let t=0;t<rodLayers&&!clickBad;t++){ const k=Math.max(0,(s.rings&&s.rings[t])|0); if(seen.has(k)) continue; seen.add(k);
+      const B=bladeLayer(iw,id,rods,k,maxRing,cfg.balanced,true,cfg.v26>0?2:1);
+      if(B.bad.length){ const r=B.bad[0]; clickBad={t,r,count:B.counts.get(r),rods:B.bad.length}; } } }
   // TurbineBladeEfficiency.computeMultiplier over the rod layers (largest balanced blade count on one rod per layer),
   // leading empty layers dropped: +bonus for each layer with more than the one below until the first layer with fewer,
   // then −malus for every layer with fewer. Floor 0.01.
@@ -594,11 +603,11 @@ function simulate(s,cfg){
   const used=Math.min(want,supply), scale=steamCap>0?Math.min(1,used/steamCap):0;
   // a rod whose blade count isn't a multiple of 4 stops the turbine forming (UNBALANCED_BLADES); on 2.5 so does a rotor
   // with no rods, since a rod controller has to sit on one (NO_ROD_CONTROLLER)
-  const noCtl=v25&&!rods.length, formed=!unbalanced.length&&!noCtl;
+  const noCtl=v25&&!rods.length, formed=!unbalanced.length&&!clickBad&&!noCtl;
   const rf=formed?Math.trunc(rfMax*scale):0;
   const rfShort=formed?Math.trunc(Math.max(steamCap*cfg.rfPerMb*coilEff*bladeEffShort*cfg.prod,cfg.minRf)*scale):0;
   const ctls=v25?rods.map(r=>({x:Math.floor(r/id),z:r%id})):[ctr];
-  Object.assign(out,{ok:true,formed,unbalanced,noCtl,rods,ctr,ctls,layers,validBlades,counts,bladeEff,bladeEffShort,rfShort,ups,downs,coilBlocks,coilCounts,coilEff,steamCap,rfMax,used,scale,rf,
+  Object.assign(out,{ok:true,formed,unbalanced,clickBad,noCtl,rods,ctr,ctls,layers,validBlades,counts,bladeEff,bladeEffShort,rfShort,ups,downs,coilBlocks,coilCounts,coilEff,steamCap,rfMax,used,scale,rf,
     flowEff,matFlow,flowBonus,flowTarget,flowUseful,flowGate,flowCells,
     rfPerMb:steamCap>0?rf/Math.max(1,used):0});
   return out;
@@ -1006,6 +1015,8 @@ function renderResults(R){
   $("results").innerHTML=cells.map(([k,v,c])=>`<div class="cell ${c||""}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
   const n=[];
   if(R.noCtl) n.push(["bad","No rods, so no rod controller: from Colossal Reactors 2.5 each one sits on top of a rod, and the turbine won't form without one. Use One shaft or Rod grid, or click cells in the rotor view."]);
+  else if(R.clickBad){ const b=R.clickBad, x=Math.floor(b.r/id), z=b.r%id;
+    n.push(["bad",`The turbine won't form: rods here share blades, and in game each click puts a blade where the mod picks. Built with the Turbine Builder or by hand, the rod at ${x+1}, ${z+1} (from the north-west inside corner) ends up with ${b.count} blades on rod layer ${b.t+1}, not a multiple of 4 ("blades are not balanced")${b.rods>1?`, and so do ${b.rods-1} more rod${b.rods>2?"s":""} on that layer`:""}. Use fewer rings or move the rods apart: Rod grid picks a layout that forms.`]); }
   else if(!R.formed){ const first=R.unbalanced[0], x=Math.floor(first.r/id), z=first.r%id, L=R.layers[first.t];
     n.push(["bad",`The turbine won't form: the rod at ${x+1}, ${z+1} (from the north-west inside corner) counts ${L.counts.get(first.r)} blades on rod layer ${first.t+1}, not a multiple of 4 ("blades are not balanced"). Its run of blades touches another rod's. ${R.unbalanced.length>1?`${R.unbalanced.length} rod layers have this. `:""}Move the rods apart or use fewer rings; the red outlines in the rotor view show which rods.`]); }
   if(!state.rods.length&&!R.noCtl) n.push(["bad","No rods: the turbine forms but has no blades, so it takes no steam and makes nothing. Use One shaft or Rod grid, or click cells in the rotor view."]);
