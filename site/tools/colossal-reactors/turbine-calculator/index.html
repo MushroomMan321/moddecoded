@@ -307,6 +307,7 @@ details.cfg summary{cursor:pointer;font-size:14px;color:var(--muted);width:max-c
         <h2>Output</h2>
         <div class="results" id="results"></div>
         <ul class="notes" id="notes"></ul>
+        <p class="hint">The Turbine Builder's in-game Simulation counts too few blades on a rod grid where rods share blades. Trust the formed Turbine Controller, which counts them all.</p>
         <p class="hint">Checked in game with the FTB Evolution 2 config: twelve test turbines (one shaft, five rods and a rod grid; full, climbing and falling rings; gold, iron, copper, netherite, mixed and empty coil zones; a single coil block; part-fed steam) matched the page's RF/t and steam to the unit. A thirteenth that the page says won't form didn't. Every blade was placed by the game's own right-click code, on the cells the page shows. Checked in game on Colossal Reactors 2.5 too (2026-10-25, same config values): a shaft, five rods with a rod controller on every rod (135,000 RF/t) and with one taken away (128,250), the Turbine Builder's Hyperflow layout, a Website import of a rod grid, and a deck with a gap, all as the page shows. And on the Colossal Reactors 2.6 dev build (2026-10-26, mod coil list): rod grids with gold, iron and an empty zone, crying obsidian and redstone above the rod controllers, two and three coil layers on 20- and 26-tall casings, a shaft under 64 blades and a 5×5 casing matched the controller's steam and RF to the unit, and the Turbine Builder placed the page's 140 blades from its code. The 2.6.0.1.2 release's turbine and coil code is the same as that dev build's. And on FTB Evolution 2 1.7.0 itself (2026-11-05): a one-shaft 7×7×9 of aurichalcum with crying obsidian, stainless steel, redstone, steel, iron, lapis or netherite above the shaft, and gold with crying obsidian, matched the controller's steam and RF to the unit.</p>
       </div>
       <div class="box" id="share">
@@ -644,16 +645,20 @@ const iwOf=()=>state.X-2, idOf=()=>state.Z-2;
 function shaftRods(){ const c=rodCenter(iwOf(),idOf()); return [c.x*idOf()+c.z]; }
 // Rod grid: the layout with the most blades out of a few tried ones. Rods on every cell with odd x and odd z (away from
 // the casing) put a blade on every cell with one odd coordinate, half the rotor; on 7- to 11-wide insides a staggered
-// grid (every 4th cell, rows 2 apart, 3 rings) fits a few more.
+// grid (every 4th cell, rows 2 apart, 3 rings) fits a few more. From 2.5 a layout only counts if the Turbine Builder,
+// fed this design's code, builds the same blades (no unbalanced rod): a staggered grid at 3 rings on 13- to 25-wide
+// insides doesn't, and the turbine it builds won't form. If no layout qualifies, the best hand-built one is kept.
 const layoutCache={};
 function bestLayout(iw,id){
-  const key=iw+"x"+id+"|"+cfg.maxRing+"|"+cfg.balanced+"|"+cfg.v25; if(layoutCache[key]) return layoutCache[key];
+  const key=iw+"x"+id+"|"+cfg.maxRing+"|"+cfg.balanced+"|"+cfg.v25+"|"+cfg.v26; if(layoutCache[key]) return layoutCache[key];
   const cands=[], g=[]; for(let x=1;x<=iw-2;x+=2) for(let z=1;z<=id-2;z+=2) g.push(x*id+z); if(g.length) cands.push({rods:g,ring:1});
   for(let a=0;a<4;a++) for(let R=1;R<=3;R++){ const rods=[]; let row=0; for(let z=1;z<id;z+=2,row++) for(let x=(a+(row%2)*2)%4;x<iw;x+=4) rods.push(x*id+z); cands.push({rods,ring:R}); }
   const c=rodCenter(iw,id); cands.push({rods:[c.x*id+c.z],ring:centerRing(iw,id,cfg.maxRing)});
-  let best=null; for(const o of cands){ if(o.ring>cfg.maxRing) continue; const L=bladeLayer(iw,id,o.rods,o.ring,cfg.maxRing,cfg.balanced,cfg.v25>0); if(L.bad.length) continue;
+  let best=null, hand=null; for(const o of cands){ if(o.ring>cfg.maxRing) continue; const L=bladeLayer(iw,id,o.rods,o.ring,cfg.maxRing,cfg.balanced,cfg.v25>0); if(L.bad.length) continue;
+    if(!hand||L.blades>hand.blades) hand={...o,blades:L.blades,L};
+    if(cfg.v25>0){ const B=bladeLayer(iw,id,o.rods,o.ring,cfg.maxRing,cfg.balanced,true,cfg.v26>0?2:1); if(B.bad.length||B.blades!==L.blades) continue; }
     if(!best||L.blades>best.blades) best={...o,blades:L.blades,L}; }
-  return layoutCache[key]=best; }
+  return layoutCache[key]=best||hand; }
 const gridRods=()=>bestLayout(iwOf(),idOf()).rods;
 const ringsOf=(rl)=>[...Array(Math.max(0,rl))].map((_,t)=>state.profile==="climb"?Math.min(state.ring,1+t):state.ring);
 function modelState(st=state){
